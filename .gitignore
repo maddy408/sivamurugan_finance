@@ -16,3 +16,6 @@ Thumbs.db
 # uploads (organization logo etc.)
 backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
+
+# production build output
+/web/

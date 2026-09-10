@@ -1,6 +1,7 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /chit-fund-system/backend/public/
+    # Path this app's API is served from. Change for a different deploy location.
+    RewriteBase /siva-murugan-chit-fund/backend/public/
 
     # Send everything that is not a real file/dir to the front controller.
     RewriteCond %{REQUEST_FILENAME} !-f
