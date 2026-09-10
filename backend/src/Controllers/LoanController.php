@@ -133,10 +133,10 @@ class LoanController
                 $params[$key] = $v;
             }
         }
-        // Location filter follows the customer's master location (source of truth).
+        // Optional location filter — plain typed text, exact match (no Location Master).
         if (($lv = $req->queryParam('location_id')) !== null && $lv !== '') {
-            $where[] = '(c.primary_location_id = :location_id OR l.location_id = :location_id)';
-            $params['location_id'] = (int)$lv;
+            $where[] = '(c.location = :location_txt OR l.location = :location_txt)';
+            $params['location_txt'] = $lv;
         }
         if ($from = $req->queryParam('date_from')) { $where[] = 'l.start_date >= :df'; $params['df'] = $from; }
         if ($to   = $req->queryParam('date_to'))   { $where[] = 'l.start_date <= :dt'; $params['dt'] = $to; }
@@ -156,8 +156,6 @@ class LoanController
         $whereSql = implode(' AND ', $where);
         $base = "FROM loans_or_chits l
                  JOIN customers c ON c.id = l.customer_id
-                 LEFT JOIN locations cloc ON cloc.id = c.primary_location_id
-                 LEFT JOIN locations loc ON loc.id = l.location_id
                  WHERE $whereSql";
 
         $total = (int)$db->scalar("SELECT COUNT(*) $base", $params);
@@ -166,7 +164,7 @@ class LoanController
                     l.installment_amount, l.installment_amount AS emi_amount, l.tenure,
                     l.frequency, l.schedule_type, l.start_date, l.status,
                     c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile,
-                    COALESCE(cloc.name, loc.name) AS location_name,
+                    COALESCE(NULLIF(c.location,''), l.location) AS location_name,
                     (SELECT u.name FROM loan_assignments la
                        JOIN employees e ON e.id = la.employee_id
                        JOIN users u ON u.id = e.user_id
@@ -195,10 +193,10 @@ class LoanController
         // legacy mirror for any old caller
         $loan['emi_amount'] = $loan['installment_amount'];
 
-        $loan['customer'] = $db->fetch('SELECT id, customer_code, name, mobile, primary_location_id FROM customers WHERE id = :id', ['id' => $loan['customer_id']]);
-        $loan['location'] = $loan['location_id']
-            ? $db->fetch('SELECT id, code, name FROM locations WHERE id = :id', ['id' => $loan['location_id']])
-            : null;
+        $loan['customer'] = $db->fetch('SELECT id, customer_code, name, mobile, location FROM customers WHERE id = :id', ['id' => $loan['customer_id']]);
+        // Location is plain text; expose it in the {name} shape the SPA expects.
+        $loan['location'] = ($loan['location'] ?? '') !== '' ? ['name' => $loan['location']]
+            : (($loan['customer']['location'] ?? '') !== '' ? ['name' => $loan['customer']['location']] : null);
         $loan['assignment'] = $db->fetch(
             "SELECT la.*, e.emp_code, u.name AS employee_name
              FROM loan_assignments la JOIN employees e ON e.id = la.employee_id JOIN users u ON u.id = e.user_id
@@ -236,7 +234,6 @@ class LoanController
             'frequency'          => 'required|in:daily,weekly,monthly',
             'start_date'         => 'required|date',
             'schedule_type'      => 'required|in:DAILY,WEEKLY,MONTHLY_WEEKDAY,MONTHLY_DAILY,MONTHLY_INTERVAL',
-            'location_id'        => 'nullable|int',
             'employee_id'        => 'nullable|int',
             'notes'              => 'nullable|string|max:500',
             'code'               => 'nullable|string|max:40',
@@ -247,7 +244,8 @@ class LoanController
         if (!$customer) {
             throw HttpException::validation(['customer_id' => ['Unknown customer']]);
         }
-        $locationId = $in['location_id'] ?: $customer['primary_location_id'];
+        // Chit location is a denormalised copy of the customer's typed location text.
+        $locationTxt = $customer['location'] ?? null;
 
         // ---- Optional: distribute the chit immediately as part of creation ----
         // Reuses DistributionService exactly like a later distribution: one financial
@@ -291,7 +289,7 @@ class LoanController
             'code'               => $code,
             'account_type'       => $in['account_type'] ?: 'chit',
             'customer_id'        => $in['customer_id'],
-            'location_id'        => $locationId,
+            'location'           => $locationTxt,
             'principal_amount'   => $installment === '0.00' ? '0.00' : Money::of($in['principal_amount']),
             'tenure'             => $in['tenure'],
             'frequency'          => $in['frequency'],
@@ -427,13 +425,12 @@ class LoanController
             'start_date'         => 'nullable|date',
             'tenure'             => 'nullable|int|min:1|max:600',
             'frequency'          => 'nullable|in:daily,weekly,monthly',
-            'location_id'        => 'nullable|int',
             'notes'              => 'nullable|string|max:500',
             'code'               => 'nullable|string|max:40',
         ])->validated();
 
         $fields = [];
-        foreach (['principal_amount','schedule_type','start_date','tenure','frequency','location_id','notes'] as $k) {
+        foreach (['principal_amount','schedule_type','start_date','tenure','frequency','notes'] as $k) {
             if ($in[$k] !== null) $fields[$k] = $in[$k];
         }
         // Keep frequency <-> schedule_type consistent whenever either one is edited.

@@ -50,7 +50,6 @@ export default function LoanDetail() {
     schedule_type: loan.schedule_type,
     frequency: loan.frequency,
     weekday: scheduleCfg.weekday ? String(scheduleCfg.weekday) : '',
-    location_id: loan.location_id || '',
     notes: loan.notes || '',
   });
 
@@ -68,7 +67,6 @@ export default function LoanDetail() {
         frequency: edit.frequency,
         // Optional collection day — sends {} to clear, {weekday} to set.
         schedule_config: wantsWeekday && edit.weekday ? { weekday: Number(edit.weekday) } : {},
-        location_id: edit.location_id ? Number(edit.location_id) : undefined,
         notes: edit.notes || undefined,
       };
       const r = await api.put(`/api/loans/${id}`, body);
@@ -313,12 +311,6 @@ export default function LoanDetail() {
                 </select>
               </Field>
             )}
-            <Field label="Location">
-              <select value={edit.location_id} onChange={(e) => setEdit({ ...edit, location_id: e.target.value })}>
-                <option value="">—</option>
-                {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </Field>
           </div>
           <Field label="Notes">
             <textarea rows={2} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />

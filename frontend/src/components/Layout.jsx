@@ -12,7 +12,6 @@ const NAV = [
   { to: '/loans', key: 'nav.chits', defaultLabel: 'Chits / Loans', perm: 'loans.view' },
   { to: '/finance', key: 'nav.finance', defaultLabel: 'Expenses & Income', perm: 'expenses.view' },
   { to: '/reports', key: 'nav.reports', defaultLabel: 'Reports', perm: 'reports.view' },
-  { to: '/locations', key: 'nav.locations', defaultLabel: 'Locations', perm: 'locations.view', adminOnly: true },
   { to: '/settings', key: 'nav.settings', defaultLabel: 'Settings', perm: 'settings.view' },
 ];
 

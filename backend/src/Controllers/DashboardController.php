@@ -157,7 +157,8 @@ class DashboardController
             "SELECT
                (SELECT COUNT(*) FROM customers WHERE deleted_at IS NULL) AS customers,
                (SELECT COUNT(*) FROM loans_or_chits WHERE status='active' AND deleted_at IS NULL) AS active_chits,
-               (SELECT COUNT(*) FROM locations WHERE is_active=1) AS locations,
+               (SELECT COUNT(DISTINCT location) FROM customers
+                 WHERE deleted_at IS NULL AND location IS NOT NULL AND location <> '') AS locations,
                (SELECT COUNT(*) FROM employees WHERE is_active=1) AS employees"
         );
 

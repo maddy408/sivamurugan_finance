@@ -13,9 +13,7 @@ export default function EmployeePermissions() {
 
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [locations, setLocations] = useState([]);
   const [loans, setLoans] = useState([]);
-  const [locSel, setLocSel] = useState([]);
   const [loanSel, setLoanSel] = useState([]);
   const [overrides, setOverrides] = useState({});   // code -> 'allow'|'deny'|undefined
   const [busy, setBusy] = useState(false);
@@ -24,14 +22,11 @@ export default function EmployeePermissions() {
     setError(null); setData(null);
     Promise.all([
       api.get(`/api/employees/${id}/permissions`),
-      api.get('/api/locations', { params: { per_page: 200 } }),
       api.get('/api/loans', { params: { per_page: 200 } }),
-    ]).then(([p, l, ln]) => {
+    ]).then(([p, ln]) => {
       setData(p.data);
-      setLocations(l.data);
       setLoans(ln.data);
-      setLocSel(p.data.assigned_locations.map((x) => x.id));
-      setLoanSel(p.data.assigned_loans.map((x) => x.loan_id));
+      setLoanSel((p.data.assigned_loans || []).map((x) => x.loan_id));
       const ov = {};
       p.data.permissions.forEach((x) => { if (x.override) ov[x.code] = x.override; });
       setOverrides(ov);
@@ -59,7 +54,6 @@ export default function EmployeePermissions() {
     try {
       await api.put(`/api/employees/${id}/permissions`, {
         overrides: Object.entries(overrides).map(([code, effect]) => ({ code, effect })),
-        location_ids: locSel,
         loan_ids: loanSel,
       });
       toast.success('Saved. The employee must sign in again.');
@@ -88,24 +82,25 @@ export default function EmployeePermissions() {
         {editable && <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div className="card">
-          <div className="card-head"><h2>Assigned locations</h2></div>
-          <div className="card-body">
-            <select multiple value={locSel.map(String)} disabled={!editable} style={{ width: '100%', minHeight: 150 }}
-              onChange={(e) => setLocSel(Array.from(e.target.selectedOptions).map((o) => Number(o.value)))}>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-body" style={{ padding: '10px 16px' }}>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Access is <b>role + module/action</b> based. There is no location restriction:
+            every employee already sees all customers, loans, chits and pending dues.
+            Turn a module off below and it is denied both in the UI <i>and</i> the API.
+          </p>
         </div>
-        <div className="card">
-          <div className="card-head"><h2>Directly assigned loans / chits</h2></div>
-          <div className="card-body">
-            <select multiple value={loanSel.map(String)} disabled={!editable} style={{ width: '100%', minHeight: 150 }}
-              onChange={(e) => setLoanSel(Array.from(e.target.selectedOptions).map((o) => Number(o.value)))}>
-              {loans.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.customer_name}</option>)}
-            </select>
-          </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head"><h2>Directly assigned loans / chits (collector)</h2>
+          <span className="muted">optional — sets the named collector on the chit; does not affect visibility</span>
+        </div>
+        <div className="card-body">
+          <select multiple value={loanSel.map(String)} disabled={!editable} style={{ width: '100%', minHeight: 150 }}
+            onChange={(e) => setLoanSel(Array.from(e.target.selectedOptions).map((o) => Number(o.value)))}>
+            {loans.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.customer_name}</option>)}
+          </select>
         </div>
       </div>
 

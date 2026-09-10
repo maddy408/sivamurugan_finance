@@ -12,8 +12,8 @@ const run=async()=>{
   await call('PUT','/api/settings/chit-prefix',{token:AT,body:{prefix:'jrm'}});           // lowercase -> normalize
   const pfx=(await call('GET','/api/loans/next-code',{token:AT})).j.data;
   ok(pfx.prefix==='JRM','settings prefix "jrm" normalized to JRM');
-  const loc=(await call('POST','/api/locations',{token:AT,body:{code:'CC-'+Date.now().toString(36),name:'CC Town'}})).j.data;
-  const cust=(await call('POST','/api/customers',{token:AT,body:{name:'CC Cust',mobile:'9000000123',primary_location_id:loc.id}})).j.data;
+  const loc={ id: 'CC Town', name: 'CC Town' };
+  const cust=(await call('POST','/api/customers',{token:AT,body:{name:'CC Cust',mobile:'9000000123',location: loc.name}})).j.data;
   const mk=(extra={})=>call('POST','/api/loans',{token:AT,body:{customer_id:cust.id,account_type:'chit',principal_amount:20000,installment_amount:3000,tenure:4,frequency:'weekly',start_date:'2026-02-01',schedule_type:'WEEKLY',...extra}});
   const a=(await mk()).j.data, b=(await mk()).j.data;
   ok(/^JRM-\d+$/.test(a.code)&&/^JRM-\d+$/.test(b.code),`auto codes clean PREFIX-N (${a.code}, ${b.code})`);

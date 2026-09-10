@@ -90,14 +90,13 @@ const run = async () => {
   const emp = (await call('GET', '/api/employees/2', { token: AT })).j;
   ok(emp.success === true && emp.data?.name === 'Ravi Kumar', 'GET /api/employees/2 -> employee profile');
   ok(!('password' in emp.data) && !('password_hash' in emp.data), 'employee profile does NOT expose credentials');
-  ok(Array.isArray(emp.data.assigned_locations) && emp.data.assigned_locations.length === 2, 'employee profile has assigned_locations (2)');
+  ok(!('assigned_locations' in emp.data), 'employee profile has NO location mapping (removed)');
 
-  const upd = await call('PUT', '/api/employees/2', { token: AT, body: { phone: '9111100000', email: 'ravi.k@example.com', location_ids: [1, 3] } });
+  const upd = await call('PUT', '/api/employees/2', { token: AT, body: { phone: '9111100000', email: 'ravi.k@example.com' } });
   ok(upd.status === 200, 'PUT /api/employees/2 -> 200');
   const emp2 = (await call('GET', '/api/employees/2', { token: AT })).j.data;
   ok(emp2.phone === '9111100000' && emp2.email === 'ravi.k@example.com', 'employee edit: phone + email updated');
-  ok(emp2.assigned_locations.map((l) => l.id).sort().join(',') === '1,3', 'employee edit: locations re-mapped to [1,3] (kept for reporting)');
-  // Location-based access removed: the mapping no longer limits what ravi sees.
+  // No location mapping — an employee sees everything regardless of location.
   const ET = (await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } })).j.data.token;
   const raviCust = (await call('GET', '/api/customers?per_page=200', { token: ET })).j.data;
   const adminCust = (await call('GET', '/api/customers?per_page=200', { token: AT })).j.data;

@@ -127,7 +127,7 @@ final class CollectionService
                 'customer_id'     => $loan['customer_id'],
                 'collected_by'    => $user['id'],
                 'employee_id'     => $user['employee_id'],
-                'location_id'     => $loan['location_id'],
+                'location'        => $loan['location'] ?? null,   // denormalised typed location text
                 'collection_date' => $collectionDate,
                 'amount'          => $amount,        // <-- ACTUAL paid, verbatim
                 'fine_amount'     => $fineAmount,

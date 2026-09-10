@@ -33,7 +33,7 @@ const run = async () => {
   ok(loc.status === 201 && LID, 'location created');
   ok((await call('POST', '/api/locations', { token: AT, body: { code: 'LOC-' + RUN, name: 'dup' } })).status === 409, 'duplicate location code -> 409');
 
-  const cus = await call('POST', '/api/customers', { token: AT, body: { name: 'Test Customer ' + RUN, mobile: '9990001111', primary_location_id: LID, nominee_name: 'N' } });
+  const cus = await call('POST', '/api/customers', { token: AT, body: { name: 'Test Customer ' + RUN, mobile: '9990001111', location: 'Test Nagar', nominee_name: 'N' } });
   const CID = cus.j?.data?.id;
   ok(cus.status === 201 && cus.j?.data?.customer_code?.startsWith('CUST-'), 'customer created with code ' + cus.j?.data?.customer_code);
   const search = await call('GET', '/api/customers?q=Test%20Customer%20' + RUN + '&per_page=10', { token: AT });
@@ -99,7 +99,7 @@ const run = async () => {
   ok((await call('POST', '/api/customers', { token: ET, body: { name: 'x', mobile: '1' } })).status === 403, 'employee without customers.create -> 403');
 
   console.log('== assignment makes loan visible ==');
-  await call('PUT', `/api/employees/${RUID}/permissions`, { token: AT, body: { loan_ids: [LOANID], location_ids: [LID] } });
+  await call('PUT', `/api/employees/${RUID}/permissions`, { token: AT, body: { loan_ids: [LOANID] } });
   ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 401, 'permission change revoked old employee token -> 401');
   const emp2 = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const ET2 = emp2.j?.data?.token;

@@ -244,16 +244,8 @@ class ReportController
             ) ?: -1;
         }
 
-        $locationId = $p('location_id') ? (int) $p('location_id') : null;
-
-        // Server-side location-scope clamp: an employee cannot probe a location
-        // outside their assignment via ?location_id=.
-        if ($locationId && !Guard::scopeIsUnrestricted($user)) {
-            $allowed = array_map('intval', $user['scope']['location_ids'] ?? []);
-            if (!in_array($locationId, $allowed, true)) {
-                throw HttpException::forbidden('That location is outside your assigned scope');
-            }
-        }
+        // Location is plain typed customer text now — an optional exact-match filter.
+        $locationId = $p('location_id');
 
         return [
             'from'            => $from,
@@ -373,20 +365,19 @@ class ReportController
 
         if ($f['status'])      { $w .= ' AND l.status = :st';        $p['st'] = $f['status']; }
         else                   { $w .= " AND l.status <> 'cancelled'"; }
-        if ($f['location_id']) { $w .= ' AND COALESCE(cu.primary_location_id, l.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND l.customer_id = :cid';  $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND l.id = :lid';           $p['lid'] = $f['loan_id']; }
         if ($f['frequency'])   { $w .= ' AND l.frequency = :fr';     $p['fr'] = $f['frequency']; }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         $sql = "SELECT l.id, l.start_date, l.code, cu.name AS customer,
-                       loc.name AS location, " . self::EMP_NAME_SUBQ . " AS employee,
+                       cu.location AS location, " . self::EMP_NAME_SUBQ . " AS employee,
                        l.principal_amount, l.installment_amount, l.frequency, l.tenure, l.status,
                        COALESCE((SELECT SUM(d.amount) FROM distributions d
                                  WHERE d.loan_id=l.id AND d.status='active' AND d.deleted_at IS NULL),0) AS distributed
                 FROM loans_or_chits l
                 JOIN customers cu ON cu.id = l.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, l.location_id)
                 WHERE $w
                 ORDER BY l.start_date ASC, l.id ASC";
         $raw = $db->fetchAll($sql, $p);
@@ -432,14 +423,14 @@ class ReportController
         [$sc, $sp] = $this->scope($user, 'l');
         $p = $sp;
         $w = "l.deleted_at IS NULL AND l.status = 'completed' $sc";
-        if ($f['location_id']) { $w .= ' AND COALESCE(cu.primary_location_id, l.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND l.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND l.id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['frequency'])   { $w .= ' AND l.frequency = :fr'; $p['fr'] = $f['frequency']; }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         // closed date = last posted collection date (fallback: chit updated_at)
-        $sql = "SELECT l.id, l.code, cu.name AS customer, loc.name AS location,
+        $sql = "SELECT l.id, l.code, cu.name AS customer, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee, l.principal_amount, l.status,
                        COALESCE((SELECT MAX(c.collection_date) FROM collections c
                                  WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),
@@ -454,7 +445,6 @@ class ReportController
                                  WHERE d.loan_id=l.id AND d.status='active' AND d.deleted_at IS NULL),0) AS distributed
                 FROM loans_or_chits l
                 JOIN customers cu ON cu.id = l.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, l.location_id)
                 WHERE $w
                 HAVING 1=1";
         // date-range filter applies to the derived closed_date
@@ -508,14 +498,14 @@ class ReportController
         $status = $f['status'] === 'cancelled' ? 'cancelled' : 'posted';
         $w = "col.deleted_at IS NULL AND col.status = :cst $sc $dr";
         $p['cst'] = $status;
-        if ($f['location_id'])     { $w .= ' AND COALESCE(cu.primary_location_id, col.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id'])     { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id'])     { $w .= ' AND col.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])         { $w .= ' AND col.loan_id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
         if ($f['payment_mode_id']) { $w .= ' AND col.payment_mode_id = :pm'; $p['pm'] = $f['payment_mode_id']; }
 
         $sql = "SELECT col.id, col.collection_date, cu.name AS customer, cu.customer_code,
-                       l.code AS chit, loc.name AS location,
+                       l.code AS chit, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee,
                        i.installment_no, ca.principal_alloc, ca.fine_alloc,
                        pm.name AS payment_mode, col.status, u.name AS collected_by
@@ -525,7 +515,6 @@ class ReportController
                 JOIN loans_or_chits l ON l.id = col.loan_id
                 JOIN customers cu ON cu.id = col.customer_id
                 JOIN payment_modes pm ON pm.id = col.payment_mode_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, col.location_id)
                 LEFT JOIN users u ON u.id = col.collected_by
                 WHERE $w
                 ORDER BY col.collection_date DESC, col.id DESC, i.installment_no ASC";
@@ -580,7 +569,7 @@ class ReportController
             GROUP BY col.customer_id
         ) cc ON cc.customer_id = cu.id";
 
-        if ($f['location_id']) { $w .= ' AND cu.primary_location_id = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND cu.id = :cid'; $p['cid'] = $f['customer_id']; }
 
         // customer must have at least one non-cancelled chit in scope
@@ -588,7 +577,7 @@ class ReportController
         $p += $spEx;
         $w .= " AND EXISTS (SELECT 1 FROM loans_or_chits lx WHERE lx.customer_id=cu.id AND lx.deleted_at IS NULL AND lx.status<>'cancelled' $scEx)";
 
-        $sql = "SELECT cu.id, cu.name, cu.customer_code, loc.name AS location,
+        $sql = "SELECT cu.id, cu.name, cu.customer_code, cu.location AS location,
                        (SELECT u2.name FROM loan_assignments la2
                           JOIN employees e2 ON e2.id=la2.employee_id
                           JOIN users u2 ON u2.id=e2.user_id
@@ -602,7 +591,6 @@ class ReportController
                        (SELECT COUNT(*) FROM installments i JOIN loans_or_chits l5 ON l5.id=i.loan_id
                          WHERE l5.customer_id=cu.id AND l5.status='active' AND i.balance_amount > 0) AS pending_dues
                 FROM customers cu
-                LEFT JOIN locations loc ON loc.id = cu.primary_location_id
                 $collJoin
                 WHERE $w
                 ORDER BY tot DESC, cu.name ASC";
@@ -642,7 +630,7 @@ class ReportController
         [$dr, $dp] = $this->dateRange($f, 'col.collection_date');
         $p = $sp + $dp;
         $w = "col.status='posted' AND col.deleted_at IS NULL $sc $dr";
-        if ($f['location_id'])     { $w .= ' AND COALESCE(cu.primary_location_id, col.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id'])     { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
         if ($f['customer_id'])     { $w .= ' AND col.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])         { $w .= ' AND col.loan_id = :lid'; $p['lid'] = $f['loan_id']; }
@@ -697,15 +685,16 @@ class ReportController
         $p = $sp + $dp;
         $w = "col.status='posted' AND col.deleted_at IS NULL AND col.employee_id IS NOT NULL $sc $dr";
         if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
-        if ($f['location_id'])     { $w .= ' AND EXISTS (SELECT 1 FROM employee_locations el WHERE el.employee_id=col.employee_id AND el.location_id=:loc)'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id'])     { $w .= ' AND col.customer_id IN (SELECT id FROM customers WHERE location = :loc)'; $p['loc'] = $f['location_id']; }
         if ($f['payment_mode_id']) { $w .= ' AND col.payment_mode_id = :pm'; $p['pm'] = $f['payment_mode_id']; }
 
         $cashExpr = "CASE WHEN COALESCE(acc.type, CASE WHEN pm.code='CASH' THEN 'cash' ELSE 'bank' END)='cash'
                           THEN col.total_amount ELSE 0 END";
         $sql = "SELECT e.id AS employee_id, u.name AS employee,
-                       (SELECT GROUP_CONCAT(loc.name ORDER BY loc.name SEPARATOR ', ')
-                          FROM employee_locations el JOIN locations loc ON loc.id=el.location_id
-                        WHERE el.employee_id=e.id) AS locations,
+                       (SELECT GROUP_CONCAT(DISTINCT cu2.location ORDER BY cu2.location SEPARATOR ', ')
+                          FROM collections c2 JOIN customers cu2 ON cu2.id = c2.customer_id
+                        WHERE c2.employee_id = e.id AND c2.status='posted' AND c2.deleted_at IS NULL
+                          AND cu2.location IS NOT NULL AND cu2.location <> '') AS locations,
                        COUNT(DISTINCT col.customer_id) AS customers,
                        COUNT(col.id) AS collections,
                        SUM(col.amount) AS inst, SUM(col.fine_amount) AS fine, SUM(col.total_amount) AS tot,
@@ -755,20 +744,19 @@ class ReportController
         [$dr, $dp] = $this->dateRange($f, 'col.collection_date');
         $p = $sp + $dp;
         $w = "col.status='posted' AND col.deleted_at IS NULL $sc $dr";
-        if ($f['location_id'])     { $w .= ' AND COALESCE(cu.primary_location_id, col.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id'])     { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
         if ($f['payment_mode_id']) { $w .= ' AND col.payment_mode_id = :pm'; $p['pm'] = $f['payment_mode_id']; }
 
-        $sql = "SELECT COALESCE(loc.name, '(unassigned)') AS location,
+        $sql = "SELECT COALESCE(NULLIF(cu.location,''), '(unassigned)') AS location,
                        COUNT(DISTINCT col.customer_id) AS customers,
                        COUNT(col.id) AS collections,
                        SUM(col.amount) AS inst, SUM(col.fine_amount) AS fine, SUM(col.total_amount) AS tot
                 FROM collections col
                 JOIN loans_or_chits l ON l.id = col.loan_id
                 JOIN customers cu ON cu.id = col.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, col.location_id)
                 WHERE $w
-                GROUP BY COALESCE(loc.name, '(unassigned)')
+                GROUP BY COALESCE(NULLIF(cu.location,''), '(unassigned)')
                 ORDER BY tot DESC";
         $raw = $db->fetchAll($sql, $p);
 
@@ -803,19 +791,18 @@ class ReportController
         $p = $sp + $dp;
         $w = "d.deleted_at IS NULL $sc $dr";
         if ($f['status'] && $f['status'] !== 'all') { $w .= ' AND d.status = :st'; $p['st'] = $f['status']; }
-        if ($f['location_id']) { $w .= ' AND COALESCE(cu.primary_location_id, l.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND d.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND d.loan_id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         $sql = "SELECT d.id, d.distributed_date, l.code AS chit, l.id AS loan_id, l.principal_amount,
-                       cu.name AS customer, loc.name AS location,
+                       cu.name AS customer, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee,
                        d.amount, d.new_emi_amount, d.remarks, d.status, acc.name AS account
                 FROM distributions d
                 JOIN loans_or_chits l ON l.id = d.loan_id
                 JOIN customers cu ON cu.id = d.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, l.location_id)
                 LEFT JOIN accounts acc ON acc.id = d.account_id
                 WHERE $w
                 ORDER BY l.id ASC, d.distributed_date ASC, d.id ASC";
@@ -869,20 +856,19 @@ class ReportController
         $today = BusinessDate::fmt(BusinessDate::today());
         $p['today'] = $today;
         $w = "i.balance_amount > 0 AND l.status='active' AND l.deleted_at IS NULL $sc $dr";
-        if ($f['location_id']) { $w .= ' AND COALESCE(cu.primary_location_id, l.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND l.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND l.id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['status'])      { $w .= ' AND i.status = :ist'; $p['ist'] = strtoupper($f['status']); }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
-        $sql = "SELECT cu.name AS customer, cu.customer_code, l.code AS chit, loc.name AS location,
+        $sql = "SELECT cu.name AS customer, cu.customer_code, l.code AS chit, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee,
                        i.installment_no, i.due_date, i.payable_amount, i.paid_amount, i.balance_amount,
                        GREATEST(DATEDIFF(:today, i.due_date), 0) AS days_pending, i.status
                 FROM installments i
                 JOIN loans_or_chits l ON l.id = i.loan_id
                 JOIN customers cu ON cu.id = l.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, l.location_id)
                 WHERE $w
                 ORDER BY i.due_date ASC, l.code ASC";
         $raw = $db->fetchAll($sql, $p);
@@ -925,13 +911,13 @@ class ReportController
         $w = "l.deleted_at IS NULL $sc $dr";
         if ($f['status'])      { $w .= ' AND l.status = :st'; $p['st'] = $f['status']; }
         else                   { $w .= " AND l.status <> 'cancelled'"; }
-        if ($f['location_id']) { $w .= ' AND COALESCE(cu.primary_location_id, l.location_id) = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND l.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND l.id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['frequency'])   { $w .= ' AND l.frequency = :fr'; $p['fr'] = $f['frequency']; }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
-        $sql = "SELECT l.code AS chit, cu.name AS customer, loc.name AS location,
+        $sql = "SELECT l.code AS chit, cu.name AS customer, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee, l.status, l.principal_amount,
                        COALESCE((SELECT SUM(c.amount) FROM collections c WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),0) AS collected,
                        COALESCE((SELECT SUM(c.fine_amount) FROM collections c WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),0) AS fine,
@@ -939,7 +925,6 @@ class ReportController
                        COALESCE((SELECT SUM(i.balance_amount) FROM installments i WHERE i.loan_id=l.id),0) AS outstanding
                 FROM loans_or_chits l
                 JOIN customers cu ON cu.id = l.customer_id
-                LEFT JOIN locations loc ON loc.id = COALESCE(cu.primary_location_id, l.location_id)
                 WHERE $w
                 ORDER BY l.start_date ASC, l.id ASC";
         $raw = $db->fetchAll($sql, $p);

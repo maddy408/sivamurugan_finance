@@ -14,8 +14,8 @@ const days = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 const run = async () => {
   const AT = (await call('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin@123' } })).j.data.token;
   const ET = (await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } })).j.data.token;
-  const loc = (await call('POST', '/api/locations', { token: AT, body: { code: 'FQ-' + Date.now().toString(36), name: 'Freq Town' } })).j.data;
-  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Freq Cust', mobile: '9000000777', primary_location_id: loc.id } })).j.data;
+  const loc = { id: 'Freq Town', name: 'Freq Town' };
+  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Freq Cust', mobile: '9000000777', location: loc.name } })).j.data;
 
   const mk = (freq, extra = {}) => call('POST', '/api/loans', { token: AT, body: {
     customer_id: cust.id, account_type: 'chit', principal_amount: 100000, installment_amount: 5000,

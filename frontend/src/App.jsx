@@ -15,7 +15,6 @@ import LoanNew from './pages/LoanNew';
 import LoanDetail from './pages/LoanDetail';
 import Employees from './pages/Employees';
 import EmployeePermissions from './pages/EmployeePermissions';
-import Locations from './pages/Locations';
 import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
 import Finance from './pages/Finance';
@@ -52,7 +51,6 @@ export default function App() {
         <Route path="loans/:id" element={<RequirePerm perm="loans.view"><LoanDetail /></RequirePerm>} />
         <Route path="employees" element={<RequirePerm perm="employees.view"><Employees /></RequirePerm>} />
         <Route path="employees/:id/permissions" element={<RequirePerm perm="permissions.view"><EmployeePermissions /></RequirePerm>} />
-        <Route path="locations" element={<RequirePerm perm="locations.view"><Locations /></RequirePerm>} />
         <Route path="audit" element={<RequirePerm perm="audit.view"><AuditLogs /></RequirePerm>} />
         <Route path="reports" element={<RequirePerm perm="reports.view"><Reports /></RequirePerm>} />
         <Route path="finance" element={<RequirePerm perm="expenses.view"><Finance /></RequirePerm>} />

@@ -45,7 +45,7 @@ const run = async () => {
 
   // seed only has 2 customers; add a 3rd (location 3 = Srirangam) for the July chit
   const C3 = (await call('POST', '/api/customers', { token: AT, body: {
-    name: 'Kamaraj Test', mobile: '9998887770', primary_location_id: 3,
+    name: 'Kamaraj Test', mobile: '9998887770', location: 'Srirangam',
   } })).j.data;
 
   const MONTH = '2026-05';
@@ -235,10 +235,9 @@ const run = async () => {
   // grant ravi reports.view/export + map to location 1 only
   await call('PUT', '/api/employees/2/permissions', { token: AT, body: {
     overrides: [{ code: 'reports.view', effect: 'allow' }, { code: 'reports.export', effect: 'allow' }],
-    location_ids: [1],
+    
   } });
   const RT = (await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } })).j.data.token;
-  const custLoc = (await call('GET', '/api/customers/1', { token: AT })).j.data.primary_location_id;
   const raviOpen = (await call('GET', '/api/reports/chit-opening', { token: RT })).j.data;
   const adminOpen = (await call('GET', '/api/reports/chit-opening', { token: AT })).j.data;
   ok(Array.isArray(raviOpen.rows), 'employee with reports.view can read a report');

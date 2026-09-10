@@ -154,33 +154,17 @@ final class Auth
     /**
      * Data-visibility scope.
      *
-     * Location-based access control was removed: Admin AND Employee both see
-     * every customer, loan/chit and collection. The location module still
-     * exists for records/reporting, it just no longer filters what a user can
-     * see. Employees therefore get an unrestricted scope, exactly like admins.
+     * There is NO location-based (or assignment-based) visibility filtering in
+     * this application. Both ADMIN and EMPLOYEE see every customer, loan/chit,
+     * collection and pending due. What a user may DO is governed purely by
+     * role + module/action permissions (loadPermissions()); what a user may
+     * SEE is never filtered.
      *
-     * The employee's assigned locations / loans are still loaded (read-only,
-     * for display and reporting), but `unrestricted => true` means no query is
-     * ever filtered by them.
+     * The array shape (`unrestricted`, empty id lists) is kept so the Guard
+     * helpers that still accept a "scope" continue to work as no-ops.
      */
     private static function loadScope(string $roleCode, ?int $employeeId): array
     {
-        if ($roleCode === 'ADMIN' || $employeeId === null) {
-            return ['unrestricted' => true, 'location_ids' => [], 'loan_ids' => []];
-        }
-        $db = Database::instance();
-        $locs = $db->fetchAll('SELECT location_id FROM employee_locations WHERE employee_id = :e', ['e' => $employeeId]);
-        $today = BusinessDate::fmt(BusinessDate::today());
-        $loans = $db->fetchAll(
-            'SELECT loan_id FROM loan_assignments
-             WHERE employee_id = :e AND is_active = 1
-               AND start_date <= :t AND (end_date IS NULL OR end_date >= :t2)',
-            ['e' => $employeeId, 't' => $today, 't2' => $today]
-        );
-        return [
-            'unrestricted' => true,   // location-based access removed — see docblock
-            'location_ids' => array_map('intval', array_column($locs, 'location_id')),
-            'loan_ids'     => array_map('intval', array_column($loans, 'loan_id')),
-        ];
+        return ['unrestricted' => true, 'location_ids' => [], 'loan_ids' => []];
     }
 }

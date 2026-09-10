@@ -40,10 +40,10 @@ class CollectionController
             $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q)';
             $params['q'] = "%$q%";
         }
-        // Location filter follows the customer's master location (source of truth).
-        if ($loc = $req->queryParam('location_id')) {
-            $where[] = '(c.primary_location_id = :loc OR l.location_id = :loc)';
-            $params['loc'] = (int)$loc;
+        // Optional location filter — plain typed text, exact match (no Location Master).
+        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
+            $where[] = '(c.location = :loc OR l.location = :loc)';
+            $params['loc'] = $loc;
         }
         if ($st  = $req->queryParam('schedule_type')) { $where[] = 'l.schedule_type = :st'; $params['st'] = $st; }
         $onlyDue = $req->queryParam('only_due') === '1';
@@ -53,8 +53,6 @@ class CollectionController
         $offset  = ListQuery::offset($req);
         $base = "FROM loans_or_chits l
                  JOIN customers c ON c.id = l.customer_id
-                 LEFT JOIN locations cloc ON cloc.id = c.primary_location_id
-                 LEFT JOIN locations loc ON loc.id = l.location_id
                  WHERE $whereSql";
         $total = (int)$db->scalar("SELECT COUNT(*) $base", $params);
 
@@ -62,8 +60,7 @@ class CollectionController
             "SELECT l.id, l.code, l.account_type, l.installment_amount, l.principal_amount,
                     l.frequency, l.schedule_type, l.start_date, l.tenure,
                     c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile,
-                    COALESCE(c.primary_location_id, l.location_id) AS location_id,
-                    COALESCE(cloc.name, loc.name) AS location_name
+                    COALESCE(NULLIF(c.location,''), l.location) AS location_name
              $base ORDER BY c.name ASC LIMIT $perPage OFFSET $offset",
             $params
         );

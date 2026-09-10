@@ -18,8 +18,8 @@ const D = (v) => Number(v).toFixed(2);
 const run = async () => {
   const AT = (await call('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin@123' } })).j.data.token;
   ok(!!AT, 'admin login');
-  const loc = (await call('POST', '/api/locations', { token: AT, body: { code: 'CF-' + Date.now().toString(36), name: 'Chit Town' } })).j.data;
-  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Chit Cust', mobile: '9111100000', primary_location_id: loc.id } })).j.data;
+  const loc = { id: 'Chit Town', name: 'Chit Town' };
+  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Chit Cust', mobile: '9111100000', location: loc.name } })).j.data;
   const pmCash = 1, pmBank = 3;
 
   const makeChit = async () => (await call('POST', '/api/loans', { token: AT, body: {
@@ -105,7 +105,7 @@ const run = async () => {
   console.log('== TEST 10 + TEST: employee collection shows on admin dashboard ==');
   const emp = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const EUID = emp.j.data.user.id;
-  await call('PUT', `/api/employees/${EUID}/permissions`, { token: AT, body: { loan_ids: [c2.id], location_ids: [loc.id], overrides: [{ code: 'collection.create', effect: 'allow' }, { code: 'collection.view', effect: 'allow' }, { code: 'loans.view', effect: 'allow' }] } });
+  await call('PUT', `/api/employees/${EUID}/permissions`, { token: AT, body: { loan_ids: [c2.id], overrides: [{ code: 'collection.create', effect: 'allow' }, { code: 'collection.view', effect: 'allow' }, { code: 'loans.view', effect: 'allow' }] } });
   const emp2 = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const ET = emp2.j.data.token;
   const empChit = (await call('GET', `/api/loans/${c2.id}`, { token: ET })).j.data;
@@ -127,18 +127,15 @@ const run = async () => {
   ok((await call('GET', `/api/loans/${c3.id}`, { token: AT })).status === 404, 'deleted chit -> 404');
   ok(!(await call('GET', '/api/loans?per_page=200', { token: AT })).j.data.some((L) => L.id === c3.id), 'deleted chit gone from list');
 
-  const cust2 = (await call('POST', '/api/customers', { token: AT, body: { name: 'Temp Cust', mobile: '9111100099', primary_location_id: loc.id } })).j.data;
+  const cust2 = (await call('POST', '/api/customers', { token: AT, body: { name: 'Temp Cust', mobile: '9111100099', location: 'Temp Town' } })).j.data;
+  ok(cust2.location === 'Temp Town', 'customer location stored as plain typed text');
   ok((await call('DELETE', `/api/customers/${cust2.id}`, { token: AT })).status === 200, 'delete customer -> 200');
   ok(!(await call('GET', '/api/customers?per_page=200', { token: AT })).j.data.some((c) => c.id === cust2.id), 'deleted customer gone from list');
 
-  const loc2 = (await call('POST', '/api/locations', { token: AT, body: { code: 'DEL-' + Date.now().toString(36), name: 'Delete Me' } })).j.data;
-  const locView = await call('GET', `/api/locations/${loc2.id}`, { token: AT });
-  ok(locView.status === 200 && Array.isArray(locView.j.data.employees), 'GET location detail has employees[]');
-  ok((await call('DELETE', `/api/locations/${loc2.id}`, { token: AT })).status === 200, 'delete empty location -> 200');
-  ok((await call('DELETE', `/api/locations/${loc.id}`, { token: AT })).status === 409, 'delete location with customers -> 409 (blocked)');
+  ok((await call('GET', '/api/locations', { token: AT })).status === 404, 'Location Master removed -> /api/locations 404');
 
   console.log('== XLSX exports are real workbooks ==');
-  for (const p of ['/api/export/customers', '/api/export/chits', '/api/export/collections', '/api/export/employees', '/api/export/locations', '/api/expenses/export', '/api/income/export', '/api/reports/chit-profit/export']) {
+  for (const p of ['/api/export/customers', '/api/export/chits', '/api/export/collections', '/api/export/employees', '/api/expenses/export', '/api/income/export', '/api/reports/chit-profit/export']) {
     const r = await call('GET', p, { token: AT, raw: true });
     const isZip = r.buf && r.buf[0] === 0x50 && r.buf[1] === 0x4b; // "PK"
     const isXlsxName = /\.xlsx"?$/.test(r.cd);

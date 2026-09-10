@@ -24,8 +24,8 @@ const run = async () => {
   await call('PUT', '/api/settings/accounts/2', { token: AT, body: { opening_balance: 20000 } });
 
   console.log('== CHIT CODE: prefix / auto-increment / manual / duplicate ==');
-  const loc = (await call('POST', '/api/locations', { token: AT, body: { code: 'V3-' + Date.now().toString(36), name: 'V3 Town' } })).j.data;
-  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Arun', mobile: '9876543210', primary_location_id: loc.id } })).j.data;
+  const loc = { id: 'V3 Town', name: 'V3 Town' };
+  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Arun', mobile: '9876543210', location: loc.name } })).j.data;
   const mk = async (extra = {}) => (await call('POST', '/api/loans', { token: AT, body: {
     customer_id: cust.id, account_type: 'chit', principal_amount: 20000, installment_amount: 3000, tenure: 6,
     frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', location_id: loc.id, ...extra,
@@ -131,13 +131,13 @@ const run = async () => {
   ok(!(await call('GET', '/api/collections?per_page=200', { token: AT })).j.data.some((c) => c.id === p1.j.data.collection.id), 'deleted collection gone from ledger list');
 
   console.log('== RBAC: employee cannot cancel/delete without permission ==');
-  await call('PUT', `/api/employees/${EUID}/permissions`, { token: AT, body: { loan_ids: [c1.id], location_ids: [loc.id] } });
+  await call('PUT', `/api/employees/${EUID}/permissions`, { token: AT, body: { loan_ids: [c1.id] } });
   const ET = (await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } })).j.data.token;
   ok((await call('POST', `/api/collections/${p4.j.data.collection.id}/cancel`, { token: ET, body: { reason: 'x' } })).status === 403, 'employee cancel without collection.cancel -> 403');
   ok((await call('DELETE', `/api/collections/${p4.j.data.collection.id}`, { token: ET, body: { reason: 'x' } })).status === 403, 'employee delete without collection.delete -> 403');
 
   console.log('== PENDING DUES ==');
-  const cust2 = (await call('POST', '/api/customers', { token: AT, body: { name: 'Bala', mobile: '9000000001', primary_location_id: loc.id } })).j.data;
+  const cust2 = (await call('POST', '/api/customers', { token: AT, body: { name: 'Bala', mobile: '9000000001', location: loc.name } })).j.data;
   const pc = (await mk({ customer_id: cust2.id, installment_amount: 3000 })).data;
   const pi1 = (await call('GET', `/api/loans/${pc.id}`, { token: AT })).j.data.installments[0].id;
   await call('POST', '/api/collections', { token: AT, body: { installment_id: pi1, collection_date: '2026-09-07', amount: 1000, payment_mode_id: 1, idempotency_key: 'v3-pend' } });
@@ -156,17 +156,14 @@ const run = async () => {
   ok(!balaChit2 || Number(balaChit2.due_installments.find((d) => d.installment_no === 1) === undefined),
      'installment 1 no longer pending after being fully paid');
 
-  console.log('== CUSTOMER: new location creation + reuse ==');
-  const nl1 = await call('POST', '/api/customers', { token: AT, body: { name: 'Loc Test 1', mobile: '9111000001', new_location: 'Surandai' } });
-  ok(nl1.status === 201 && nl1.j.data.created_location?.name === 'Surandai', 'new_location "Surandai" created & returned');
-  const surId = nl1.j.data.primary_location_id;
-  ok(!!surId, 'customer linked to the new location id');
-  const inLocList = (await call('GET', '/api/locations?per_page=200', { token: AT })).j.data.some((l) => l.name === 'Surandai');
-  ok(inLocList, 'Surandai now appears in the Locations list');
-  const nl2 = await call('POST', '/api/customers', { token: AT, body: { name: 'Loc Test 2', mobile: '9111000002', new_location: 'surandai' } });
-  ok(nl2.j.data.primary_location_id === surId && !nl2.j.data.created_location, 'same location name (case-insensitive) REUSED, no duplicate');
-  const surandaiCount = (await call('GET', '/api/locations?q=Surandai&per_page=200', { token: AT })).j.data.filter((l) => /surandai/i.test(l.name)).length;
-  ok(surandaiCount === 1, `exactly one "Surandai" location exists (got ${surandaiCount})`);
+  console.log('== CUSTOMER: location is plain typed text (no Location Master) ==');
+  const nl1 = await call('POST', '/api/customers', { token: AT, body: { name: 'Loc Test 1', mobile: '9111000001', location: 'Surandai' } });
+  ok(nl1.status === 201 && nl1.j.data.location === 'Surandai', 'typed location "Surandai" stored verbatim');
+  const nl2 = await call('POST', '/api/customers', { token: AT, body: { name: 'Loc Test 2', mobile: '9111000002', location: 'surandai' } });
+  ok(nl2.status === 201 && nl2.j.data.location === 'surandai', 'a second customer keeps its own typed text — nothing is de-duplicated or mapped');
+  const gotBoth = (await call('GET', '/api/customers?q=Loc Test&per_page=50', { token: AT })).j.data.filter((c) => /^Loc Test/.test(c.name)).length;
+  ok(gotBoth === 2, 'both location-text customers are visible in the global list');
+  ok((await call('GET', '/api/locations', { token: AT })).status === 404, 'no Location Master endpoint');
 
   console.log('== regression: existing suites still meaningful (installment amount fixed) ==');
   ok(D((await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data.installment_amount) === '3000.00', 'JRM-1 installment_amount still 3000.00 at end of run');

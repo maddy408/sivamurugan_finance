@@ -2,19 +2,21 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, fmtDate } from '../api/client';
 import DataTable from '../components/DataTable';
-import { Field, Modal, Confirm, Spinner, CheckboxPicker, IconView, IconEdit } from '../components/ui';
+import { Field, Modal, Confirm, Spinner, IconView, IconEdit } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
+const emptyCreate = { name: '', username: '', password: '', email: '', phone: '' };
+
 export default function Employees() {
-  const { can, meta } = useAuth();
+  const { can } = useAuth();
   const toast = useToast();
   const list = useList('/api/employees', { initialPerPage: 25 });
-  
+
   // Create-employee modal state
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', username: '', password: '', email: '', phone: '', location_ids: [] });
+  const [createForm, setCreateForm] = useState(emptyCreate);
   const [createErrors, setCreateErrors] = useState({});
   const [createBusy, setCreateBusy] = useState(false);
 
@@ -37,7 +39,6 @@ export default function Employees() {
       setEdit({
         user_id: row.user_id, name: r.data.name || '', email: r.data.email || '',
         phone: r.data.phone || '', is_active: !!r.data.is_active,
-        location_ids: (r.data.assigned_locations || []).map((l) => l.id),
       });
     } catch (e) { toast.error(e.message); }
   };
@@ -47,7 +48,7 @@ export default function Employees() {
     try {
       await api.put(`/api/employees/${edit.user_id}`, {
         name: edit.name, email: edit.email || undefined, phone: edit.phone || undefined,
-        is_active: edit.is_active, location_ids: edit.location_ids,
+        is_active: edit.is_active,
       });
       toast.success('Employee updated');
       setEdit(null); list.reload();
@@ -61,9 +62,9 @@ export default function Employees() {
     e.preventDefault();
     setCreateBusy(true); setCreateErrors({});
     try {
-      await api.post('/api/employees', { ...createForm, location_ids: createForm.location_ids.join(',') });
+      await api.post('/api/employees', createForm);
       toast.success('Employee created successfully!');
-      setCreateForm({ name: '', username: '', password: '', email: '', phone: '', location_ids: [] });
+      setCreateForm(emptyCreate);
       setCreateOpen(false);
       list.reload();
     } catch (err) {
@@ -94,8 +95,7 @@ export default function Employees() {
     { key: 'name', header: 'Name', sortable: true },
     { key: 'username', header: 'Username' },
     { key: 'phone', header: 'Phone' },
-    { key: 'location_count', header: 'Locations', align: 'right' },
-    { key: 'loan_count', header: 'Loans', align: 'right' },
+    { key: 'loan_count', header: 'Assigned chits', align: 'right' },
     { key: 'last_login_at', header: 'Last login', render: (r) => fmtDate(r.last_login_at) },
     { key: 'is_active', header: 'Status', render: (r) => <span className={`badge ${r.is_active ? 'active' : 'inactive'}`}>{r.is_active ? 'active' : 'inactive'}</span> },
     {
@@ -123,7 +123,7 @@ export default function Employees() {
       <div className="page-header">
         <h1 className="page-title">👨‍💼 Employee Management</h1>
         {can('employees.create') && (
-          <button className="btn" onClick={() => { setCreateForm({ name: '', username: '', password: '', email: '', phone: '', location_ids: [] }); setCreateErrors({}); setCreateOpen(true); }}>
+          <button className="btn" onClick={() => { setCreateForm(emptyCreate); setCreateErrors({}); setCreateOpen(true); }}>
             ＋ New Employee
           </button>
         )}
@@ -172,14 +172,10 @@ export default function Employees() {
                 <input value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="Mobile number" />
               </Field>
             </div>
-            <CheckboxPicker
-              label="Location Assignment (for reporting only — does not restrict access)"
-              options={meta?.locations || []}
-              value={createForm.location_ids}
-              onChange={(ids) => setCreateForm({ ...createForm, location_ids: ids })}
-              searchPlaceholder="🔍 Search locations…"
-              emptyText="No locations"
-            />
+            <p className="muted" style={{ fontSize: 12, margin: '8px 0 0' }}>
+              Role is <b>Employee</b>. Employees see all customers, loans and pending dues —
+              module access is controlled from the <b>Access</b> screen, not by location.
+            </p>
             <button type="submit" style={{ display: 'none' }} />
           </form>
         </Modal>
@@ -196,10 +192,6 @@ export default function Employees() {
               <dt>Mobile</dt><dd>{detail.phone || '—'}</dd>
               <dt>Email</dt><dd>{detail.email || '—'}</dd>
               <dt>Role</dt><dd>Employee</dd>
-              <dt>Assigned locations</dt>
-              <dd>{(detail.assigned_locations || []).length
-                ? (detail.assigned_locations.map((l) => <span key={l.id} className="badge PENDING" style={{ marginRight: 6 }}>{l.name}</span>))
-                : <span className="muted">None</span>}</dd>
               <dt>Active loans/chits</dt><dd>{detail.assigned_loans ?? 0}</dd>
               <dt>Status</dt><dd><span className={`badge ${detail.is_active ? 'active' : 'inactive'}`}>{detail.is_active ? 'Active' : 'Inactive'}</span></dd>
               <dt>Joined on</dt><dd>{fmtDate(detail.joined_on)}</dd>
@@ -227,9 +219,6 @@ export default function Employees() {
               </select>
             </Field>
           </div>
-          <CheckboxPicker label="Location assignment" options={meta?.locations || []}
-            value={edit.location_ids} onChange={(ids) => setEdit({ ...edit, location_ids: ids })}
-            searchPlaceholder="🔍 Search locations…" emptyText="No locations" />
         </Modal>
       )}
 
@@ -247,4 +236,3 @@ export default function Employees() {
     </>
   );
 }
-

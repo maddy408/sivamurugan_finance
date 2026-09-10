@@ -17,7 +17,11 @@ class MetaController
         Response::ok([
             'payment_modes' => $db->fetchAll('SELECT id, code, name FROM payment_modes WHERE is_active = 1 ORDER BY sort_order'),
             'accounts'      => $db->fetchAll('SELECT id, code, name, type FROM accounts WHERE is_active = 1 ORDER BY id'),
-            'locations'     => $this->visibleLocations($user),
+            // Location is just typed customer text now (no Location Master). This
+            // is the distinct set of values already in use, for optional filter
+            // pickers. Shape {id,name} kept so existing <option> code works; the
+            // value IS the location text.
+            'locations'     => $this->customerLocations(),
             'organization'  => App::setting('organization'),
             'locale'        => App::setting('locale'),
             'schedule'      => App::setting('schedule'),
@@ -39,14 +43,14 @@ class MetaController
         Response::ok(['lang' => $lang, 'messages' => $map]);
     }
 
-    private function visibleLocations(array $user): array
+    /** Distinct non-empty customer location strings, as [{id,name}] (id == name). */
+    private function customerLocations(): array
     {
-        $db = Database::instance();
-        if (Guard::scopeIsUnrestricted($user)) {
-            return $db->fetchAll('SELECT id, code, name, is_active FROM locations ORDER BY name');
-        }
-        $ids = $user['scope']['location_ids'] ?: [0];
-        $ph = implode(',', array_fill(0, count($ids), '?'));
-        return $db->run("SELECT id, code, name, is_active FROM locations WHERE id IN ($ph) ORDER BY name", $ids)->fetchAll();
+        $rows = Database::instance()->fetchAll(
+            "SELECT DISTINCT location FROM customers
+             WHERE deleted_at IS NULL AND location IS NOT NULL AND location <> ''
+             ORDER BY location"
+        );
+        return array_map(fn ($r) => ['id' => $r['location'], 'name' => $r['location']], $rows);
     }
 }

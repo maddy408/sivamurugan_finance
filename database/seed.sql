@@ -15,15 +15,12 @@ TRUNCATE role_permissions;
 TRUNCATE user_permissions;
 TRUNCATE users;
 TRUNCATE employees;
-TRUNCATE employee_locations;
-TRUNCATE locations;
 TRUNCATE payment_modes;
 TRUNCATE accounts;
 TRUNCATE fine_settings;
 TRUNCATE app_settings;
 TRUNCATE translations;
 TRUNCATE customers;
-TRUNCATE customer_locations;
 TRUNCATE loans_or_chits;
 TRUNCATE loan_assignments;
 TRUNCATE installments;
@@ -66,11 +63,6 @@ INSERT INTO permissions (module, action, code, description) VALUES
   ('employees','create','employees.create','Create employees'),
   ('employees','edit','employees.edit','Edit employees'),
   ('employees','delete','employees.delete','Deactivate employees'),
-
-  ('locations','view','locations.view','View locations'),
-  ('locations','create','locations.create','Create locations'),
-  ('locations','edit','locations.edit','Edit locations'),
-  ('locations','delete','locations.delete','Delete locations'),
 
   ('assignments','view','assignments.view','View assignments'),
   ('assignments','create','assignments.create','Create assignments'),
@@ -139,18 +131,6 @@ INSERT INTO users (id, role_id, name, username, email, phone, password_hash, is_
 
 INSERT INTO employees (id, user_id, emp_code, joined_on, is_active) VALUES
   (1, 2, 'EMP-0001', '2026-01-01', 1);
-
--- ---------------------------------------------------------------------------
--- Locations
--- ---------------------------------------------------------------------------
-INSERT INTO locations (id, code, name, district, state, is_active) VALUES
-  (1, 'LOC-001', 'Anna Nagar',  'Chennai',    'Tamil Nadu', 1),
-  (2, 'LOC-002', 'Gandhipuram', 'Coimbatore', 'Tamil Nadu', 1),
-  (3, 'LOC-003', 'Srirangam',   'Trichy',     'Tamil Nadu', 1);
-
-INSERT INTO employee_locations (employee_id, location_id) VALUES
-  (1, 1),
-  (1, 2);
 
 -- ---------------------------------------------------------------------------
 -- Payment modes / Accounts
@@ -249,7 +229,6 @@ INSERT INTO translations (lang, trans_key, trans_value) VALUES
   ('en','nav.chits','Chits'),
   ('en','nav.income','Office Income'),
   ('en','nav.employees','Employees'),
-  ('en','nav.locations','Locations'),
   ('en','nav.audit','Audit Logs'),
   ('en','dash.office_cash','Office Cash'),
   ('en','dash.bank_cash','Bank Cash'),
@@ -290,7 +269,6 @@ INSERT INTO translations (lang, trans_key, trans_value) VALUES
   ('ta','nav.chits','சிட்டுகள்'),
   ('ta','nav.income','அலுவலக வருமானம்'),
   ('ta','nav.employees','ஊழியர்கள்'),
-  ('ta','nav.locations','இடங்கள்'),
   ('ta','nav.audit','தணிக்கை பதிவுகள்'),
   ('ta','dash.office_cash','அலுவலக பணம்'),
   ('ta','dash.bank_cash','வங்கி பணம்'),
@@ -332,10 +310,8 @@ INSERT INTO translations (lang, trans_key, trans_value) VALUES
 -- ---------------------------------------------------------------------------
 -- Demo master data for the vertical slice (safe to delete later)
 -- ---------------------------------------------------------------------------
-INSERT INTO customers (id, customer_code, name, mobile, gender, address_line1, primary_location_id, nominee_name, nominee_relation, nominee_mobile, status, created_by) VALUES
-  (1, 'CUST-000001', 'Meena Rajan',   '9812300001', 'female', '5 Bakery Street, Anna Nagar',  1, 'Rajan S',  'Spouse', '9812300010', 'active', 1),
-  (2, 'CUST-000002', 'Suresh Babu',   '9812300002', 'male',   '18 Lake View, Gandhipuram',    2, 'Latha B',  'Spouse', '9812300020', 'active', 1);
-
-INSERT INTO customer_locations (customer_id, location_id) VALUES (1,1),(2,2);
+INSERT INTO customers (id, customer_code, name, mobile, gender, address_line1, location, nominee_name, nominee_relation, nominee_mobile, status, created_by) VALUES
+  (1, 'CUST-000001', 'Meena Rajan',   '9812300001', 'female', '5 Bakery Street, Anna Nagar',  'Anna Nagar', 'Rajan S',  'Spouse', '9812300010', 'active', 1),
+  (2, 'CUST-000002', 'Suresh Babu',   '9812300002', 'male',   '18 Lake View, Gandhipuram',    'Gandhipuram', 'Latha B',  'Spouse', '9812300020', 'active', 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

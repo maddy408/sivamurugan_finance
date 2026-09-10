@@ -31,23 +31,24 @@ class PendingController
         $params += $sp;
 
         if (($q = ListQuery::search($req)) !== '') {
-            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q OR loc.name LIKE :q)';
+            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q OR c.location LIKE :q)';
             $params['q'] = "%$q%";
         }
-        if ($loc = $req->queryParam('location_id')) { $where[] = 'l.location_id = :loc'; $params['loc'] = (int)$loc; }
+        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
+            $where[] = '(c.location = :loc OR l.location = :loc)'; $params['loc'] = $loc;
+        }
         $whereSql = implode(' AND ', $where);
 
         $chits = $db->fetchAll(
             "SELECT l.id AS chit_id, l.code AS chit_code, l.principal_amount, l.installment_amount,
                     l.frequency, l.start_date,
                     c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile,
-                    c.address_line1, loc.name AS location_name,
+                    c.address_line1, COALESCE(NULLIF(c.location,''), l.location) AS location_name,
                     (SELECT COALESCE(SUM(i.payable_amount),0) FROM installments i WHERE i.loan_id = l.id) AS scheduled_total,
                     (SELECT COALESCE(SUM(i.paid_amount),0)    FROM installments i WHERE i.loan_id = l.id) AS paid_total,
                     (SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i WHERE i.loan_id = l.id) AS outstanding
              FROM loans_or_chits l
              JOIN customers c ON c.id = l.customer_id
-             LEFT JOIN locations loc ON loc.id = l.location_id
              WHERE $whereSql
              HAVING outstanding > 0
              ORDER BY c.name, l.code",

@@ -18,7 +18,6 @@ use App\Controllers\ExpenseController;
 use App\Controllers\ExportController;
 use App\Controllers\IncomeController;
 use App\Controllers\LoanController;
-use App\Controllers\LocationController;
 use App\Controllers\MetaController;
 use App\Controllers\PendingController;
 use App\Controllers\ReportController;
@@ -30,7 +29,6 @@ $auth       = new AuthController();
 $customers  = new CustomerController();
 $loans      = new LoanController();
 $collection = new CollectionController();
-$locations  = new LocationController();
 $employees  = new EmployeeController();
 $audit      = new AuditController();
 $meta       = new MetaController();
@@ -63,7 +61,6 @@ $router->get('/api/export/customers',   [$exports, 'customers']);
 $router->get('/api/export/chits',       [$exports, 'chits']);
 $router->get('/api/export/collections', [$exports, 'collections']);
 $router->get('/api/export/employees',   [$exports, 'employees']);
-$router->get('/api/export/locations',   [$exports, 'locations']);
 
 /* ---- meta / lookups ---- */
 $router->get('/api/meta/bootstrap',    [$meta, 'bootstrap']);
@@ -103,12 +100,6 @@ $router->post('/api/collections/{id}/cancel',         [$collection, 'cancel']);
 $router->post('/api/collections/{id}/reverse',        [$collection, 'reverse']);
 $router->delete('/api/collections/{id}',              [$collection, 'destroy']);
 
-/* ---- locations ---- */
-$router->get('/api/locations',        [$locations, 'index']);
-$router->post('/api/locations',       [$locations, 'store']);
-$router->get('/api/locations/{id}',   [$locations, 'show']);
-$router->put('/api/locations/{id}',   [$locations, 'update']);
-$router->delete('/api/locations/{id}',[$locations, 'destroy']);
 
 /* ---- employees / permissions ---- */
 $router->get('/api/employees',                       [$employees, 'index']);

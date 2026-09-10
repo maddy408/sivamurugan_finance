@@ -9,6 +9,12 @@
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
 
+-- Deprecated tables (Location Master + location mappings) — dropped explicitly so
+-- re-running schema.sql over an older DB cleans them up.
+DROP TABLE IF EXISTS customer_locations;
+DROP TABLE IF EXISTS employee_locations;
+DROP TABLE IF EXISTS locations;
+
 -- -----------------------------------------------------------------------------
 -- roles
 -- -----------------------------------------------------------------------------
@@ -116,27 +122,6 @@ CREATE TABLE sessions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
--- locations / villages
--- -----------------------------------------------------------------------------
-DROP TABLE IF EXISTS locations;
-CREATE TABLE locations (
-  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  code          VARCHAR(32)  NOT NULL,
-  name          VARCHAR(128) NOT NULL,
-  district      VARCHAR(128) NULL,
-  state         VARCHAR(128) NULL,
-  pincode       VARCHAR(12)  NULL,
-  is_active     TINYINT(1)   NOT NULL DEFAULT 1,
-  notes         VARCHAR(255) NULL,
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_locations_code (code),
-  KEY idx_locations_active (is_active),
-  KEY idx_locations_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- -----------------------------------------------------------------------------
 -- employees  (profile record 1:1 with a user of role EMPLOYEE)
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS employees;
@@ -156,19 +141,6 @@ CREATE TABLE employees (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
--- employee_locations  (which villages an employee covers)
--- -----------------------------------------------------------------------------
-DROP TABLE IF EXISTS employee_locations;
-CREATE TABLE employee_locations (
-  employee_id   INT UNSIGNED NOT NULL,
-  location_id   INT UNSIGNED NOT NULL,
-  assigned_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (employee_id, location_id),
-  CONSTRAINT fk_el_emp FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE,
-  CONSTRAINT fk_el_loc FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- -----------------------------------------------------------------------------
 -- customers
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS customers;
@@ -185,7 +157,7 @@ CREATE TABLE customers (
   id_proof_number   VARCHAR(64)  NULL,
   address_line1     VARCHAR(255) NULL,
   address_line2     VARCHAR(255) NULL,
-  primary_location_id INT UNSIGNED NULL,
+  location            VARCHAR(120) NULL,
   nominee_name      VARCHAR(128) NULL,
   nominee_relation  VARCHAR(64)  NULL,
   nominee_mobile    VARCHAR(20)  NULL,
@@ -199,23 +171,10 @@ CREATE TABLE customers (
   UNIQUE KEY uq_customers_code (customer_code),
   KEY idx_customers_name (name),
   KEY idx_customers_mobile (mobile),
-  KEY idx_customers_location (primary_location_id),
+  KEY idx_customers_location (location),
   KEY idx_customers_status (status),
   KEY idx_customers_deleted (deleted_at),
-  CONSTRAINT fk_customers_location FOREIGN KEY (primary_location_id) REFERENCES locations (id) ON DELETE SET NULL,
   CONSTRAINT fk_customers_creator  FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- -----------------------------------------------------------------------------
--- customer_locations  (a customer may span more than one village)
--- -----------------------------------------------------------------------------
-DROP TABLE IF EXISTS customer_locations;
-CREATE TABLE customer_locations (
-  customer_id   INT UNSIGNED NOT NULL,
-  location_id   INT UNSIGNED NOT NULL,
-  PRIMARY KEY (customer_id, location_id),
-  CONSTRAINT fk_cl_cust FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
-  CONSTRAINT fk_cl_loc  FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
@@ -228,7 +187,7 @@ CREATE TABLE loans_or_chits (
   code                VARCHAR(40)  NOT NULL,
   account_type        ENUM('loan','chit') NOT NULL DEFAULT 'chit',
   customer_id         INT UNSIGNED NOT NULL,
-  location_id         INT UNSIGNED NULL,
+  location            VARCHAR(120) NULL,                 -- typed customer location (denormalised copy)
   principal_amount    DECIMAL(15,2) NOT NULL,             -- total chit / principal amount (display only)
   tenure              INT UNSIGNED  NOT NULL,             -- number of installments
   frequency           ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'weekly',
@@ -255,13 +214,12 @@ CREATE TABLE loans_or_chits (
   PRIMARY KEY (id),
   UNIQUE KEY uq_loans_code (code),
   KEY idx_loans_customer (customer_id),
-  KEY idx_loans_location (location_id),
+  KEY idx_loans_location (location),
   KEY idx_loans_status (status),
   KEY idx_loans_frequency (frequency),
   KEY idx_loans_type (account_type),
   KEY idx_loans_start (start_date),
   CONSTRAINT fk_loans_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
-  CONSTRAINT fk_loans_location FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL,
   CONSTRAINT fk_loans_creator  FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -358,7 +316,7 @@ CREATE TABLE collections (
   customer_id        INT UNSIGNED  NOT NULL,
   collected_by       INT UNSIGNED  NOT NULL,             -- users.id
   employee_id        INT UNSIGNED  NULL,
-  location_id        INT UNSIGNED  NULL,
+  location          VARCHAR(120)  NULL,                 -- typed customer location (denormalised copy)
   collection_date    DATE          NOT NULL,
   amount             DECIMAL(15,2) NOT NULL,             -- principal+charges portion
   fine_amount        DECIMAL(15,2) NOT NULL DEFAULT 0.00,
@@ -389,14 +347,13 @@ CREATE TABLE collections (
   KEY idx_coll_customer (customer_id),
   KEY idx_coll_date (collection_date),
   KEY idx_coll_collector (collected_by),
-  KEY idx_coll_location (location_id),
+  KEY idx_coll_location (location),
   KEY idx_coll_mode (payment_mode_id),
   KEY idx_coll_status (status),
   CONSTRAINT fk_coll_loan     FOREIGN KEY (loan_id)         REFERENCES loans_or_chits (id),
   CONSTRAINT fk_coll_customer FOREIGN KEY (customer_id)     REFERENCES customers (id),
   CONSTRAINT fk_coll_user     FOREIGN KEY (collected_by)    REFERENCES users (id),
   CONSTRAINT fk_coll_emp      FOREIGN KEY (employee_id)     REFERENCES employees (id) ON DELETE SET NULL,
-  CONSTRAINT fk_coll_loc      FOREIGN KEY (location_id)     REFERENCES locations (id) ON DELETE SET NULL,
   CONSTRAINT fk_coll_mode     FOREIGN KEY (payment_mode_id) REFERENCES payment_modes (id),
   CONSTRAINT fk_coll_account  FOREIGN KEY (account_id)      REFERENCES accounts (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

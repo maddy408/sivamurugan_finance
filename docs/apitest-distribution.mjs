@@ -25,8 +25,8 @@ const run = async () => {
     return { office: Number(d.office_cash), bank: Number(d.bank_cash), distributed: Number(d.distributed_amount) };
   };
 
-  const loc = (await call('POST', '/api/locations', { token: AT, body: { code: 'DS-' + Date.now().toString(36), name: 'Dist Town' } })).j.data;
-  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Dist Cust', mobile: '9000000555', primary_location_id: loc.id } })).j.data;
+  const loc = { id: 'Dist Town', name: 'Dist Town' };
+  const cust = (await call('POST', '/api/customers', { token: AT, body: { name: 'Dist Cust', mobile: '9000000555', location: loc.name } })).j.data;
   const mkChit = (emi, extra) => call('POST', '/api/loans', { token: AT, body: Object.assign({
     customer_id: cust.id, account_type: 'chit', principal_amount: 20000, installment_amount: emi || 3000,
     tenure: 10, frequency: 'weekly', start_date: '2026-03-01', schedule_type: 'WEEKLY',

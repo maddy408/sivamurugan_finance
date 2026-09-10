@@ -19,9 +19,9 @@ const run = async () => {
   ok(!!AT, 'admin login');
 
   // ---- seed a loan + collection so reports have data ----
-  const loc = (await call('POST', '/api/locations', { token: AT, body: { code: 'RPT-' + Date.now().toString(36), name: 'Report Town' } })).j.data;
-  const cus = (await call('POST', '/api/customers', { token: AT, body: { name: 'Report Cust', mobile: '9001112223', primary_location_id: loc.id } })).j.data;
-  const ln = (await call('POST', '/api/loans', { token: AT, body: { customer_id: cus.id, account_type: 'chit', principal_amount: 5000, installment_amount: 1000, tenure: 5, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', location_id: loc.id } })).j.data;
+  const loc = { id: 'Report Town', name: 'Report Town' };
+  const cus = (await call('POST', '/api/customers', { token: AT, body: { name: 'Report Cust', mobile: '9001112223', location: loc.name } })).j.data;
+  const ln = (await call('POST', '/api/loans', { token: AT, body: { customer_id: cus.id, account_type: 'chit', principal_amount: 5000, installment_amount: 1000, tenure: 5, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY' } })).j.data;
   const inst1 = (await call('GET', `/api/loans/${ln.id}`, { token: AT })).j.data.installments[0].id;
   await call('POST', '/api/collections', { token: AT, body: { installment_id: inst1, collection_date: '2026-09-04', amount: 700, payment_mode_id: 1, idempotency_key: 'rpt-' + Date.now() } });
 

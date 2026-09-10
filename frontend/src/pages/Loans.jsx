@@ -99,7 +99,6 @@ export default function Loans() {
         start_date: fmtDate(data.start_date),
         schedule_type: data.schedule_type || 'WEEKLY',
         frequency: data.frequency || 'weekly',
-        location_id: data.location_id || '',
         notes: data.notes || '',
       });
     } catch (e) {
@@ -120,7 +119,6 @@ export default function Loans() {
         start_date: edit.start_date,
         schedule_type: edit.schedule_type,
         frequency: edit.frequency,
-        location_id: edit.location_id ? Number(edit.location_id) : undefined,
         notes: edit.notes || undefined,
       };
       const r = await api.put(`/api/loans/${edit.id}`, body);
@@ -459,12 +457,6 @@ export default function Loans() {
                 </select>
               </Field>
             )}
-            <Field label="Location">
-              <select value={edit.location_id} onChange={(e) => setEdit({ ...edit, location_id: e.target.value })}>
-                <option value="">—</option>
-                {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </Field>
           </div>
           <Field label="Notes">
             <textarea rows={2} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />

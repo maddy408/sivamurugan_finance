@@ -13,26 +13,8 @@ use App\Support\BusinessDate;
 
 class EmployeeController
 {
-    /**
-     * Replace an employee's location mapping (many-to-many). Rejects unknown ids,
-     * de-duplicates, and never leaves duplicate rows.
-     */
-    private function syncEmployeeLocations(Database $db, int $empId, array $rawIds): void
-    {
-        $ids = array_values(array_unique(array_filter(array_map('intval', $rawIds), fn ($n) => $n > 0)));
-        if ($ids) {
-            $ph = implode(',', array_fill(0, count($ids), '?'));
-            $found = $db->run("SELECT id FROM locations WHERE id IN ($ph)", $ids)->fetchAll(\PDO::FETCH_COLUMN);
-            $unknown = array_diff($ids, array_map('intval', $found));
-            if ($unknown) {
-                throw HttpException::validation(['location_ids' => ['Unknown location id(s): ' . implode(', ', $unknown)]]);
-            }
-        }
-        $db->run('DELETE FROM employee_locations WHERE employee_id = :e', ['e' => $empId]);
-        foreach ($ids as $lid) {
-            $db->run('INSERT IGNORE INTO employee_locations (employee_id, location_id) VALUES (:e,:l)', ['e' => $empId, 'l' => $lid]);
-        }
-    }
+    // No employee-location mapping in this application. Employees have no
+    // location; visibility is not location-based (see Auth::loadScope / Guard).
 
     public function index(Request $req): void
     {
@@ -53,7 +35,6 @@ class EmployeeController
         $rows = $db->fetchAll(
             "SELECT u.id AS user_id, e.id AS employee_id, e.emp_code, u.name, u.username, u.email, u.phone,
                     u.is_active, u.last_login_at, u.session_version,
-                    (SELECT COUNT(*) FROM employee_locations el WHERE el.employee_id = e.id) AS location_count,
                     (SELECT COUNT(*) FROM loan_assignments la WHERE la.employee_id = e.id AND la.is_active = 1) AS loan_count
              $base ORDER BY u.name LIMIT $perPage OFFSET $offset",
             $params
@@ -78,11 +59,6 @@ class EmployeeController
         if (!$row) {
             throw HttpException::notFound('Employee not found');
         }
-        $row['assigned_locations'] = $db->fetchAll(
-            'SELECT l.id, l.name FROM employee_locations el JOIN locations l ON l.id = el.location_id
-             WHERE el.employee_id = :e ORDER BY l.name',
-            ['e' => (int) $row['employee_id']]
-        );
         $row['assigned_loans'] = (int) $db->scalar(
             'SELECT COUNT(*) FROM loan_assignments WHERE employee_id = :e AND is_active = 1',
             ['e' => (int) $row['employee_id']]
@@ -90,7 +66,7 @@ class EmployeeController
         Response::ok($row);
     }
 
-    /** PUT /api/employees/{id}  - edit basic profile + assigned locations (id = users.id). */
+    /** PUT /api/employees/{id}  - edit basic profile / active flag (id = users.id). */
     public function update(Request $req, array $args): void
     {
         $admin = Guard::authorize($req, 'employees.edit');
@@ -133,13 +109,10 @@ class EmployeeController
                     $db->run('UPDATE sessions SET revoked = 1 WHERE user_id = :id AND revoked = 0', ['id' => $uid]);
                 }
             }
-            if (array_key_exists('location_ids', $body) && is_array($body['location_ids'])) {
-                $this->syncEmployeeLocations($db, $empId, $body['location_ids']);
-            }
         });
 
         Audit::log('employee.update', 'employees', 'user', $uid, null,
-            array_merge($fields, array_intersect_key($body, ['is_active' => 1, 'location_ids' => 1])), null,
+            array_merge($fields, array_intersect_key($body, ['is_active' => 1])), null,
             ['id' => $admin['id'], 'role_code' => $admin['role_code']]);
 
         $this->show($req, $args);
@@ -156,7 +129,6 @@ class EmployeeController
             'email'        => 'nullable|email',
             'phone'        => 'nullable|string|max:20',
             'emp_code'     => 'nullable|string|max:32',
-            'location_ids' => 'nullable|string',
         ])->validated();
 
         if ($db->scalar('SELECT 1 FROM users WHERE username = :u', ['u' => $in['username']])) {
@@ -177,7 +149,7 @@ class EmployeeController
                 'created_at'    => BusinessDate::utcNow(),
                 'updated_at'    => BusinessDate::utcNow(),
             ]);
-            $eid = $db->insert('employees', [
+            $db->insert('employees', [
                 'user_id'  => $uid,
                 'emp_code' => $empCode,
                 'joined_on'=> BusinessDate::fmt(BusinessDate::today()),
@@ -185,10 +157,6 @@ class EmployeeController
                 'created_at' => BusinessDate::utcNow(),
                 'updated_at' => BusinessDate::utcNow(),
             ]);
-            $locIds = is_array($in['location_ids'] ?? null)
-                ? $in['location_ids']
-                : array_map('trim', explode(',', (string)($in['location_ids'] ?? '')));
-            $this->syncEmployeeLocations($db, $eid, $locIds);
             return $uid;
         });
 
@@ -265,19 +233,15 @@ class EmployeeController
                 'effective'    => $effective,
             ];
         }
-        $locs = $db->fetchAll(
-            'SELECT l.id, l.name FROM employee_locations el JOIN locations l ON l.id = el.location_id
-             WHERE el.employee_id = (SELECT id FROM employees WHERE user_id = :u)', ['u' => $uid]
-        );
         $loans = $db->fetchAll(
             "SELECT la.id, la.loan_id, lc.code AS loan_code, c.name AS customer_name
              FROM loan_assignments la JOIN loans_or_chits lc ON lc.id = la.loan_id JOIN customers c ON c.id = lc.customer_id
              WHERE la.employee_id = (SELECT id FROM employees WHERE user_id = :u) AND la.is_active = 1", ['u' => $uid]
         );
-        Response::ok(['permissions' => $result, 'assigned_locations' => $locs, 'assigned_loans' => $loans]);
+        Response::ok(['permissions' => $result, 'assigned_loans' => $loans]);
     }
 
-    /** PUT /api/employees/{id}/permissions  body: { overrides: [{code, effect}], location_ids:[], loan_ids:[] } */
+    /** PUT /api/employees/{id}/permissions  body: { overrides: [{code, effect}], loan_ids:[] } */
     public function updatePermissions(Request $req, array $args): void
     {
         $admin = Guard::authorize($req, 'permissions.edit');
@@ -301,9 +265,6 @@ class EmployeeController
                             ['u' => $uid, 'p' => $pid, 'e' => $o['effect']]);
                     }
                 }
-            }
-            if (array_key_exists('location_ids', $body) && is_array($body['location_ids'])) {
-                $this->syncEmployeeLocations($db, $empId, $body['location_ids']);
             }
             if (array_key_exists('loan_ids', $body) && is_array($body['loan_ids'])) {
                 $db->run('UPDATE loan_assignments SET is_active = 0 WHERE employee_id = :e', ['e' => $empId]);

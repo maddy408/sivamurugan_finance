@@ -27,15 +27,13 @@ const run = async () => {
   const me = await call('GET', '/api/auth/me', { token: AT });
   ok(me.j?.data?.username === 'admin', '/auth/me works with token');
 
-  console.log('== location + customer ==');
-  const loc = await call('POST', '/api/locations', { token: AT, body: { code: 'LOC-' + RUN, name: 'Test Nagar', district: 'Chennai' } });
-  const LID = loc.j?.data?.id;
-  ok(loc.status === 201 && LID, 'location created');
-  ok((await call('POST', '/api/locations', { token: AT, body: { code: 'LOC-' + RUN, name: 'dup' } })).status === 409, 'duplicate location code -> 409');
+  console.log('== customer (location is plain typed text, no Location Master) ==');
+  ok((await call('GET', '/api/locations', { token: AT })).status === 404, 'Location Master endpoint removed -> 404');
 
-  const cus = await call('POST', '/api/customers', { token: AT, body: { name: 'Test Customer ' + RUN, mobile: '9990001111', primary_location_id: LID, nominee_name: 'N' } });
+  const cus = await call('POST', '/api/customers', { token: AT, body: { name: 'Test Customer ' + RUN, mobile: '9990001111', location: 'Test Nagar', nominee_name: 'N' } });
   const CID = cus.j?.data?.id;
   ok(cus.status === 201 && cus.j?.data?.customer_code?.startsWith('CUST-'), 'customer created with code ' + cus.j?.data?.customer_code);
+  ok(cus.j?.data?.location === 'Test Nagar', 'customer stores the typed location text verbatim');
   const search = await call('GET', '/api/customers?q=Test%20Customer%20' + RUN + '&per_page=10', { token: AT });
   ok(search.j?.pagination?.total === 1, 'server-side search finds the customer');
   ok(Array.isArray(search.j?.data), 'customer list is paginated array');
@@ -46,7 +44,7 @@ const run = async () => {
   ok(pv.j?.data?.schedule?.[0]?.due_date === '2026-01-05', 'first due date is the Monday 2026-01-05');
   ok(pv.j?.data?.schedule?.[9]?.due_date === '2026-03-09', '10th due date = +9 weeks (2026-03-09)');
 
-  const ln = await call('POST', '/api/loans', { token: AT, body: { customer_id: CID, account_type: 'chit', principal_amount: 10000, installment_amount: 1000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', location_id: LID } });
+  const ln = await call('POST', '/api/loans', { token: AT, body: { customer_id: CID, account_type: 'chit', principal_amount: 10000, installment_amount: 1000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY' } });
   const LOANID = ln.j?.data?.id;
   ok(ln.status === 201 && ln.j?.data?.installment_amount === '1000.00', 'chit created, installment 1000.00');
   ok(ln.j?.data?.installments?.length === 10, '10 installments auto-generated');
@@ -94,11 +92,11 @@ const run = async () => {
   // Location-based access was removed: an employee now sees every active chit / customer / loan.
   ok((await call('GET', '/api/collection/workload', { token: ET })).j?.pagination?.total >= 1, 'employee sees all active chits in workload (no location filter)');
   ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 200, 'employee can open any loan/chit -> 200');
-  ok((await call('GET', '/api/locations', { token: ET })).status === 403, 'employee without locations.view -> 403');
+  ok((await call('GET', `/api/customers/${CID}`, { token: ET })).status === 200, 'employee can open any customer regardless of typed location -> 200');
   ok((await call('POST', '/api/customers', { token: ET, body: { name: 'x', mobile: '1' } })).status === 403, 'employee without customers.create -> 403');
 
   console.log('== assignment makes loan visible ==');
-  await call('PUT', `/api/employees/${RUID}/permissions`, { token: AT, body: { loan_ids: [LOANID], location_ids: [LID] } });
+  await call('PUT', `/api/employees/${RUID}/permissions`, { token: AT, body: { loan_ids: [LOANID] } });
   ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 401, 'permission change revoked old employee token -> 401');
   const emp2 = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const ET2 = emp2.j?.data?.token;

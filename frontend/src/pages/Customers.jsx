@@ -9,7 +9,7 @@ import { useToast } from '../state/ToastContext';
 
 const emptyForm = {
   name: '', mobile: '', alt_mobile: '', email: '', gender: '', dob: '',
-  address_line1: '', primary_location_id: '', new_location: '', nominee_name: '', nominee_relation: '', nominee_mobile: '', notes: '',
+  address_line1: '', location: '', nominee_name: '', nominee_relation: '', nominee_mobile: '', notes: '',
 };
 
 export default function Customers() {
@@ -41,7 +41,7 @@ export default function Customers() {
       Object.keys(payload).forEach((k) => payload[k] === '' && delete payload[k]);
       const r = await api.post('/api/customers', payload);
       toast.success(r.message || 'Customer created successfully!');
-      if (r.data?.created_location) await refreshMeta();
+      await refreshMeta();   // pick up a brand-new location string for the filter list
       setCreateForm(emptyForm);
       setCreateOpen(false);
       list.reload();
@@ -54,7 +54,7 @@ export default function Customers() {
   };
 
   const openEdit = (row) => {
-    setEditForm({ ...emptyForm, ...row, primary_location_id: row.primary_location_id || '' });
+    setEditForm({ ...emptyForm, ...row, location: row.location || row.location_name || '' });
     setEditErrors({});
     setEditModal(row);
   };
@@ -63,8 +63,8 @@ export default function Customers() {
     setEditBusy(true); setEditErrors({});
     try {
       const payload = { ...editForm };
-      Object.keys(payload).forEach((k) => payload[k] === '' && delete payload[k]);
-      delete payload.new_location;
+      // keep an explicitly-cleared location as '' so the backend can null it
+      Object.keys(payload).forEach((k) => k !== 'location' && payload[k] === '' && delete payload[k]);
       await api.put(`/api/customers/${editModal.id}`, payload);
       toast.success('Customer updated');
       setEditModal(null);
@@ -215,19 +215,13 @@ export default function Customers() {
               <Field label="Email" error={createErrors.email}>
                 <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
               </Field>
-              <Field label="Location" error={createErrors.primary_location_id || createErrors.new_location}>
-                <select
-                  value={createForm.primary_location_id}
-                  onChange={(e) => setCreateForm({ ...createForm, primary_location_id: e.target.value, new_location: e.target.value ? '' : createForm.new_location })}
-                >
-                  <option value="">— Select location —</option>
-                  {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-                {!createForm.primary_location_id && (
-                  <input style={{ marginTop: 6 }} placeholder="…or type a new location name"
-                    value={createForm.new_location || ''}
-                    onChange={(e) => setCreateForm({ ...createForm, new_location: e.target.value })} />
-                )}
+              <Field label="Location" error={createErrors.location}>
+                <input list="customer-locations" placeholder="e.g. Surandai / Tenkasi / Pavoorchatram"
+                  value={createForm.location}
+                  onChange={(e) => setCreateForm({ ...createForm, location: e.target.value })} />
+                <datalist id="customer-locations">
+                  {(meta?.locations || []).map((l) => <option key={l.id} value={l.name} />)}
+                </datalist>
               </Field>
               <Field label="Gender" error={createErrors.gender}>
                 <select value={createForm.gender} onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}>
@@ -299,12 +293,13 @@ export default function Customers() {
             <Field label="Address" error={editErrors.address_line1}>
               <input value={editForm.address_line1} onChange={(e) => setEditForm({ ...editForm, address_line1: e.target.value })} />
             </Field>
-            <Field label="Location" error={editErrors.primary_location_id}>
-              <select value={editForm.primary_location_id}
-                onChange={(e) => setEditForm({ ...editForm, primary_location_id: e.target.value })}>
-                <option value="">— select existing —</option>
-                {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+            <Field label="Location" error={editErrors.location}>
+              <input list="customer-locations-edit" placeholder="e.g. Surandai / Tenkasi"
+                value={editForm.location || ''}
+                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
+              <datalist id="customer-locations-edit">
+                {(meta?.locations || []).map((l) => <option key={l.id} value={l.name} />)}
+              </datalist>
             </Field>
             <Field label="Nominee name" error={editErrors.nominee_name}>
               <input value={editForm.nominee_name} onChange={(e) => setEditForm({ ...editForm, nominee_name: e.target.value })} />
