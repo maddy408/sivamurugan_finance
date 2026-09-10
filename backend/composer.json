@@ -1,0 +1,21 @@
+{
+  "name": "sivamurugan/chit-fund-backend",
+  "description": "Siva Murugan Chit Fund - PHP REST API",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.1",
+    "ext-pdo": "*",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": { "App\\": "src/" }
+  },
+  "config": {
+    "optimize-autoloader": true
+  },
+  "scripts": {
+    "serve": "php -S 127.0.0.1:8080 -t public",
+    "install-db": "php setup.php install"
+  }
+}
