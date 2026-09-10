@@ -20,3 +20,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </HashRouter>
   </React.StrictMode>
 );
+
+// PWA: register the service worker (production build only).
+// './sw.js' keeps the SW scope under the app's Apache sub-path.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { API_BASE } from '../api/client';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
@@ -21,18 +21,25 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const nav = useNavigate();
+  const loc = useLocation();
 
   const items = NAV.filter((n) => (!n.adminOnly || isAdmin) && can(n.perm));
-  const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
-  const orgLogo = meta?.organization?.logo_path;   // e.g. "/api/settings/organization/logo?v=123"
+  const orgLogo = meta?.organization?.logo_path;
+  const closeDrawer = () => setMobileOpen(false);
+  const doLogout = async () => { closeDrawer(); await logout(); nav('/login'); };
+
+  // Close the drawer on route change; lock body scroll while it's open.
+  useEffect(() => { setMobileOpen(false); }, [loc.pathname]);
+  useEffect(() => {
+    document.body.classList.toggle('drawer-open', mobileOpen);
+    return () => document.body.classList.remove('drawer-open');
+  }, [mobileOpen]);
 
   return (
     <div className="app">
-      {/* ---------- Single-Row Top Header Navbar ---------- */}
       <header className="top-navbar">
         <div className="top-navbar-container">
-          {/* Brand Logo & Title */}
-          <Link to="/" className="brand-container">
+          <Link to="/" className="brand-container" onClick={closeDrawer}>
             {orgLogo && !logoBroken ? (
               <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
                 <img src={API_BASE + orgLogo} alt="logo"
@@ -48,58 +55,49 @@ export default function Layout() {
             </div>
           </Link>
 
-          {/* Desktop Horizontal Navigation Links (Single Row) */}
           <nav className="top-nav">
             {items.map((n) => (
-              <NavLink 
-                key={n.to} 
-                to={n.to} 
-                end={n.end}
-                className={({ isActive }) => (isActive ? 'active' : '')}
-              >
+              <NavLink key={n.to} to={n.to} end={n.end}
+                className={({ isActive }) => (isActive ? 'active' : '')}>
                 {t(n.key, n.defaultLabel)}
               </NavLink>
             ))}
           </nav>
 
-          {/* User Profile & Action Tools */}
           <div className="user-tools">
-            <button 
-              className="btn sm secondary" 
-              onClick={async () => { await logout(); nav('/login'); }}
-              title={t('nav.logout', 'Logout')}
-            >
+            <button className="btn sm secondary" onClick={doLogout} title={t('nav.logout', 'Logout')}>
               {t('nav.logout', 'Logout')}
             </button>
-
-            {/* Mobile Hamburger Toggle */}
-            <button 
-              className="mobile-nav-btn" 
-              onClick={() => setMobileOpen((o) => !o)} 
-              aria-label="Toggle navigation"
-            >
+            <button className="mobile-nav-btn" onClick={() => setMobileOpen((o) => !o)}
+              aria-label="Toggle navigation" aria-expanded={mobileOpen}>
               {mobileOpen ? '✕' : '☰'}
             </button>
           </div>
         </div>
-
-        {/* Mobile Dropdown Drawer */}
-        <div className={`mobile-drawer ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)}>
-          {items.map((n) => (
-            <NavLink 
-              key={n.to} 
-              to={n.to} 
-              end={n.end}
-              className={({ isActive }) => (isActive ? 'active' : '')}
-            >
-              {t(n.key, n.defaultLabel)}
-            </NavLink>
-          ))}
-          <NavLink to="/profile">👤 {t('nav.profile', 'Profile')}</NavLink>
-        </div>
       </header>
 
-      {/* ---------- Main Content Container ---------- */}
+      {/* Mobile slide-over drawer (scrim + panel). Tapping anywhere closes it.
+          Rendered OUTSIDE <header> so its position:fixed resolves against the
+          viewport — the header's backdrop-filter would otherwise become the
+          containing block and clamp the drawer to the header's height. */}
+      <div className={`mobile-drawer ${mobileOpen ? 'open' : ''}`} onClick={closeDrawer} role="dialog" aria-modal="true">
+        <div className="drawer-user">
+          <div className="drawer-avatar">{(user?.name || 'U').charAt(0).toUpperCase()}</div>
+          <div>
+            <div className="drawer-name">{user?.name}</div>
+            <div className="drawer-role">{user?.role}</div>
+          </div>
+        </div>
+        {items.map((n) => (
+          <NavLink key={n.to} to={n.to} end={n.end}
+            className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t(n.key, n.defaultLabel)}
+          </NavLink>
+        ))}
+        <NavLink to="/profile">👤 {t('nav.profile', 'Profile')}</NavLink>
+        <button className="drawer-logout" onClick={doLogout}>⎋ {t('nav.logout', 'Logout')}</button>
+      </div>
+
       <main className="main-layout">
         <Outlet />
       </main>

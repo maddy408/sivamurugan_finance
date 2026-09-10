@@ -103,7 +103,7 @@ export default function DataTable({
               return (
                 <tr key={rowId} style={isSelected ? { background: '#eff6ff' } : undefined}>
                   {isSelectable && (
-                    <td style={{ width: 38, textAlign: 'center' }}>
+                    <td data-label="" style={{ width: 38, textAlign: 'center' }}>
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -113,7 +113,11 @@ export default function DataTable({
                     </td>
                   )}
                   {columns.map((c) => (
-                    <td key={c.key} style={{ textAlign: c.align || 'left' }}>
+                    <td
+                      key={c.key}
+                      data-label={/^(_a|action|actions)$/i.test(c.key) ? '' : (typeof c.header === 'string' ? c.header : '')}
+                      style={{ textAlign: c.align || 'left' }}
+                    >
                       {c.render ? c.render(row) : (row[c.key] ?? '—')}
                     </td>
                   ))}

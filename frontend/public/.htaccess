@@ -1,0 +1,32 @@
+# Built PWA (HashRouter). Copied into web/ on every `npm run build`.
+
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+    AddType text/javascript .js
+    AddType image/png .png
+</IfModule>
+
+# The service worker must always be revalidated so updates ship immediately.
+<FilesMatch "sw\.js$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </IfModule>
+</FilesMatch>
+
+# Long-cache the fingerprinted build assets.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 month"
+</IfModule>
+
+# Any unknown path -> the SPA shell (HashRouter handles the client route).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /siva-murugan-chit-fund/web/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>

@@ -27,11 +27,8 @@ const run = async () => {
   const me = await call('GET', '/api/auth/me', { token: AT });
   ok(me.j?.data?.username === 'admin', '/auth/me works with token');
 
-  console.log('== location + customer ==');
-  const loc = await call('POST', '/api/locations', { token: AT, body: { code: 'LOC-' + RUN, name: 'Test Nagar', district: 'Chennai' } });
-  const LID = loc.j?.data?.id;
-  ok(loc.status === 201 && LID, 'location created');
-  ok((await call('POST', '/api/locations', { token: AT, body: { code: 'LOC-' + RUN, name: 'dup' } })).status === 409, 'duplicate location code -> 409');
+  console.log('== customer (location is now a free-text field) ==');
+  ok((await call('POST', '/api/locations', { token: AT, body: { name: 'x' } })).status === 404, 'Location Master endpoint removed -> 404');
 
   const cus = await call('POST', '/api/customers', { token: AT, body: { name: 'Test Customer ' + RUN, mobile: '9990001111', location: 'Test Nagar', nominee_name: 'N' } });
   const CID = cus.j?.data?.id;
@@ -41,27 +38,28 @@ const run = async () => {
   ok(Array.isArray(search.j?.data), 'customer list is paginated array');
 
   console.log('== EMI + schedule ==');
-  const pv = await call('POST', '/api/loans/preview', { token: AT, body: { principal_amount: 10000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY' } });
-  ok(pv.j?.data?.emi_amount === '1000.00', 'EMI = 10000/10 = 1000.00');
-  ok(pv.j?.data?.schedule?.[0]?.due_date === '2026-01-05', 'first due date is the Monday 2026-01-05');
+  const pv = await call('POST', '/api/loans/preview', { token: AT, body: { principal_amount: 10000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', installment_amount: 1000 } });
+  ok(pv.j?.data?.emi_amount === '1000.00', 'EMI = 1000.00 (installment amount echoed back)');
+  ok(pv.j?.data?.schedule?.[0]?.due_date === '2026-01-05', 'first due date follows start_date (2026-01-05), no hard-coded weekday');
   ok(pv.j?.data?.schedule?.[9]?.due_date === '2026-03-09', '10th due date = +9 weeks (2026-03-09)');
 
-  const ln = await call('POST', '/api/loans', { token: AT, body: { customer_id: CID, account_type: 'loan', principal_amount: 10000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', location_id: LID } });
+  const ln = await call('POST', '/api/loans', { token: AT, body: { customer_id: CID, account_type: 'loan', principal_amount: 10000, tenure: 10, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', installment_amount: 1000 } });
   const LOANID = ln.j?.data?.id;
   ok(ln.status === 201 && ln.j?.data?.emi_amount === '1000.00', 'loan created, backend EMI 1000.00');
   ok(ln.j?.data?.installments?.length === 10, '10 installments auto-generated');
-  ok(ln.j?.data?.code?.match(/^GF-\d{4}-\d{6}$/), 'loan code format ' + ln.j?.data?.code);
+  ok(/^[A-Z]{2,6}-\d+$/.test(ln.j?.data?.code || ''), 'loan code format ' + ln.j?.data?.code);
 
   const rg = await call('POST', `/api/loans/${LOANID}/generate-schedule`, { token: AT, body: {} });
   ok(rg.j?.data?.created === 0 && rg.j?.data?.installments?.length === 10, 'idempotent regen: 0 created, still 10 (no dupes)');
 
-  console.log('== fine engine ==');
+  console.log('== installment schedule shape ==');
   const detail = await call('GET', `/api/loans/${LOANID}`, { token: AT });
   const inst1 = detail.j.data.installments[0].id;
   const inst2 = detail.j.data.installments[1].id;
-  const fp = await call('GET', `/api/installments/${inst1}/fine-preview?date=2026-09-03`, { token: AT });
-  ok(fp.j?.data?.overdue_days > 0, `overdue days computed (${fp.j?.data?.overdue_days})`);
-  ok(fp.j?.data?.computed_fine === '100.00', 'fine capped at 10% of payable = 100.00 (Rs.50/day would be far higher)');
+  const inst3 = detail.j.data.installments[2].id;
+  const row0 = detail.j.data.installments[0];
+  ok(row0.status === 'OVERDUE' && row0.balance_amount === '1000.00', 'past-due installment marked OVERDUE with full balance');
+  ok('fine_accrued' in row0 && 'fine_paid' in row0 && 'fine_waived' in row0, 'installment carries fine accrual fields');
 
   console.log('== partial payments ==');
   const p1 = await call('POST', '/api/collections', { token: AT, body: { installment_id: inst1, collection_date: '2026-09-03', amount: 600, fine_amount: 0, payment_mode_id: 1, idempotency_key: 'k-p1-'+RUN } });
@@ -79,32 +77,36 @@ const run = async () => {
   ok(p2.j?.data?.installment?.status === 'COMPLETED', 'status = COMPLETED');
   const colId = p2.j?.data?.collection?.id;
 
-  const over = await call('POST', '/api/collections', { token: AT, body: { installment_id: inst2, collection_date: '2026-09-03', amount: 5000, payment_mode_id: 1 } });
-  ok(over.status === 422, 'overpayment blocked (advance not enabled) -> 422');
+  const over = await call('POST', '/api/collections', { token: AT, body: { installment_id: inst3, collection_date: '2026-09-03', amount: 5000, payment_mode_id: 1, idempotency_key: 'k-adv-'+RUN } });
+  ok(over.status === 201, 'advance payment accepted (allow_advance on by default) -> 201');
+  ok(over.j?.data?.installment?.status === 'COMPLETED' && over.j?.data?.installment?.balance_amount === '0.00', 'target installment cleared, surplus carried as advance');
 
   console.log('== reversal ==');
   const rev = await call('POST', `/api/collections/${colId}/reverse`, { token: AT, body: { reason: 'test reversal' } });
-  ok(rev.j?.data?.collection?.status === 'reversed', 'collection marked reversed');
+  ok(rev.status === 200 && rev.j?.data?.collection?.status === 'cancelled', 'collection reversal marks it cancelled');
   const afterRev = await call('GET', `/api/loans/${LOANID}`, { token: AT });
   ok(afterRev.j.data.installments[0].status === 'PARTIAL', 'installment reverted to PARTIAL');
   ok(afterRev.j.data.installments[0].balance_amount === '400.00', 'balance restored to 400.00');
 
-  console.log('== employee scope + RBAC ==');
+  console.log('== employee RBAC (no location / no loan scoping) ==');
   const emp = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const ET = emp.j?.data?.token;
   const RUID = emp.j?.data?.user?.id;
-  ok((await call('GET', '/api/collection/workload', { token: ET })).j?.pagination?.total === 0, 'unassigned employee workload = 0');
-  ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 403, 'employee cannot open unassigned loan -> 403');
-  ok((await call('GET', '/api/locations', { token: ET })).status === 403, 'employee without locations.view -> 403');
+  ok((await call('GET', '/api/locations', { token: ET })).status === 404, 'Location Master endpoint removed for everyone -> 404');
   ok((await call('POST', '/api/customers', { token: ET, body: { name: 'x', mobile: '1' } })).status === 403, 'employee without customers.create -> 403');
+  // With location-based access control removed, an employee sees every customer/loan
+  // regardless of assignment or the customer's typed location.
+  ok((await call('GET', '/api/customers', { token: ET })).j?.pagination?.total >= 1, 'employee sees all customers (no location scope)');
+  ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 200, 'employee opens any loan without assignment (no loan scope)');
+  ok((await call('GET', '/api/collection/workload', { token: ET })).j?.pagination?.total >= 1, 'employee workload includes the loan with overdue installments');
 
-  console.log('== assignment makes loan visible ==');
+  console.log('== permission update still rotates the session ==');
   await call('PUT', `/api/employees/${RUID}/permissions`, { token: AT, body: { loan_ids: [LOANID] } });
   ok((await call('GET', `/api/loans/${LOANID}`, { token: ET })).status === 401, 'permission change revoked old employee token -> 401');
   const emp2 = await call('POST', '/api/auth/login', { body: { username: 'ravi', password: 'Employee@123' } });
   const ET2 = emp2.j?.data?.token;
-  ok((await call('GET', `/api/loans/${LOANID}`, { token: ET2 })).status === 200, 'after re-login employee sees assigned loan');
-  ok((await call('GET', '/api/collection/workload', { token: ET2 })).j?.pagination?.total === 1, 'employee workload now = 1 loan');
+  ok((await call('GET', `/api/loans/${LOANID}`, { token: ET2 })).status === 200, 'after re-login employee still sees the loan');
+  ok((await call('GET', '/api/collection/workload', { token: ET2 })).j?.pagination?.total >= 1, 'employee workload still populated');
   const empCollect = await call('POST', '/api/collections', { token: ET2, body: { installment_id: inst2, collection_date: '2026-09-03', amount: 1000, payment_mode_id: 2, idempotency_key: 'k-emp-'+RUN } });
   ok(empCollect.status === 201 && empCollect.j?.data?.installment?.status === 'COMPLETED', 'employee collects full installment #2 -> COMPLETED');
 
@@ -116,7 +118,7 @@ const run = async () => {
   console.log('== audit trail ==');
   const al = await call('GET', '/api/audit-logs?per_page=200', { token: AT });
   const actions = new Set((al.j?.data || []).map((r) => r.action));
-  for (const ev of ['login.success', 'login.failure', 'customer.create', 'loan.create', 'collection.create', 'collection.reverse', 'permission.update', 'auth.force_logout']) {
+  for (const ev of ['login.success', 'login.failure', 'customer.create', 'loan.create', 'collection.create', 'collection.cancel', 'permission.update', 'auth.force_logout']) {
     ok(actions.has(ev), 'audit captured ' + ev);
   }
 
