@@ -31,7 +31,9 @@ export default function Login() {
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="login-brand">
-          <div className="brand-logo-pill">SM</div>
+          <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
+            <img src="/logo.jpeg" alt="Organization logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <div>
             <h1>Sign in</h1>
             <p className="sub" style={{ margin: 0 }}>Siva Murugan Chit Fund</p>

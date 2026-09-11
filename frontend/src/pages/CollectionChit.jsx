@@ -66,11 +66,6 @@ export default function CollectionChit() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Collect — {loan.code}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {can('distributions.view') && loan.status === 'active' && can('distributions.create') && (
-            <button className="btn" onClick={() => setDistribute(true)}>
-              💸 {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit / Add Distribution'}
-            </button>
-          )}
           <Badge value={loan.status} />
         </div>
       </div>
@@ -79,73 +74,61 @@ export default function CollectionChit() {
           right side (~75%) is the primary working area: dues + collection. */}
       <div className="collection-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 20, alignItems: 'start' }}>
 
-        {/* LEFT COLUMN: Customer & Chit Details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Customer Details Card */}
-          <div className="card">
-            <div className="card-head">
-              <h2>👤 Customer Details</h2>
+        {/* LEFT COLUMN: Customer + Chit + Distribution in ONE combined card,
+            so every detail is visible at once with no internal scrolling. */}
+        <div className="card">
+          <div className="card-head">
+            <h2>👤 {c.name}</h2>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Customer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="customer-avatar-box">{initial}</div>
+              <div>
+                <Link to={`/customers/${loan.customer_id}`} style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>
+                  {c.name}
+                </Link>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{c.customer_code}</div>
+              </div>
             </div>
-            <div className="card-body">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div className="customer-avatar-box">{initial}</div>
-                <div>
-                  <Link to={`/customers/${loan.customer_id}`} style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>
-                    {c.name}
-                  </Link>
-                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{c.customer_code}</div>
+            <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
+              <dt>Phone</dt><dd>📞 {c.mobile || '—'}</dd>
+              <dt>Location</dt><dd>{loan.location?.name || '—'}</dd>
+              <dt>Collector</dt><dd><span className="badge PENDING">{loan.assignment?.employee_name || 'Unassigned'}</span></dd>
+            </dl>
+
+            <div className="section-title" style={{ margin: '2px 0 0' }}>📄 Chit</div>
+            <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
+              <dt>Chit Code</dt><dd><span className="badge PENDING">{loan.code}</span></dd>
+              <dt>Principal</dt><dd>{money(loan.principal_amount)}</dd>
+              <dt>Installment</dt><dd><b style={{ color: '#2563eb' }}>{money(loan.installment_amount)}</b></dd>
+              <dt>Tenure / Freq</dt><dd>{loan.tenure} · {loan.frequency}</dd>
+              <dt>Total Paid</dt><dd style={{ color: '#10b981', fontWeight: 700 }}>{money(s.collected_principal)}</dd>
+              <dt>Outstanding</dt><dd><b style={{ color: '#f43f5e' }}>{money(s.outstanding_balance)}</b></dd>
+            </dl>
+
+            {can('distributions.view') && (
+              <>
+                <div className="section-title" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>💸 Distribution</span>
                 </div>
-              </div>
-              <dl className="kv" style={{ gridTemplateColumns: '130px 1fr' }}>
-                <dt>Phone</dt><dd>📞 {c.mobile || '—'}</dd>
-                <dt>Location</dt><dd>{loan.location?.name || '—'}</dd>
-                <dt>Collector</dt><dd><span className="badge PENDING">{loan.assignment?.employee_name || 'Unassigned'}</span></dd>
-              </dl>
-            </div>
-          </div>
-
-          {/* Chit Details Card */}
-          <div className="card">
-            <div className="card-head">
-              <h2>📄 Chit Overview</h2>
-            </div>
-            <div className="card-body">
-              <dl className="kv" style={{ gridTemplateColumns: '150px 1fr', rowGap: 6 }}>
-                <dt>Chit Code</dt><dd><span className="badge PENDING">{loan.code}</span></dd>
-                <dt>Principal Amount</dt><dd>{money(loan.principal_amount)}</dd>
-                <dt>Installment Amount</dt><dd><b style={{ fontSize: 15, color: '#2563eb' }}>{money(loan.installment_amount)}</b></dd>
-                <dt>Tenure / Frequency</dt><dd>{loan.tenure} · {loan.frequency}</dd>
-                <dt>Total Paid</dt><dd style={{ color: '#10b981', fontWeight: 700 }}>{money(s.collected_principal)}</dd>
-                <dt>Outstanding Balance</dt><dd><b style={{ color: '#f43f5e', fontSize: 15 }}>{money(s.outstanding_balance)}</b></dd>
-              </dl>
-            </div>
-          </div>
-
-          {/* Distribution / Disbursement */}
-          {can('distributions.view') && (
-            <div className="card">
-              <div className="card-head">
-                <h2>💸 Distribution</h2>
-                {loan.status === 'active' && can('distributions.create') && (
-                  <button className="btn sm" onClick={() => setDistribute(true)}>
-                    {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit / Add Distribution'}
-                  </button>
-                )}
-              </div>
-              <div className="card-body">
-                <dl className="kv" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
-                  <dt>Chit Amount</dt><dd>{money(d.chit_amount ?? loan.principal_amount)}</dd>
+                <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
                   <dt>Status</dt><dd><b>{DIST_STATUS_LABEL[d.status] || 'Not Distributed'}</b></dd>
                   <dt>Current EMI</dt><dd><b style={{ color: '#2563eb' }}>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
-                  <dt>Total Distributed</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(d.total_distributed ?? 0)}</dd>
+                  <dt>Distributed</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(d.total_distributed ?? 0)}</dd>
                   <dt>Remaining</dt>
                   <dd style={{ color: Number(d.remaining_undistributed ?? loan.principal_amount) > 0 ? '#b45309' : '#64748b', fontWeight: 700 }}>
                     {money(d.remaining_undistributed ?? loan.principal_amount)}
                   </dd>
                 </dl>
-              </div>
-            </div>
-          )}
+                {loan.status === 'active' && can('distributions.create') && (
+                  <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => setDistribute(true)}>
+                    💸 {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit / Add Distribution'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* RIGHT COLUMN: Collection Actions & Installment Schedule */}

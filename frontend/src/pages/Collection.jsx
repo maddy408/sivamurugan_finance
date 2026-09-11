@@ -40,74 +40,56 @@ export default function Collection() {
         <EmptyState title="No collection workload" hint="Chits assigned to you will appear here." />
       )}
 
-      {/* Customer-first premium collection workload cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(360px,1fr))', gap: 16 }}>
-        {loans.map((loan) => {
-          const nd = loan.next_due;
-          const outstanding = Number(loan.summary?.outstanding_balance || 0);
-          const initial = loan.customer_name ? loan.customer_name.charAt(0).toUpperCase() : 'C';
-          const isDue = outstanding > 0;
-
-          return (
-            <div 
-              className={`collection-card ${isDue ? 'is-due' : 'is-clear'}`} 
-              key={loan.id}
-              onClick={() => nav(`/collection/chit/${loan.id}`)}
-            >
-              <div>
-                {/* Header with Customer Avatar and Status Badge */}
-                <div className="collection-card-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className="customer-avatar-box">{initial}</div>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>{loan.customer_name}</div>
-                      <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginTop: 2 }}>
-                        {loan.customer_code} · 📞 {loan.mobile || '—'}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={`badge ${isDue ? 'OVERDUE' : 'COMPLETED'}`}>
-                    {isDue ? 'DUE' : 'CLEAR'}
-                  </span>
-                </div>
-
-                {/* Key Value Details Grid */}
-                <dl className="kv" style={{ marginTop: 14, gridTemplateColumns: '130px 1fr', rowGap: 6 }}>
-                  <dt>Chit Code</dt>
-                  <dd><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></dd>
-
-                  <dt>Chit Amount</dt>
-                  <dd>{money(loan.principal_amount)}</dd>
-
-                  <dt>Installment</dt>
-                  <dd style={{ fontWeight: 700 }}>{money(loan.installment_amount)}</dd>
-
-                  <dt>Outstanding</dt>
-                  <dd>
-                    <b style={{ color: isDue ? '#f43f5e' : '#10b981', fontSize: 15 }}>
-                      {money(outstanding)}
-                    </b>
-                  </dd>
-
-                  {nd && (
-                    <>
-                      <dt>Next Due</dt>
-                      <dd>
-                        {fmtDate(nd.due_date)} <span className="muted" style={{ fontWeight: 600 }}>(#{nd.installment_no})</span>
-                      </dd>
-                    </>
-                  )}
-                </dl>
-              </div>
-
-              {/* Bottom Action Footer */}
-              <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--line-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
-                <span className="btn sm">⚡ Collect Now →</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Compact collection workload table */}
+      {!list.loading && !list.error && loans.length > 0 && (
+        <div className="table-wrap">
+          <table className="grid">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Chit</th>
+                <th className="right">Chit Amount</th>
+                <th className="right">Installment</th>
+                <th>Next Due</th>
+                <th className="right">Fine</th>
+                <th className="right">Outstanding</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {loans.map((loan) => {
+                const nd = loan.next_due;
+                const outstanding = Number(loan.summary?.outstanding_balance || 0);
+                const isDue = outstanding > 0;
+                const fine = nd ? Number((loan.installments || []).find((i) => i.id === nd.id)?.fine_accrued || 0) : 0;
+                return (
+                  <tr key={loan.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/collection/chit/${loan.id}`)}>
+                    <td data-label="Customer">
+                      <div style={{ fontWeight: 700 }}>{loan.customer_name}</div>
+                      <div className="muted" style={{ fontSize: 11 }}>{loan.customer_code} · 📞 {loan.mobile || '—'}</div>
+                    </td>
+                    <td data-label="Chit"><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></td>
+                    <td className="right" data-label="Chit Amount">{money(loan.principal_amount)}</td>
+                    <td className="right" data-label="Installment" style={{ fontWeight: 700 }}>{money(loan.installment_amount)}</td>
+                    <td data-label="Next Due">
+                      {nd ? <>{fmtDate(nd.due_date)} <span className="muted">(#{nd.installment_no})</span></> : '—'}
+                    </td>
+                    <td className="right" data-label="Fine">{fine > 0 ? money(fine) : '—'}</td>
+                    <td className="right" data-label="Outstanding">
+                      <b style={{ color: isDue ? '#f43f5e' : '#10b981' }}>{money(outstanding)}</b>
+                    </td>
+                    <td data-label="Status"><span className={`badge ${isDue ? 'OVERDUE' : 'COMPLETED'}`}>{isDue ? 'DUE' : 'CLEAR'}</span></td>
+                    <td className="right" data-label="">
+                      <Link className="btn sm" to={`/collection/chit/${loan.id}`} onClick={(e) => e.stopPropagation()}>⚡ Collect</Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {!list.loading && loans.length > 0 && (
         <div className="pagination" style={{ marginTop: 24 }}>

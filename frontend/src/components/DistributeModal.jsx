@@ -133,42 +133,6 @@ export default function DistributeModal({ loan, onClose, onDone }) {
             &nbsp;·&nbsp; Status <b>{STATUS_LABEL[s.status] || s.status}</b>
           </p>
 
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div className="card-head"><h4 style={{ margin: 0 }}>Disbursement History Log ({data.distributions.length})</h4></div>
-            <div className="table-wrap">
-              <table className="grid">
-                <thead><tr>
-                  <th>#</th><th>Disbursed Date</th><th className="right">Disbursed Amount</th>
-                  <th className="right">New EMI</th><th>Account</th><th>Remarks</th><th>Status</th><th></th>
-                </tr></thead>
-                <tbody>
-                  {data.distributions.map((d, i) => (
-                    <tr key={d.id} style={d.status !== 'active' ? { opacity: 0.55 } : undefined}>
-                      <td>{i + 1}</td>
-                      <td>{fmtDate(d.distributed_date)}</td>
-                      <td className="right"><b>{money(d.amount)}</b></td>
-                      <td className="right">{d.new_emi_amount != null ? money(d.new_emi_amount) : '—'}</td>
-                      <td>{d.account_name || '—'}</td>
-                      <td>{d.remarks || '—'}</td>
-                      <td><span className={`badge ${d.status === 'active' ? 'active' : 'cancelled'}`}>{d.status}</span></td>
-                      <td className="right nowrap">
-                        {d.status === 'active' && (
-                          <>
-                            <button className="btn sm secondary" onClick={() => startEdit(d)}>Edit</button>{' '}
-                            <button className="btn sm danger" onClick={() => setCancelRow({ ...d, reason: '' })}>Cancel</button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {data.distributions.length === 0 && (
-                    <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>No disbursement yet — creating the chit did not move any money.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
           <h4 style={{ margin: '6px 0' }}>{editing ? `Edit disbursement #${editing.id}` : '＋ Add Disbursement Payment'}</h4>
           <div className="form-grid">
             <Field label="Disbursed Date *" error={errors.distributed_date}>

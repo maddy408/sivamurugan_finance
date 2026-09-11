@@ -44,11 +44,6 @@ const cleanParams = (f) => {
   return out;
 };
 
-const YEARS = (() => { const y = new Date().getFullYear(); return [y + 1, y, y - 1, y - 2, y - 3]; })();
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const QUICK = [
-  ['today', 'Today'], ['this_week', 'This Week'], ['this_month', 'This Month'], ['last_month', 'Last Month'],
-];
 
 /* ------------------------------------------------------------------- page */
 
@@ -104,7 +99,6 @@ export default function Reports() {
   const clearAll = () => { setFilters({}); setApplied({}); loadReport(name, {}); loadCards({}); };
 
   const setF = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
-  const quick = (range) => { const f = { range }; setFilters(f); apply(f); };
 
   const download = (path, params) =>
     api.download(path, params).catch((e) => toast.error(e.message || 'Export failed'));
@@ -158,33 +152,18 @@ export default function Reports() {
           <h2 style={{ fontSize: 14 }}>🔎 Filters</h2>
         </div>
         <div className="card-body" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-            {QUICK.map(([v, lbl]) => (
-              <button key={v} className={`btn sm ${filters.range === v ? '' : 'secondary'}`} onClick={() => quick(v)}>{lbl}</button>
-            ))}
-            <span className="muted" style={{ fontSize: 12, marginLeft: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+            <span className="muted" style={{ fontSize: 12 }}>
               {data?.filters?.period || 'All time'}
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
             <label className="mini">From
-              <input type="date" value={filters.date_from || ''} onChange={(e) => { setF('date_from', e.target.value); setF('range', ''); }} />
+              <input type="date" value={filters.date_from || ''} onChange={(e) => setF('date_from', e.target.value)} />
             </label>
             <label className="mini">To
-              <input type="date" value={filters.date_to || ''} onChange={(e) => { setF('date_to', e.target.value); setF('range', ''); }} />
-            </label>
-            <label className="mini">Month
-              <select value={filters.month || ''} onChange={(e) => { setF('month', e.target.value); setF('range', ''); }}>
-                <option value="">—</option>
-                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
-            </label>
-            <label className="mini">Year
-              <select value={filters.year || ''} onChange={(e) => { setF('year', e.target.value); setF('range', ''); }}>
-                <option value="">—</option>
-                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <input type="date" value={filters.date_to || ''} onChange={(e) => setF('date_to', e.target.value)} />
             </label>
             <label className="mini">Employee
               <select value={filters.employee_id || ''} onChange={(e) => setF('employee_id', e.target.value)}>

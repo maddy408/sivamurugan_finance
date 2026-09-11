@@ -146,33 +146,12 @@ export default function Customers() {
                 <Field label="Mobile *" error={createErrors.mobile}>
                   <input value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder="10-digit phone" />
                 </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Alt Mobile" error={createErrors.alt_mobile}>
-                    <input value={createForm.alt_mobile} onChange={(e) => setCreateForm({ ...createForm, alt_mobile: e.target.value })} placeholder="Secondary" />
-                  </Field>
-                  <Field label="Gender" error={createErrors.gender}>
-                    <select value={createForm.gender} onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}>
-                      <option value="">—</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </Field>
-                </div>
                 <Field label="Address" error={createErrors.address_line1}>
                   <textarea rows={2} value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
                 </Field>
                 <Field label="Nominee Name" error={createErrors.nominee_name}>
                   <input value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} />
                 </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Relation" error={createErrors.nominee_relation}>
-                    <input value={createForm.nominee_relation} onChange={(e) => setCreateForm({ ...createForm, nominee_relation: e.target.value })} placeholder="Spouse / Son" />
-                  </Field>
-                  <Field label="Nominee Mobile" error={createErrors.nominee_mobile}>
-                    <input value={createForm.nominee_mobile} onChange={(e) => setCreateForm({ ...createForm, nominee_mobile: e.target.value })} />
-                  </Field>
-                </div>
                 <button type="submit" className="btn" style={{ width: '100%', marginTop: 6 }} disabled={createBusy}>
                   {createBusy ? 'Saving…' : '✨ Register Customer'}
                 </button>

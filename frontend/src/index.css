@@ -227,6 +227,28 @@ input, select, textarea { font: inherit; outline: none; }
   text-transform: capitalize;
 }
 
+/* Icon-only logout button in the dark navbar (.btn-icon.* compound selector
+   so it beats the plain .btn-icon white-card default declared later). */
+.btn-icon.logout-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+  box-shadow: none;
+}
+.btn-icon.logout-icon-btn:hover {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fecdd3;
+  transform: none;
+}
+
 /* Mobile Toggle Hamburger */
 .mobile-nav-btn {
   display: none;
@@ -932,6 +954,11 @@ table.grid tbody tr:last-child td {
   align-items: start;
 }
 
+/* Wider left rail for forms with more/paired fields (e.g. the Chit form). */
+.split-panel.wide {
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+}
+
 .split-panel .form-rail {
   position: sticky;
   top: 84px;
@@ -1125,9 +1152,10 @@ table.grid tbody tr:last-child td {
 }
 
 .login-brand .brand-logo-pill {
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   font-size: 19px;
+  border: 1px solid var(--line-subtle);
 }
 
 .login-card h1 {

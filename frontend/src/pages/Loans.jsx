@@ -10,7 +10,7 @@ import { useToast } from '../state/ToastContext';
 const today = () => new Date().toISOString().slice(0, 10);
 const initialForm = {
   customer_id: '', code: '', principal_amount: '', installment_amount: '', tenure: '',
-  frequency: 'weekly', start_date: today(), schedule_type: 'WEEKLY', employee_id: '', notes: '',
+  frequency: 'weekly', start_date: today(), schedule_type: 'WEEKLY', notes: '',
 };
 
 export default function Loans() {
@@ -27,7 +27,6 @@ export default function Loans() {
   // Form states for left-side creation panel
   const [form, setForm] = useState(initialForm);
   const [customers, setCustomers] = useState([]);
-  const [employees, setEmployees] = useState([]);
   const [nextCode, setNextCode] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [formBusy, setFormBusy] = useState(false);
@@ -35,7 +34,6 @@ export default function Loans() {
   useEffect(() => {
     if (can('loans.create')) {
       api.get('/api/customers', { params: { per_page: 500, sort_by: 'name' } }).then((r) => setCustomers(r.data)).catch(() => {});
-      api.get('/api/employees', { params: { per_page: 200 } }).then((r) => setEmployees(r.data)).catch(() => {});
       api.get('/api/loans/next-code').then((r) => setNextCode(r.data.next_code)).catch(() => {});
     }
   }, [can]);
@@ -69,7 +67,6 @@ export default function Loans() {
         start_date: form.start_date,
         schedule_type: form.schedule_type,
         code: form.code.trim() || undefined,
-        employee_id: form.employee_id ? Number(form.employee_id) : undefined,
         notes: form.notes || undefined,
       };
       const r = await api.post('/api/loans', payload);
@@ -244,7 +241,7 @@ export default function Loans() {
       </div>
 
       {/* Main 2-column layout: LEFT = permanent Create form, RIGHT = ledger */}
-      <div className={can('loans.create') ? 'split-panel' : ''}>
+      <div className={can('loans.create') ? 'split-panel wide' : ''}>
         {can('loans.create') && (
           <div className="card form-rail">
             <div className="card-head">
@@ -276,13 +273,18 @@ export default function Loans() {
                   </datalist>
                 </Field>
 
-                <Field label="Chit Code" error={formErrors.code}>
-                  <input
-                    value={form.code}
-                    onChange={(e) => setF('code', e.target.value)}
-                    placeholder={nextCode ? `Auto (${nextCode})` : 'Leave blank for auto'}
-                  />
-                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field label="Chit Code" error={formErrors.code}>
+                    <input
+                      value={form.code}
+                      onChange={(e) => setF('code', e.target.value)}
+                      placeholder={nextCode ? `Auto (${nextCode})` : 'Auto'}
+                    />
+                  </Field>
+                  <Field label="Start Date *" error={formErrors.start_date}>
+                    <input type="date" value={form.start_date} onChange={(e) => setF('start_date', e.target.value)} required />
+                  </Field>
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <Field label="Chit Amount *" error={formErrors.principal_amount}>
@@ -307,17 +309,6 @@ export default function Loans() {
                     </select>
                   </Field>
                 </div>
-
-                <Field label="Start Date *" error={formErrors.start_date}>
-                  <input type="date" value={form.start_date} onChange={(e) => setF('start_date', e.target.value)} required />
-                </Field>
-
-                <Field label="Employee (optional)">
-                  <select value={form.employee_id} onChange={(e) => setF('employee_id', e.target.value)}>
-                    <option value="">Unassigned</option>
-                    {employees.map((emp) => <option key={emp.employee_id} value={emp.employee_id}>{emp.name}</option>)}
-                  </select>
-                </Field>
 
                 <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={formBusy || !form.customer_id}>
                   {formBusy ? 'Creating…' : '✨ Create Chit'}

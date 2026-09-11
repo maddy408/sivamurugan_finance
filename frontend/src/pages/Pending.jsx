@@ -121,10 +121,9 @@ export default function Pending({ hideTitle = false }) {
                         : '—'}
                     </td>
                     <td className="right nowrap">
-                      {can('collection.create') && (
-                        <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}>⚡ Collect</Link>
-                      )}{' '}
-                      <Link className="btn sm secondary" to={`/collection/chit/${ch.chit_id}`}>Open</Link>
+                      {can('collection.create')
+                        ? <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}>⚡ Collect</Link>
+                        : <Link className="btn sm secondary" to={`/collection/chit/${ch.chit_id}`}>View</Link>}
                     </td>
                   </tr>
                 ))}

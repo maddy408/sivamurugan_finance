@@ -29,9 +29,10 @@ export default function Dashboard() {
   const primaryCards = isAdmin
     ? [
         { key: 'total_collection', label: 'Total Collection', icon: '💳', value: c.total_collection, tone: 'emerald' },
-        { key: 'total_chit_amount', label: 'Total Chit Amount', icon: '📜', value: c.total_chit_amount, tone: 'indigo' },
-        { key: 'total_expense', label: 'Total Expense Amount', icon: '💸', value: c.total_expense, tone: 'rose' },
-        { key: 'total_income', label: 'Total Income Amount', icon: '💰', value: c.total_income, tone: 'amber' },
+        { key: 'total_chit_amount', label: 'Total Chit', icon: '📜', value: c.total_chit_amount, tone: 'indigo' },
+        { key: 'total_amount', label: 'Total Amount', icon: '📊', value: c.total_amount, tone: 'sky' },
+        { key: 'total_expense', label: 'Expense Amount', icon: '💸', value: c.total_expense, tone: 'rose' },
+        { key: 'total_income', label: 'Income Amount', icon: '💰', value: c.total_income, tone: 'amber' },
       ]
     : [
         { key: 'my_collection_today', label: 'My Collection Today', icon: '📅', value: c.my_collection_today, tone: 'emerald' },

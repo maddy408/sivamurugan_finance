@@ -40,15 +40,11 @@ export default function Layout() {
       <header className="top-navbar">
         <div className="top-navbar-container">
           <Link to="/" className="brand-container" onClick={closeDrawer}>
-            {orgLogo && !logoBroken ? (
-              <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
-                <img src={API_BASE + orgLogo} alt="logo"
-                  onError={() => setLogoBroken(true)}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              </div>
-            ) : (
-              <div className="brand-logo-pill">SM</div>
-            )}
+            <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
+              <img src={orgLogo && !logoBroken ? API_BASE + orgLogo : '/logo.jpeg'} alt="logo"
+                onError={() => setLogoBroken(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
             <div className="brand-text-wrap">
               <span className="brand-title">{t('app.title', 'Siva Murugan Chit Fund')}</span>
               <span className="brand-subtitle">Chit Fund Management</span>
@@ -65,8 +61,8 @@ export default function Layout() {
           </nav>
 
           <div className="user-tools">
-            <button className="btn sm secondary" onClick={doLogout} title={t('nav.logout', 'Logout')}>
-              {t('nav.logout', 'Logout')}
+            <button className="btn-icon logout-icon-btn" onClick={doLogout} title={t('nav.logout', 'Logout')} aria-label={t('nav.logout', 'Logout')}>
+              <IconLogout />
             </button>
             <button className="mobile-nav-btn" onClick={() => setMobileOpen((o) => !o)}
               aria-label="Toggle navigation" aria-expanded={mobileOpen}>
@@ -102,5 +98,15 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function IconLogout() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
   );
 }
