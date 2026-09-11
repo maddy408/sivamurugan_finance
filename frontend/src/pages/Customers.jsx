@@ -16,9 +16,8 @@ export default function Customers() {
   const { can } = useAuth();
   const toast = useToast();
   const list = useList('/api/customers', { initialPerPage: 10, initialSort: 'name' });
-  
-  // Create-customer modal state
-  const [createOpen, setCreateOpen] = useState(false);
+
+  // Left-rail create form (always visible — not a modal)
   const [createForm, setCreateForm] = useState(emptyForm);
   const [createErrors, setCreateErrors] = useState({});
   const [createBusy, setCreateBusy] = useState(false);
@@ -42,7 +41,6 @@ export default function Customers() {
       const r = await api.post('/api/customers', payload);
       toast.success(r.message || 'Customer created successfully!');
       setCreateForm(emptyForm);
-      setCreateOpen(false);
       list.reload();
     } catch (err) {
       if (err.errors) setCreateErrors(Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, v[0]])));
@@ -131,14 +129,59 @@ export default function Customers() {
     <>
       <div className="page-header">
         <h1 className="page-title">👥 Customers Directory</h1>
-        {can('customers.create') && (
-          <button className="btn" onClick={() => { setCreateForm(emptyForm); setCreateErrors({}); setCreateOpen(true); }}>
-            ＋ New Customer
-          </button>
-        )}
       </div>
 
-      <div>
+      {/* Main 2-column layout: LEFT = permanent Register form, RIGHT = directory */}
+      <div className={can('customers.create') ? 'split-panel' : ''}>
+        {can('customers.create') && (
+          <div className="card form-rail">
+            <div className="card-head">
+              <h2>✨ Register New Customer</h2>
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleCreateCustomer}>
+                <Field label="Full Name *" error={createErrors.name}>
+                  <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder="e.g. Ramesh Kumar" />
+                </Field>
+                <Field label="Mobile *" error={createErrors.mobile}>
+                  <input value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder="10-digit phone" />
+                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field label="Alt Mobile" error={createErrors.alt_mobile}>
+                    <input value={createForm.alt_mobile} onChange={(e) => setCreateForm({ ...createForm, alt_mobile: e.target.value })} placeholder="Secondary" />
+                  </Field>
+                  <Field label="Gender" error={createErrors.gender}>
+                    <select value={createForm.gender} onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}>
+                      <option value="">—</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </Field>
+                </div>
+                <Field label="Address" error={createErrors.address_line1}>
+                  <textarea rows={2} value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
+                </Field>
+                <Field label="Nominee Name" error={createErrors.nominee_name}>
+                  <input value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} />
+                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field label="Relation" error={createErrors.nominee_relation}>
+                    <input value={createForm.nominee_relation} onChange={(e) => setCreateForm({ ...createForm, nominee_relation: e.target.value })} placeholder="Spouse / Son" />
+                  </Field>
+                  <Field label="Nominee Mobile" error={createErrors.nominee_mobile}>
+                    <input value={createForm.nominee_mobile} onChange={(e) => setCreateForm({ ...createForm, nominee_mobile: e.target.value })} />
+                  </Field>
+                </div>
+                <button type="submit" className="btn" style={{ width: '100%', marginTop: 6 }} disabled={createBusy}>
+                  {createBusy ? 'Saving…' : '✨ Register Customer'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div>
           <div className="toolbar">
             <input type="search" placeholder="Search name, code, mobile, address, loan code…"
               value={list.q} onChange={(e) => list.setQ(e.target.value)} />
@@ -180,66 +223,8 @@ export default function Customers() {
               )
             }
           />
+        </div>
       </div>
-
-      {/* Create Customer Modal */}
-      {createOpen && (
-        <Modal
-          title="👤 Register New Customer"
-          size="lg"
-          onClose={() => setCreateOpen(false)}
-          footer={
-            <>
-              <button className="btn secondary" onClick={() => setCreateOpen(false)} disabled={createBusy}>Cancel</button>
-              <button className="btn" onClick={handleCreateCustomer} disabled={createBusy}>{createBusy ? 'Saving…' : 'Register Customer'}</button>
-            </>
-          }
-        >
-          <form onSubmit={handleCreateCustomer}>
-            <div className="form-grid">
-              <Field label="Full Name *" error={createErrors.name}>
-                <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder="e.g. Ramesh Kumar" autoFocus />
-              </Field>
-              <Field label="Mobile *" error={createErrors.mobile}>
-                <input value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder="10-digit phone" />
-              </Field>
-              <Field label="Alt Mobile" error={createErrors.alt_mobile}>
-                <input value={createForm.alt_mobile} onChange={(e) => setCreateForm({ ...createForm, alt_mobile: e.target.value })} placeholder="Secondary phone" />
-              </Field>
-              <Field label="Email" error={createErrors.email}>
-                <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
-              </Field>
-              <Field label="Gender" error={createErrors.gender}>
-                <select value={createForm.gender} onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}>
-                  <option value="">—</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </Field>
-              <Field label="Date of Birth" error={createErrors.dob}>
-                <input type="date" value={createForm.dob || ''} onChange={(e) => setCreateForm({ ...createForm, dob: e.target.value })} />
-              </Field>
-              <Field label="Address" error={createErrors.address_line1}>
-                <input value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
-              </Field>
-              <Field label="Nominee Name" error={createErrors.nominee_name}>
-                <input value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} />
-              </Field>
-              <Field label="Nominee Relation" error={createErrors.nominee_relation}>
-                <input value={createForm.nominee_relation} onChange={(e) => setCreateForm({ ...createForm, nominee_relation: e.target.value })} placeholder="e.g. Spouse / Son" />
-              </Field>
-              <Field label="Nominee Mobile" error={createErrors.nominee_mobile}>
-                <input value={createForm.nominee_mobile} onChange={(e) => setCreateForm({ ...createForm, nominee_mobile: e.target.value })} />
-              </Field>
-            </div>
-            <Field label="Notes" error={createErrors.notes}>
-              <textarea rows={2} value={createForm.notes} onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })} />
-            </Field>
-            <button type="submit" style={{ display: 'none' }} />
-          </form>
-        </Modal>
-      )}
 
       {/* Edit Customer Modal */}
       {editModal && (

@@ -46,9 +46,9 @@ export default function Settings() {
         <h1 className="page-title">⚙️ Settings</h1>
       </div>
 
-      <div className="toolbar" style={{ marginBottom: 20 }}>
+      <div className="sub-tab-bar" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
         {tabs.map((t) => (
-          <button key={t} className={`btn sm ${tab === t ? '' : 'secondary'}`} onClick={() => setTab(t)}>
+          <button key={t} className={`sub-tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             {t === 'Employees' ? '👨‍💼 Employees' : t}
           </button>
         ))}

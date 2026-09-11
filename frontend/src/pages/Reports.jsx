@@ -141,9 +141,9 @@ export default function Reports() {
       <div className="rpt-section-label">Overview {data?.filters?.period ? `· ${data.filters.period}` : ''}</div>
       <div className="rpt-cards" style={{ marginBottom: 18 }}>
         {Object.entries(CARD_META).map(([k, m]) => (
-          <div key={k} className="rpt-card" style={{ background: m.tint, borderColor: 'rgba(0,0,0,0.06)' }}>
-            <div className="rpt-card-label" style={{ color: m.fg }}>
-              <span aria-hidden>{m.icon}</span> {m.label}
+          <div key={k} className="rpt-card" style={{ borderLeftColor: m.fg }}>
+            <div className="rpt-card-label" style={{ color: 'var(--muted)' }}>
+              <span aria-hidden style={{ display: 'inline-flex', width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 5, background: m.tint, color: m.fg, fontSize: 11 }}>{m.icon}</span> {m.label}
             </div>
             <div className="rpt-card-value" style={{ color: m.fg }}>
               {cards ? (m.money ? money(cards[k]) : new Intl.NumberFormat('en-IN').format(cards[k] ?? 0)) : '…'}

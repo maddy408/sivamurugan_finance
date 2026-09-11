@@ -156,10 +156,6 @@ export default function Loans() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
-  // Compute page totals from rows for quick stat cards
-  const totalPrincipal = (list.rows || []).reduce((acc, r) => acc + Number(r.principal_amount || 0), 0);
-  const totalOutstanding = (list.rows || []).reduce((acc, r) => acc + Number(r.outstanding_balance || 0), 0);
-
   const columns = [
     { 
       key: 'code', 
@@ -247,12 +243,10 @@ export default function Loans() {
         <h1 className="page-title">📜 Chits & Loans Directory</h1>
       </div>
 
-      {/* Main 2-Column Layout: Left Side = New Form, Right Side = List & Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: can('loans.create') ? '340px minmax(0, 1fr)' : '1fr', gap: 20, alignItems: 'start' }}>
-        
-        {/* Left Side: New Chit Form */}
+      {/* Main 2-column layout: LEFT = permanent Create form, RIGHT = ledger */}
+      <div className={can('loans.create') ? 'split-panel' : ''}>
         {can('loans.create') && (
-          <div className="card" style={{ sticky: 'top', top: 80 }}>
+          <div className="card form-rail">
             <div className="card-head">
               <h2>✨ Create New Chit</h2>
             </div>
@@ -335,21 +329,6 @@ export default function Loans() {
 
         {/* Right Side: Directory List & Filters */}
         <div>
-          <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat sky">
-              <div className="label">Total Chits</div>
-              <div className="value">{list.pagination.total || 0}</div>
-            </div>
-            <div className="stat indigo">
-              <div className="label">Total Chit Value (page)</div>
-              <div className="value">{money(totalPrincipal)}</div>
-            </div>
-            <div className="stat rose">
-              <div className="label">Total Outstanding (page)</div>
-              <div className="value">{money(totalOutstanding)}</div>
-            </div>
-          </div>
-
           <div className="toolbar">
             <input type="search" placeholder="Search chit code, customer, mobile…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
             <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>

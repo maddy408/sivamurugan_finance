@@ -5,16 +5,17 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const PAYABLE = (i) => i.status !== 'COMPLETED';
 
 /**
- * Multi-due collection. Tick one or more pending dues; the installment total is
- * their combined balance. Fine is separate and added on top. One collection
- * record is created with an allocation per selected due (backend transaction).
+ * Payment flow for one or more dues that were ALREADY picked via checkboxes in
+ * the installment table (single-due "Collect" button = one id; the "Pay
+ * Multiple Due" toolbar button = 2+ ids). This modal never lets the user
+ * change which dues are being paid — selection happens strictly in the list,
+ * not inside the payment form.
  *
- * `installment` (optional) pre-selects one due (from a row "Collect" button).
+ * `selectedIds` — array of installment ids to pay (required, non-empty).
  */
-export default function CollectModal({ installment, loan, onClose, onDone }) {
+export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   const { meta } = useAuth();
   const toast = useToast();
   const modes = meta?.payment_modes || [];
@@ -22,12 +23,13 @@ export default function CollectModal({ installment, loan, onClose, onDone }) {
   const cashMode = modes.find((m) => String(m.code).toUpperCase() === 'CASH') || modes[0];
   const officeCash = accounts.find((a) => a.type === 'cash') || accounts[0];
 
-  const dues = useMemo(
-    () => (loan?.installments || []).filter(PAYABLE).sort((a, b) => a.installment_no - b.installment_no),
-    [loan]
+  const idSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
+  const selectedDues = useMemo(
+    () => (loan?.installments || []).filter((i) => idSet.has(i.id)).sort((a, b) => a.installment_no - b.installment_no),
+    [loan, idSet]
   );
+  const selected = idSet;
 
-  const [selected, setSelected] = useState(() => new Set(installment?.id ? [installment.id] : []));
   const [collectionDate, setCollectionDate] = useState(today());
   const [paid, setPaid] = useState('');          // ACTUAL amount paid (blank = use installment total)
   const [fine, setFine] = useState('0');
@@ -39,9 +41,7 @@ export default function CollectModal({ installment, loan, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const selectedDues = dues.filter((d) => selected.has(d.id));
   const installmentTotal = selectedDues.reduce((s, d) => s + Number(d.balance_amount || 0), 0);
-  const allChecked = dues.length > 0 && selectedDues.length === dues.length;
 
   const paidNum = paid === '' ? installmentTotal : Number(paid || 0);
   const fineNum = Number(fine || 0);
@@ -51,13 +51,6 @@ export default function CollectModal({ installment, loan, onClose, onDone }) {
     () => `col-${loan?.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     [loan]
   );
-
-  const toggle = (id) => setSelected((s) => {
-    const n = new Set(s);
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
-  });
-  const toggleAll = () => setSelected((s) => (allChecked ? new Set() : new Set(dues.map((d) => d.id))));
 
   const submit = async () => {
     setBusy(true); setErrors({});
@@ -127,31 +120,25 @@ export default function CollectModal({ installment, loan, onClose, onDone }) {
         </button>
       </>}
     >
-      {/* Pending dues — scrollable checkbox list */}
+      {/* Read-only summary of the dues that were checked in the installment
+          table — selection itself never happens inside this form. */}
       <div className="field">
         <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Pending Dues</span>
+          <span>Selected Dues</span>
           <span className="muted" style={{ fontWeight: 600, fontSize: 12 }}>
-            Selected: {selected.size} · {money(installmentTotal)}
+            {selectedDues.length} due{selectedDues.length === 1 ? '' : 's'} · {money(installmentTotal)}
           </span>
         </label>
         <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
-          {dues.length > 1 && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid var(--line-subtle)', background: '#f8fafc', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              <input type="checkbox" checked={allChecked} onChange={toggleAll} />
-              Select all pending dues
-            </label>
-          )}
           <div style={{ maxHeight: 220, overflowY: 'auto', overscrollBehavior: 'contain' }}>
-            {dues.length === 0 && <div className="muted" style={{ padding: 16, textAlign: 'center' }}>No pending dues on this chit.</div>}
-            {dues.map((d) => (
-              <label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
-                <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)} style={{ width: 16, height: 16 }} />
+            {selectedDues.length === 0 && <div className="muted" style={{ padding: 16, textAlign: 'center' }}>No dues selected.</div>}
+            {selectedDues.map((d) => (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
                 <span style={{ fontWeight: 700, minWidth: 54 }}>Due #{d.installment_no}</span>
                 <span className="muted" style={{ fontSize: 12, flex: 1 }}>{fmtDate(d.due_date)}</span>
                 <span style={{ fontWeight: 700 }}>{money(d.balance_amount)}</span>
                 <span className={`badge ${d.status}`} style={{ fontSize: 10 }}>{d.status}</span>
-              </label>
+              </div>
             ))}
           </div>
         </div>

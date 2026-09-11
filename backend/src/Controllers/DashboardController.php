@@ -115,6 +115,12 @@ class DashboardController
 
         $totalExpense = (float)$db->scalar("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='active' AND deleted_at IS NULL");
         $expenseMonth = (float)$db->scalar("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='active' AND deleted_at IS NULL AND expense_date BETWEEN :f AND :t", ['f' => $monthFrom, 't' => $monthTo]);
+        $totalIncome  = (float)$db->scalar("SELECT COALESCE(SUM(amount),0) FROM office_income WHERE status='active' AND deleted_at IS NULL");
+
+        // Total Chit Amount = the combined face value of every chit ever opened
+        // (active + completed), excluding cancelled ones. Creating a chit moves
+        // no money, so this is a portfolio-size figure, not a cash figure.
+        $totalChitAmount = (float)$db->scalar("SELECT COALESCE(SUM(principal_amount),0) FROM loans_or_chits WHERE deleted_at IS NULL AND status <> 'cancelled'");
 
         // Distributed Amount = money ACTUALLY handed to customers, i.e. the sum of
         // live distribution transactions. Creating a chit moves no money, so it does
@@ -172,6 +178,8 @@ class DashboardController
                 'total_amount'      => $finance['total_amount'],
                 'total_expense'     => number_format($totalExpense, 2, '.', ''),
                 'expense_this_month'=> number_format($expenseMonth, 2, '.', ''),
+                'total_income'      => number_format($totalIncome, 2, '.', ''),
+                'total_chit_amount' => number_format($totalChitAmount, 2, '.', ''),
                 'distributed_amount'=> number_format($distributed, 2, '.', ''),
                 'total_collection'  => number_format($collectedAllTime, 2, '.', ''),
                 'monthly_collection'=> number_format($collectedMonth, 2, '.', ''),

@@ -8,7 +8,6 @@ export default function Collection() {
   const nav = useNavigate();
   const list = useList('/api/collection/workload', { initialPerPage: 25 });
 
-  const dash = list.extra?.dashboard;
   const loans = list.extra?.loans || [];
 
   return (
@@ -16,16 +15,6 @@ export default function Collection() {
       <div className="page-header">
         <h1 className="page-title">Collection Workload</h1>
       </div>
-
-      {dash && (
-        <div className="stat-grid">
-          <div className="stat sky"><div className="label">Expected today</div><div className="value">{money(dash.expected_today)}</div></div>
-          <div className="stat emerald"><div className="label">Collected today</div><div className="value">{money(dash.collected_today)}</div></div>
-          <div className="stat amber"><div className="label">Pending today</div><div className="value">{money(dash.pending_today)}</div></div>
-          <div className="stat rose"><div className="label">Overdue amount</div><div className="value">{money(dash.overdue_amount)}</div></div>
-          <div className="stat purple"><div className="label">Due customers</div><div className="value">{dash.due_customers}</div></div>
-        </div>
-      )}
 
       <div className="toolbar">
         <input type="search" placeholder="Search customer, code, mobile, chit code…"

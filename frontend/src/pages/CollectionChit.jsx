@@ -19,14 +19,15 @@ export default function CollectionChit() {
   const toast = useToast();
   const [loan, setLoan] = useState(null);
   const [error, setError] = useState(null);
-  const [collect, setCollect] = useState(null);      // installment being collected
+  const [collectIds, setCollectIds] = useState(null); // array of installment ids being paid, or null
+  const [checked, setChecked] = useState(() => new Set()); // checkboxes ticked in the due list
   const [distribute, setDistribute] = useState(false);
   const [act, setAct] = useState(null);              // { type:'cancel'|'delete', id, reason }
   const [busy, setBusy] = useState(false);
 
   const load = () => {
     setError(null);
-    api.get(`/api/loans/${id}`).then((r) => setLoan(r.data)).catch(setError);
+    api.get(`/api/loans/${id}`).then((r) => { setLoan(r.data); setChecked(new Set()); }).catch(setError);
   };
   useEffect(load, [id]);
 
@@ -36,6 +37,12 @@ export default function CollectionChit() {
   const c = loan.customer || {};
   const d = loan.distribution || {};
   const initial = c.name ? c.name.charAt(0).toUpperCase() : 'C';
+
+  const toggleDue = (instId) => setChecked((prev) => {
+    const n = new Set(prev);
+    n.has(instId) ? n.delete(instId) : n.add(instId);
+    return n;
+  });
 
   const runAct = async () => {
     setBusy(true);
@@ -68,9 +75,10 @@ export default function CollectionChit() {
         </div>
       </div>
 
-      {/* Side-by-Side Main Grid (Left: Customer/Chit Details, Right: Collection Actions & Installments) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: 20, alignItems: 'start' }}>
-        
+      {/* Side-by-Side Main Grid — left rail is a compact ~25% details column,
+          right side (~75%) is the primary working area: dues + collection. */}
+      <div className="collection-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 20, alignItems: 'start' }}>
+
         {/* LEFT COLUMN: Customer & Chit Details */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Customer Details Card */}
@@ -146,15 +154,17 @@ export default function CollectionChit() {
           <div className="card">
             <div className="card-head">
               <h2>📅 Installment Schedule & Collect</h2>
-              {can('collection.create') && loan.status === 'active'
-                && loan.installments.some((i) => i.status !== 'COMPLETED') && (
-                <button className="btn" onClick={() => setCollect({ multi: true })}>⚡ Collect Dues Now</button>
+              {can('collection.create') && loan.status === 'active' && checked.size >= 2 && (
+                <button className="btn" onClick={() => setCollectIds([...checked])}>
+                  ⚡ Pay Multiple Due ({checked.size})
+                </button>
               )}
             </div>
             <div className="table-wrap">
               <table className="grid">
                 <thead>
                   <tr>
+                    <th></th>
                     <th>#</th>
                     <th>Due date</th>
                     <th className="right">Installment Amount</th>
@@ -165,23 +175,32 @@ export default function CollectionChit() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loan.installments.map((i) => (
-                    <tr key={i.id}>
-                      <td style={{ fontWeight: 700 }}>#{i.installment_no}</td>
-                      <td>{fmtDate(i.due_date)}</td>
-                      <td className="right">{money(i.payable_amount)}</td>
-                      <td className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
-                      <td className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
-                        {money(i.balance_amount)}
-                      </td>
-                      <td><Badge value={i.status} /></td>
-                      <td className="right">
-                        {can('collection.create') && i.status !== 'COMPLETED' && loan.status === 'active' && (
-                          <button className="btn sm" onClick={() => setCollect(i)}>⚡ Collect</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {loan.installments.map((i) => {
+                    const payable = i.status !== 'COMPLETED' && loan.status === 'active';
+                    return (
+                      <tr key={i.id}>
+                        <td data-label="" style={{ width: 30 }}>
+                          {can('collection.create') && payable && (
+                            <input type="checkbox" checked={checked.has(i.id)} onChange={() => toggleDue(i.id)}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }} aria-label={`Select due #${i.installment_no}`} />
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 700 }}>#{i.installment_no}</td>
+                        <td>{fmtDate(i.due_date)}</td>
+                        <td className="right">{money(i.payable_amount)}</td>
+                        <td className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
+                        <td className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
+                          {money(i.balance_amount)}
+                        </td>
+                        <td><Badge value={i.status} /></td>
+                        <td className="right">
+                          {can('collection.create') && payable && (
+                            <button className="btn sm" onClick={() => setCollectIds([i.id])}>⚡ Collect</button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -235,9 +254,9 @@ export default function CollectionChit() {
         </div>
       </div>
 
-      {collect && (
-        <CollectModal installment={collect?.multi ? null : collect} loan={loan}
-          onClose={() => setCollect(null)} onDone={() => { setCollect(null); load(); }} />
+      {collectIds && (
+        <CollectModal selectedIds={collectIds} loan={loan}
+          onClose={() => setCollectIds(null)} onDone={() => { setCollectIds(null); load(); }} />
       )}
 
       {distribute && (

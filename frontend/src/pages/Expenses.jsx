@@ -8,6 +8,14 @@ import { useToast } from '../state/ToastContext';
 
 const blank = { amount: '', expense_date: new Date().toISOString().slice(0, 10), category: '', account_id: '', remarks: '' };
 
+// Canonical category list shown in the dropdown, merged with any historical
+// categories the API reports (so an older/custom category is never hidden
+// from its own record's edit form).
+const DEFAULT_EXPENSE_CATEGORIES = [
+  'Office Rent', 'Staff Salaries', 'Electricity / Utilities', 'Tea, Snacks & Catering',
+  'Travel & Fuel Expenses', 'Office Maintenance', 'Stationery & Printings', 'Miscellaneous',
+];
+
 export default function Expenses({ embedded }) {
   const { can, meta } = useAuth();
   const toast = useToast();
@@ -23,6 +31,7 @@ export default function Expenses({ embedded }) {
 
   useEffect(() => { api.get('/api/expenses/categories').then((r) => setCats(r.data)).catch(() => {}); }, []);
   const s = list.extra?.summary || list.pagination?.summary || {};
+  const categoryOptions = [...new Set([...DEFAULT_EXPENSE_CATEGORIES, ...cats])];
 
   const save = async () => {
     setBusy(true); setErrors({});
@@ -100,7 +109,7 @@ export default function Expenses({ embedded }) {
         <input type="search" placeholder="Search category, remarks…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
         <select value={list.filters.category || ''} onChange={(e) => list.setFilter('category', e.target.value)}>
           <option value="">Any category</option>
-          {cats.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={list.filters.account_id || ''} onChange={(e) => list.setFilter('account_id', e.target.value)}>
           <option value="">Any source</option>
@@ -144,8 +153,10 @@ export default function Expenses({ embedded }) {
             <Field label="Amount *" error={errors.amount}><input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
             <Field label="Date *" error={errors.expense_date}><input type="date" value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} /></Field>
             <Field label="Category *" error={errors.category}>
-              <input list="exp-cats" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-              <datalist id="exp-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist>
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                <option value="">Select a category…</option>
+                {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </Field>
             <Field label="Payment source" error={errors.account_id}>
               <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>

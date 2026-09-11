@@ -14,8 +14,7 @@ export default function Employees() {
   const toast = useToast();
   const list = useList('/api/employees', { initialPerPage: 25 });
 
-  // Create-employee modal state
-  const [createOpen, setCreateOpen] = useState(false);
+  // Left-rail create form (always visible — not a modal)
   const [createForm, setCreateForm] = useState(emptyCreate);
   const [createErrors, setCreateErrors] = useState({});
   const [createBusy, setCreateBusy] = useState(false);
@@ -65,7 +64,6 @@ export default function Employees() {
       await api.post('/api/employees', createForm);
       toast.success('Employee created successfully!');
       setCreateForm(emptyCreate);
-      setCreateOpen(false);
       list.reload();
     } catch (err) {
       if (err.errors) setCreateErrors(Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, v[0]])));
@@ -122,64 +120,57 @@ export default function Employees() {
     <>
       <div className="page-header">
         <h1 className="page-title">👨‍💼 Employee Management</h1>
+      </div>
+
+      {/* Main 2-column layout: LEFT = permanent Add Employee form, RIGHT = directory */}
+      <div className={can('employees.create') ? 'split-panel' : ''}>
         {can('employees.create') && (
-          <button className="btn" onClick={() => { setCreateForm(emptyCreate); setCreateErrors({}); setCreateOpen(true); }}>
-            ＋ New Employee
-          </button>
-        )}
-      </div>
-
-      <div>
-        <div className="toolbar">
-          <input type="search" placeholder="Search name, username, code…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-          {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
-        </div>
-
-        <DataTable
-          columns={columns} rows={list.rows} loading={list.loading} error={list.error} onRetry={list.reload}
-          page={list.page} perPage={list.perPage} total={list.pagination.total} totalPages={list.pagination.total_pages}
-          sortBy={list.sortBy} sortDir={list.sortDir} onSort={list.onSort} onPage={list.setPage} onPerPage={list.setPerPage}
-        />
-      </div>
-
-      {createOpen && (
-        <Modal
-          title="👨‍💼 Add New Employee"
-          size="lg"
-          onClose={() => setCreateOpen(false)}
-          footer={
-            <>
-              <button className="btn secondary" onClick={() => setCreateOpen(false)} disabled={createBusy}>Cancel</button>
-              <button className="btn" onClick={handleCreateEmployee} disabled={createBusy}>{createBusy ? 'Creating…' : 'Add Employee'}</button>
-            </>
-          }
-        >
-          <form onSubmit={handleCreateEmployee}>
-            <div className="form-grid">
-              <Field label="Name *" error={createErrors.name}>
-                <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder="Full Name" autoFocus />
-              </Field>
-              <Field label="Username *" error={createErrors.username}>
-                <input value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} required placeholder="Login username" />
-              </Field>
-              <Field label="Password *" error={createErrors.password}>
-                <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required placeholder="Min 8 characters" />
-              </Field>
-              <Field label="Email" error={createErrors.email}>
-                <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
-              </Field>
-              <Field label="Phone" error={createErrors.phone}>
-                <input value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="Mobile number" />
-              </Field>
+          <div className="card form-rail">
+            <div className="card-head">
+              <h2>✨ Add New Employee</h2>
             </div>
-            <p className="muted" style={{ fontSize: 12, margin: '8px 0 0' }}>
-              Role is <b>Employee</b>. Employees see all customers, loans and pending dues —
-              module access is controlled from the <b>Access</b> screen, not by location.
-            </p>
-            <button type="submit" style={{ display: 'none' }} />
-          </form>
-        </Modal>
-      )}
+            <div className="card-body">
+              <form onSubmit={handleCreateEmployee}>
+                <Field label="Name *" error={createErrors.name}>
+                  <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder="Full Name" />
+                </Field>
+                <Field label="Username *" error={createErrors.username}>
+                  <input value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} required placeholder="Login username" />
+                </Field>
+                <Field label="Password *" error={createErrors.password}>
+                  <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required placeholder="Min 8 characters" />
+                </Field>
+                <Field label="Email" error={createErrors.email}>
+                  <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
+                </Field>
+                <Field label="Phone" error={createErrors.phone}>
+                  <input value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="Mobile number" />
+                </Field>
+                <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
+                  Role is <b>Employee</b>. Employees see all customers, loans and pending dues —
+                  module access is controlled from the <b>Access</b> screen.
+                </p>
+                <button type="submit" className="btn" style={{ width: '100%' }} disabled={createBusy}>
+                  {createBusy ? 'Creating…' : '✨ Add Employee'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="toolbar">
+            <input type="search" placeholder="Search name, username, code…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
+            {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+          </div>
+
+          <DataTable
+            columns={columns} rows={list.rows} loading={list.loading} error={list.error} onRetry={list.reload}
+            page={list.page} perPage={list.perPage} total={list.pagination.total} totalPages={list.pagination.total_pages}
+            sortBy={list.sortBy} sortDir={list.sortDir} onSort={list.onSort} onPage={list.setPage} onPerPage={list.setPerPage}
+          />
+        </div>
+      </div>
 
       {viewId && (
         <Modal title="Employee details" onClose={() => setViewId(null)}

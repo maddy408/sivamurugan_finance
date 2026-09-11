@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, EmptyState } from '../components/ui';
-import CollectModal from '../components/CollectModal';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
@@ -12,20 +11,6 @@ export default function Pending({ hideTitle = false }) {
   const toast = useToast();
   const list = useList('/api/pending-dues', { initialPerPage: 25 });
   const [activeTab, setActiveTab] = useState('all');
-  const [collect, setCollect] = useState(null);   // full loan object for the CollectModal
-  const [collectBusy, setCollectBusy] = useState(0);
-
-  const openCollect = async (chitId) => {
-    setCollectBusy(chitId);
-    try {
-      const r = await api.get(`/api/loans/${chitId}`);
-      setCollect(r.data);
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setCollectBusy(0);
-    }
-  };
   const s = list.pagination?.summary || {};
   const rawCustomers = list.rows || [];
 
@@ -137,10 +122,7 @@ export default function Pending({ hideTitle = false }) {
                     </td>
                     <td className="right nowrap">
                       {can('collection.create') && (
-                        <button className="btn sm" disabled={collectBusy === ch.chit_id}
-                          onClick={() => openCollect(ch.chit_id)}>
-                          {collectBusy === ch.chit_id ? '…' : '⚡ Collect'}
-                        </button>
+                        <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}>⚡ Collect</Link>
                       )}{' '}
                       <Link className="btn sm secondary" to={`/collection/chit/${ch.chit_id}`}>Open</Link>
                     </td>
@@ -161,13 +143,6 @@ export default function Pending({ hideTitle = false }) {
         </div>
       )}
 
-      {collect && (
-        <CollectModal
-          loan={collect}
-          onClose={() => setCollect(null)}
-          onDone={() => { setCollect(null); list.reload(); toast.success('Payment recorded'); }}
-        />
-      )}
     </>
   );
 }
