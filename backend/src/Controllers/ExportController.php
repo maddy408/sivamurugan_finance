@@ -24,15 +24,12 @@ class ExportController
         $db = Database::instance();
         $where = ['c.deleted_at IS NULL']; $params = [];
         if (($q = ListQuery::search($req)) !== '') {
-            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR c.location LIKE :q)';
+            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR c.address_line1 LIKE :q)';
             $params['q'] = "%$q%";
-        }
-        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
-            $where[] = 'c.location = :loc'; $params['loc'] = $loc;
         }
         if ($st = $req->queryParam('status')) { $where[] = 'c.status = :st'; $params['st'] = $st; }
         $rows = $db->fetchAll(
-            "SELECT c.customer_code, c.name, c.mobile, c.alt_mobile, c.location AS location,
+            "SELECT c.customer_code, c.name, c.mobile, c.alt_mobile, c.address_line1,
                     c.nominee_name, c.nominee_mobile, c.status, c.created_at,
                     (SELECT COUNT(*) FROM loans_or_chits l WHERE l.customer_id = c.id AND l.status='active' AND l.deleted_at IS NULL) AS active_chits
              FROM customers c
@@ -41,8 +38,8 @@ class ExportController
         );
         $this->done($user, 'customers');
         Xlsx::stream('customers_' . date('Ymd_His') . '.xlsx',
-            ['Code', 'Name', 'Mobile', 'Alt Mobile', 'Location', 'Nominee', 'Nominee Mobile', 'Status', 'Active Chits', 'Created'],
-            array_map(fn($r) => [$r['customer_code'], $r['name'], $r['mobile'], $r['alt_mobile'], $r['location'],
+            ['Code', 'Name', 'Mobile', 'Alt Mobile', 'Address', 'Nominee', 'Nominee Mobile', 'Status', 'Active Chits', 'Created'],
+            array_map(fn($r) => [$r['customer_code'], $r['name'], $r['mobile'], $r['alt_mobile'], $r['address_line1'],
                 $r['nominee_name'], $r['nominee_mobile'], $r['status'], (int)$r['active_chits'], substr((string)$r['created_at'], 0, 10)], $rows),
             [['Customers export', 'generated ' . date('Y-m-d H:i')], ['Rows', count($rows)]],
             [8 => 'number', 9 => 'date']);
@@ -59,9 +56,6 @@ class ExportController
         }
         foreach (['status' => 'l.status', 'frequency' => 'l.frequency', 'customer_id' => 'l.customer_id'] as $k => $col) {
             if (($v = $req->queryParam($k)) !== null && $v !== '') { $where[] = "$col = :$k"; $params[$k] = $v; }
-        }
-        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
-            $where[] = '(c.location = :loc OR l.location = :loc)'; $params['loc'] = $loc;
         }
         $rows = $db->fetchAll(
             "SELECT l.code, c.name AS customer, c.customer_code, l.principal_amount, l.installment_amount,

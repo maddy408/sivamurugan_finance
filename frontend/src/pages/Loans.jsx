@@ -14,7 +14,7 @@ const initialForm = {
 };
 
 export default function Loans() {
-  const { can, meta } = useAuth();
+  const { can } = useAuth();
   const toast = useToast();
   const list = useList('/api/loans', { initialPerPage: 10, initialSort: 'created_at', initialDir: 'desc' });
   const [del, setDel] = useState(null);
@@ -276,7 +276,7 @@ export default function Loans() {
                   <datalist id="cust-options-inline">
                     {customers.map((c) => (
                       <option key={c.id} value={`${c.name} (${c.customer_code})`}>
-                        {c.mobile || ''} · {c.location_name || 'No location'}
+                        {c.mobile || ''} · {c.address_line1 || 'No address on file'}
                       </option>
                     ))}
                   </datalist>
@@ -363,10 +363,6 @@ export default function Loans() {
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
-            </select>
-            <select value={list.filters.location_id || ''} onChange={(e) => list.setFilter('location_id', e.target.value)}>
-              <option value="">All locations</option>
-              {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
             {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
             <div style={{ flex: 1 }} />

@@ -17,7 +17,6 @@ const EN = {
   'nav.expenses': 'Expenses',
   'nav.income': 'Office Income',
   'nav.employees': 'Employees',
-  'nav.locations': 'Locations',
   'nav.audit': 'Audit Logs',
   'nav.settings': 'Settings',
   'nav.profile': 'Profile',

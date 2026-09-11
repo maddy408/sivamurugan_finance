@@ -5,7 +5,6 @@ import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 
 export default function Collection() {
-  const { meta } = useAuth();
   const nav = useNavigate();
   const list = useList('/api/collection/workload', { initialPerPage: 25 });
 
@@ -31,10 +30,6 @@ export default function Collection() {
       <div className="toolbar">
         <input type="search" placeholder="Search customer, code, mobile, chit code…"
           value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-        <select value={list.filters.location_id || ''} onChange={(e) => list.setFilter('location_id', e.target.value)}>
-          <option value="">All locations</option>
-          {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
         <select value={list.filters.only_due || ''} onChange={(e) => list.setFilter('only_due', e.target.value)}>
           <option value="">All chits</option>
           <option value="1">Only with outstanding</option>
@@ -53,7 +48,7 @@ export default function Collection() {
       {list.loading && <Spinner />}
       {list.error && <ErrorState error={list.error} onRetry={list.reload} />}
       {!list.loading && !list.error && loans.length === 0 && (
-        <EmptyState title="No collection workload" hint="Chits assigned to you (or your locations) will appear here." />
+        <EmptyState title="No collection workload" hint="Chits assigned to you will appear here." />
       )}
 
       {/* Customer-first premium collection workload cards */}

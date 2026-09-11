@@ -42,7 +42,7 @@ export default function LoanNew() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Location is NOT chosen here — a chit inherits the customer's master location.
+  // Address/location is NOT chosen here — a chit inherits the customer's own address text.
   const selectedCustomer = customers.find((c) => String(c.id) === String(form.customer_id));
 
   // Repayment frequency drives the schedule engine key. Monthly keeps whatever
@@ -112,7 +112,7 @@ export default function LoanNew() {
         schedule_config: scheduleConfig,
         // Empty -> backend auto-generates from the Settings prefix. Non-empty -> saved verbatim.
         code: form.code.trim() || undefined,
-        // No location field: backend derives it from the customer's master location.
+        // No location field here: the backend copies the customer's own address text.
         employee_id: form.employee_id ? Number(form.employee_id) : undefined,
         notes: form.notes || undefined,
         // Optional: distribute immediately as part of creation (reuses the distribution service).
@@ -166,13 +166,13 @@ export default function LoanNew() {
               <datalist id="cust-options">
                 {customers.map((c) => (
                   <option key={c.id} value={`${c.name} (${c.customer_code})`}>
-                    {c.mobile || ''} · {c.location_name || 'No location'}
+                    {c.mobile || ''} · {c.address_line1 || 'No address on file'}
                   </option>
                 ))}
               </datalist>
               {selectedCustomer && (
                 <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                  Location: <b>{selectedCustomer.location_name || '—'}</b> (from customer master, applied automatically)
+                  Address: <b>{selectedCustomer.address_line1 || '—'}</b> (copied from the customer's record)
                 </p>
               )}
             </Field>

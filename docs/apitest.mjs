@@ -1,5 +1,5 @@
 // End-to-end vertical-slice test for the Chit Fund API. Node 18+ (global fetch).
-const B = 'http://127.0.0.1:8080';
+const B = process.env.API_BASE || 'http://localhost/siva-murugan-chit-fund/backend/public';
 const RUN = Date.now().toString(36);
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  PASS ' + m); } else { fail++; console.log('  FAIL ' + m); } };

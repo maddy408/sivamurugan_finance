@@ -40,11 +40,8 @@ class CollectionController
             $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q)';
             $params['q'] = "%$q%";
         }
-        // Optional location filter — plain typed text, exact match (no Location Master).
-        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
-            $where[] = '(c.location = :loc OR l.location = :loc)';
-            $params['loc'] = $loc;
-        }
+        // No location-based filtering: address is plain customer text, not a
+        // filterable/master-backed dimension.
         if ($st  = $req->queryParam('schedule_type')) { $where[] = 'l.schedule_type = :st'; $params['st'] = $st; }
         $onlyDue = $req->queryParam('only_due') === '1';
 

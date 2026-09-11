@@ -26,14 +26,11 @@ class CustomerController
         $q = ListQuery::search($req);
         if ($q !== '') {
             $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q
-                         OR c.location LIKE :q OR l.code LIKE :q)';
+                         OR c.address_line1 LIKE :q OR l.code LIKE :q)';
             $params['q'] = '%' . $q . '%';
         }
-        // "location" is now just typed customer text — an optional exact-match filter.
-        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
-            $where[] = 'c.location = :loc';
-            $params['loc'] = $loc;
-        }
+        // No location-based filtering: address is plain customer text, not a
+        // filterable/master-backed dimension.
         if ($status = $req->queryParam('status')) {
             $where[] = 'c.status = :status';
             $params['status'] = $status;
@@ -60,7 +57,7 @@ class CustomerController
 
         $rows = $db->fetchAll(
             "SELECT DISTINCT c.id, c.customer_code, c.name, c.mobile, c.status,
-                    c.location, c.location AS location_name,
+                    c.address_line1,
                     (SELECT COUNT(*) FROM loans_or_chits lc WHERE lc.customer_id = c.id AND lc.status = 'active') AS active_loans,
                     c.created_at
              $base

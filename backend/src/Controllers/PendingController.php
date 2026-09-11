@@ -31,12 +31,11 @@ class PendingController
         $params += $sp;
 
         if (($q = ListQuery::search($req)) !== '') {
-            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q OR c.location LIKE :q)';
+            $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q OR c.address_line1 LIKE :q)';
             $params['q'] = "%$q%";
         }
-        if (($loc = $req->queryParam('location_id')) !== null && $loc !== '') {
-            $where[] = '(c.location = :loc OR l.location = :loc)'; $params['loc'] = $loc;
-        }
+        // No location-based filtering: address is plain customer text, not a
+        // filterable/master-backed dimension.
         $whereSql = implode(' AND ', $where);
 
         $chits = $db->fetchAll(

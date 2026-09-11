@@ -9,11 +9,11 @@ import { useToast } from '../state/ToastContext';
 
 const emptyForm = {
   name: '', mobile: '', alt_mobile: '', email: '', gender: '', dob: '',
-  address_line1: '', location: '', nominee_name: '', nominee_relation: '', nominee_mobile: '', notes: '',
+  address_line1: '', nominee_name: '', nominee_relation: '', nominee_mobile: '', notes: '',
 };
 
 export default function Customers() {
-  const { can, meta, refreshMeta } = useAuth();
+  const { can } = useAuth();
   const toast = useToast();
   const list = useList('/api/customers', { initialPerPage: 10, initialSort: 'name' });
   
@@ -41,7 +41,6 @@ export default function Customers() {
       Object.keys(payload).forEach((k) => payload[k] === '' && delete payload[k]);
       const r = await api.post('/api/customers', payload);
       toast.success(r.message || 'Customer created successfully!');
-      await refreshMeta();   // pick up a brand-new location string for the filter list
       setCreateForm(emptyForm);
       setCreateOpen(false);
       list.reload();
@@ -54,7 +53,7 @@ export default function Customers() {
   };
 
   const openEdit = (row) => {
-    setEditForm({ ...emptyForm, ...row, location: row.location || row.location_name || '' });
+    setEditForm({ ...emptyForm, ...row });
     setEditErrors({});
     setEditModal(row);
   };
@@ -63,8 +62,7 @@ export default function Customers() {
     setEditBusy(true); setEditErrors({});
     try {
       const payload = { ...editForm };
-      // keep an explicitly-cleared location as '' so the backend can null it
-      Object.keys(payload).forEach((k) => k !== 'location' && payload[k] === '' && delete payload[k]);
+      Object.keys(payload).forEach((k) => payload[k] === '' && delete payload[k]);
       await api.put(`/api/customers/${editModal.id}`, payload);
       toast.success('Customer updated');
       setEditModal(null);
@@ -105,7 +103,7 @@ export default function Customers() {
     { key: 'customer_code', header: 'Code', sortable: true },
     { key: 'name', header: 'Name', sortable: true, render: (r) => <Link to={`/customers/${r.id}`}>{r.name}</Link> },
     { key: 'mobile', header: 'Mobile' },
-    { key: 'location_name', header: 'Location', render: (r) => r.location_name || '—' },
+    { key: 'address_line1', header: 'Address', render: (r) => r.address_line1 || '—' },
     { key: 'active_loans', header: 'Active loans', align: 'right' },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
     {
@@ -142,12 +140,8 @@ export default function Customers() {
 
       <div>
           <div className="toolbar">
-            <input type="search" placeholder="Search name, code, mobile, village, loan code…"
+            <input type="search" placeholder="Search name, code, mobile, address, loan code…"
               value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-            <select value={list.filters.location_id || ''} onChange={(e) => list.setFilter('location_id', e.target.value)}>
-              <option value="">All locations</option>
-              {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
             <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
               <option value="">Any status</option>
               <option value="active">Active</option>
@@ -215,14 +209,6 @@ export default function Customers() {
               <Field label="Email" error={createErrors.email}>
                 <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
               </Field>
-              <Field label="Location" error={createErrors.location}>
-                <input list="customer-locations" placeholder="e.g. Surandai / Tenkasi / Pavoorchatram"
-                  value={createForm.location}
-                  onChange={(e) => setCreateForm({ ...createForm, location: e.target.value })} />
-                <datalist id="customer-locations">
-                  {(meta?.locations || []).map((l) => <option key={l.id} value={l.name} />)}
-                </datalist>
-              </Field>
               <Field label="Gender" error={createErrors.gender}>
                 <select value={createForm.gender} onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}>
                   <option value="">—</option>
@@ -235,7 +221,7 @@ export default function Customers() {
                 <input type="date" value={createForm.dob || ''} onChange={(e) => setCreateForm({ ...createForm, dob: e.target.value })} />
               </Field>
               <Field label="Address" error={createErrors.address_line1}>
-                <input value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="Door no, street, area" />
+                <input value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
               </Field>
               <Field label="Nominee Name" error={createErrors.nominee_name}>
                 <input value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} />
@@ -291,15 +277,7 @@ export default function Customers() {
               <input type="date" value={editForm.dob || ''} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} />
             </Field>
             <Field label="Address" error={editErrors.address_line1}>
-              <input value={editForm.address_line1} onChange={(e) => setEditForm({ ...editForm, address_line1: e.target.value })} />
-            </Field>
-            <Field label="Location" error={editErrors.location}>
-              <input list="customer-locations-edit" placeholder="e.g. Surandai / Tenkasi"
-                value={editForm.location || ''}
-                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
-              <datalist id="customer-locations-edit">
-                {(meta?.locations || []).map((l) => <option key={l.id} value={l.name} />)}
-              </datalist>
+              <input value={editForm.address_line1 || ''} onChange={(e) => setEditForm({ ...editForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
             </Field>
             <Field label="Nominee name" error={editErrors.nominee_name}>
               <input value={editForm.nominee_name} onChange={(e) => setEditForm({ ...editForm, nominee_name: e.target.value })} />

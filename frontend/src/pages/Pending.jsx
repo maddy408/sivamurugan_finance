@@ -8,7 +8,7 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
 export default function Pending({ hideTitle = false }) {
-  const { meta, can } = useAuth();
+  const { can } = useAuth();
   const toast = useToast();
   const list = useList('/api/pending-dues', { initialPerPage: 25 });
   const [activeTab, setActiveTab] = useState('all');
@@ -81,12 +81,8 @@ export default function Pending({ hideTitle = false }) {
       </div>
 
       <div className="toolbar">
-        <input type="search" placeholder="Search customer, code, phone, chit, location…"
+        <input type="search" placeholder="Search customer, code, phone, chit, address…"
           value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-        <select value={list.filters.location_id || ''} onChange={(e) => list.setFilter('location_id', e.target.value)}>
-          <option value="">All locations</option>
-          {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
         {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
         <div style={{ flex: 1 }} />
         <button className="btn secondary" onClick={() => api.download('/api/pending-dues/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>

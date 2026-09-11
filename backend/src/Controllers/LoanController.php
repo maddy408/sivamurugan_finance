@@ -133,11 +133,8 @@ class LoanController
                 $params[$key] = $v;
             }
         }
-        // Optional location filter — plain typed text, exact match (no Location Master).
-        if (($lv = $req->queryParam('location_id')) !== null && $lv !== '') {
-            $where[] = '(c.location = :location_txt OR l.location = :location_txt)';
-            $params['location_txt'] = $lv;
-        }
+        // No location-based filtering: address is plain customer text, not a
+        // filterable/master-backed dimension.
         if ($from = $req->queryParam('date_from')) { $where[] = 'l.start_date >= :df'; $params['df'] = $from; }
         if ($to   = $req->queryParam('date_to'))   { $where[] = 'l.start_date <= :dt'; $params['dt'] = $to; }
 

@@ -186,12 +186,6 @@ export default function Reports() {
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </label>
-            <label className="mini">Location
-              <select value={filters.location_id || ''} onChange={(e) => setF('location_id', e.target.value)}>
-                <option value="">All locations</option>
-                {(meta?.locations || []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </label>
             <label className="mini">Employee
               <select value={filters.employee_id || ''} onChange={(e) => setF('employee_id', e.target.value)}>
                 <option value="">All employees</option>
