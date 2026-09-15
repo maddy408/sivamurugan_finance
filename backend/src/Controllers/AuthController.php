@@ -73,6 +73,47 @@ class AuthController
         Response::ok($this->present(Auth::user()));
     }
 
+    /**
+     * POST /api/auth/change-password
+     * Changes the CURRENTLY AUTHENTICATED user's own password. The account to
+     * update is taken from the auth token (Guard::authorize), never from any
+     * id in the request body, so a user can never change someone else's
+     * password through this endpoint.
+     */
+    public function changePassword(Request $req): void
+    {
+        $user = Guard::authorize($req);
+        $in = Validator::make($req->body, [
+            'current_password' => 'required|string|max:128',
+            'new_password'     => 'required|string|min:8|max:128',
+            'confirm_password' => 'required|string|max:128',
+        ])->validated();
+
+        if ($in['new_password'] !== $in['confirm_password']) {
+            throw HttpException::validation(['confirm_password' => ['New password and confirm password do not match']]);
+        }
+
+        $db = Database::instance();
+        $row = $db->fetch('SELECT password_hash FROM users WHERE id = :id', ['id' => $user['id']]);
+        if (!$row || !password_verify($in['current_password'], $row['password_hash'])) {
+            throw HttpException::validation(['current_password' => ['Current password is incorrect']]);
+        }
+
+        if (password_verify($in['new_password'], $row['password_hash'])) {
+            throw HttpException::validation(['new_password' => ['New password must be different from the current password']]);
+        }
+
+        $db->update('users', [
+            'password_hash' => password_hash($in['new_password'], PASSWORD_DEFAULT),
+            'updated_at'    => BusinessDate::utcNow(),
+        ], 'id = :id', ['id' => $user['id']]);
+
+        Audit::log('auth.change_password', 'auth', 'user', $user['id'], null, null, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']], $req->ip(), $req->userAgent());
+
+        Response::ok(null, 'Password changed successfully');
+    }
+
     public function logout(Request $req): void
     {
         $user = Guard::authorize($req);

@@ -16,11 +16,12 @@ class EmployeeController
     // No employee-location mapping in this application. Employees have no
     // location; visibility is not location-based (see Auth::loadScope / Guard).
 
+    /** Users Management: lists/manages EVERY user (Admin + Employee), not just Employee-role rows. */
     public function index(Request $req): void
     {
         $user = Guard::authorize($req, 'employees.view');
         $db = Database::instance();
-        $where = ["r.code = 'EMPLOYEE'"]; $params = [];
+        $where = ['1=1']; $params = [];
         if (($q = ListQuery::search($req)) !== '') {
             $where[] = '(u.name LIKE :q OR u.username LIKE :q OR e.emp_code LIKE :q OR u.phone LIKE :q)';
             $params['q'] = "%$q%";
@@ -34,7 +35,7 @@ class EmployeeController
         $total = (int)$db->scalar("SELECT COUNT(*) $base", $params);
         $rows = $db->fetchAll(
             "SELECT u.id AS user_id, e.id AS employee_id, e.emp_code, u.name, u.username, u.email, u.phone,
-                    u.is_active, u.last_login_at, u.session_version,
+                    u.is_active, u.last_login_at, u.session_version, r.code AS role, r.name AS role_name,
                     (SELECT COUNT(*) FROM loan_assignments la WHERE la.employee_id = e.id AND la.is_active = 1) AS loan_count
              $base ORDER BY u.name LIMIT $perPage OFFSET $offset",
             $params
@@ -42,7 +43,7 @@ class EmployeeController
         Response::paginated($rows, $total, ListQuery::page($req), $perPage);
     }
 
-    /** GET /api/employees/{id}  - one employee's profile (id = users.id). No credentials. */
+    /** GET /api/employees/{id}  - one user's profile (id = users.id). No credentials. */
     public function show(Request $req, array $args): void
     {
         Guard::authorize($req, 'employees.view');
@@ -50,19 +51,20 @@ class EmployeeController
         $uid = (int) $args['id'];
         $row = $db->fetch(
             "SELECT u.id AS user_id, e.id AS employee_id, e.emp_code, e.joined_on,
-                    u.name, u.username, u.email, u.phone, u.is_active, u.last_login_at, u.created_at
+                    u.name, u.username, u.email, u.phone, u.is_active, u.last_login_at, u.created_at,
+                    r.code AS role, r.name AS role_name
              FROM users u JOIN roles r ON r.id = u.role_id
              LEFT JOIN employees e ON e.user_id = u.id
-             WHERE u.id = :id AND r.code = 'EMPLOYEE'",
+             WHERE u.id = :id",
             ['id' => $uid]
         );
         if (!$row) {
-            throw HttpException::notFound('Employee not found');
+            throw HttpException::notFound('User not found');
         }
-        $row['assigned_loans'] = (int) $db->scalar(
+        $row['assigned_loans'] = $row['employee_id'] ? (int) $db->scalar(
             'SELECT COUNT(*) FROM loan_assignments WHERE employee_id = :e AND is_active = 1',
             ['e' => (int) $row['employee_id']]
-        );
+        ) : 0;
         Response::ok($row);
     }
 
@@ -73,13 +75,13 @@ class EmployeeController
         $db = Database::instance();
         $uid = (int) $args['id'];
         $emp = $db->fetch(
-            "SELECT e.id AS employee_id, u.* FROM users u JOIN roles r ON r.id = u.role_id
+            "SELECT e.id AS employee_id, u.* FROM users u
              LEFT JOIN employees e ON e.user_id = u.id
-             WHERE u.id = :id AND r.code = 'EMPLOYEE'",
+             WHERE u.id = :id",
             ['id' => $uid]
         );
         if (!$emp) {
-            throw HttpException::notFound('Employee not found');
+            throw HttpException::notFound('User not found');
         }
         $in = Validator::make($req->body, [
             'name'  => 'nullable|string|max:128',
@@ -118,6 +120,7 @@ class EmployeeController
         $this->show($req, $args);
     }
 
+    /** POST /api/employees  - create a user with either the Admin or Employee role. */
     public function store(Request $req): void
     {
         $user = Guard::authorize($req, 'employees.create');
@@ -129,16 +132,25 @@ class EmployeeController
             'email'        => 'nullable|email',
             'phone'        => 'nullable|string|max:20',
             'emp_code'     => 'nullable|string|max:32',
+            'role'         => 'nullable|in:ADMIN,EMPLOYEE',
         ])->validated();
 
         if ($db->scalar('SELECT 1 FROM users WHERE username = :u', ['u' => $in['username']])) {
             throw HttpException::conflict('Username already taken');
         }
-        $empCode = $in['emp_code'] ?: ('EMP-' . str_pad((string)((int)$db->scalar('SELECT COUNT(*) FROM employees') + 1), 4, '0', STR_PAD_LEFT));
+        $roleCode = $in['role'] ?: 'EMPLOYEE';
+        $roleId = $db->scalar('SELECT id FROM roles WHERE code = :c', ['c' => $roleCode]);
+        if (!$roleId) {
+            throw HttpException::validation(['role' => ['Unknown role']]);
+        }
+        $isEmployee = $roleCode === 'EMPLOYEE';
+        $empCode = $isEmployee
+            ? ($in['emp_code'] ?: ('EMP-' . str_pad((string)((int)$db->scalar('SELECT COUNT(*) FROM employees') + 1), 4, '0', STR_PAD_LEFT)))
+            : null;
 
-        $userId = $db->transaction(function ($db) use ($in, $empCode) {
+        $userId = $db->transaction(function ($db) use ($in, $empCode, $roleId, $isEmployee) {
             $uid = $db->insert('users', [
-                'role_id'       => 2,
+                'role_id'       => $roleId,
                 'name'          => $in['name'],
                 'username'      => $in['username'],
                 'email'         => $in['email'] ?? null,
@@ -149,21 +161,23 @@ class EmployeeController
                 'created_at'    => BusinessDate::utcNow(),
                 'updated_at'    => BusinessDate::utcNow(),
             ]);
-            $db->insert('employees', [
-                'user_id'  => $uid,
-                'emp_code' => $empCode,
-                'joined_on'=> BusinessDate::fmt(BusinessDate::today()),
-                'is_active'=> 1,
-                'created_at' => BusinessDate::utcNow(),
-                'updated_at' => BusinessDate::utcNow(),
-            ]);
+            if ($isEmployee) {
+                $db->insert('employees', [
+                    'user_id'  => $uid,
+                    'emp_code' => $empCode,
+                    'joined_on'=> BusinessDate::fmt(BusinessDate::today()),
+                    'is_active'=> 1,
+                    'created_at' => BusinessDate::utcNow(),
+                    'updated_at' => BusinessDate::utcNow(),
+                ]);
+            }
             return $uid;
         });
 
-        Audit::log('employee.create', 'employees', 'user', $userId, null,
-            ['username' => $in['username'], 'emp_code' => $empCode], null,
+        Audit::log('user.create', 'employees', 'user', $userId, null,
+            ['username' => $in['username'], 'role' => $roleCode, 'emp_code' => $empCode], null,
             ['id' => $user['id'], 'role_code' => $user['role_code']]);
-        Response::created(['user_id' => $userId, 'emp_code' => $empCode], 'Employee created');
+        Response::created(['user_id' => $userId, 'role' => $roleCode, 'emp_code' => $empCode], 'User created');
     }
 
     public function setActive(Request $req, array $args): void
@@ -173,8 +187,17 @@ class EmployeeController
         $uid = (int)$args['id'];
         $active = filter_var($req->input('is_active', true), FILTER_VALIDATE_BOOL) ? 1 : 0;
         $target = $db->fetch("SELECT u.*, r.code AS role_code FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=:id", ['id' => $uid]);
-        if (!$target || $target['role_code'] !== 'EMPLOYEE') {
-            throw HttpException::notFound('Employee not found');
+        if (!$target) {
+            throw HttpException::notFound('User not found');
+        }
+        if (!$active && $target['role_code'] === 'ADMIN') {
+            $otherActiveAdmins = (int)$db->scalar(
+                "SELECT COUNT(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE r.code='ADMIN' AND u.is_active=1 AND u.id <> :id",
+                ['id' => $uid]
+            );
+            if ($otherActiveAdmins === 0) {
+                throw HttpException::conflict('Cannot deactivate the last active administrator');
+            }
         }
         $db->transaction(function ($db) use ($uid, $active) {
             $db->run('UPDATE users SET is_active = :a, updated_at = :n WHERE id = :id',
@@ -196,8 +219,8 @@ class EmployeeController
         $db = Database::instance();
         $uid = (int)$args['id'];
         $in = Validator::make($req->body, ['password' => 'required|string|min:8|max:128'])->validated();
-        if (!$db->scalar("SELECT 1 FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=:id AND r.code='EMPLOYEE'", ['id' => $uid])) {
-            throw HttpException::notFound('Employee not found');
+        if (!$db->scalar("SELECT 1 FROM users WHERE id=:id", ['id' => $uid])) {
+            throw HttpException::notFound('User not found');
         }
         $db->transaction(function ($db) use ($uid, $in) {
             $db->run('UPDATE users SET password_hash = :h, session_version = session_version + 1, updated_at = :n WHERE id = :id',
@@ -215,9 +238,14 @@ class EmployeeController
         Guard::authorize($req, 'permissions.view');
         $db = Database::instance();
         $uid = (int)$args['id'];
+        $roleId = (int)$db->scalar('SELECT role_id FROM users WHERE id = :u', ['u' => $uid]);
+        if (!$roleId) {
+            throw HttpException::notFound('User not found');
+        }
         $all = $db->fetchAll('SELECT id, module, action, code, description FROM permissions ORDER BY module, action');
         $rolePerms = array_column($db->fetchAll(
-            'SELECT p.code FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id = 2'
+            'SELECT p.code FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id = :r',
+            ['r' => $roleId]
         ), 'code');
         $overrides = $db->fetchAll('SELECT p.code, up.effect FROM user_permissions up JOIN permissions p ON p.id=up.permission_id WHERE up.user_id = :u', ['u' => $uid]);
         $ovMap = [];

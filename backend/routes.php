@@ -48,6 +48,7 @@ $router->get('/api/health', fn(Request $r) => Response::ok(['status' => 'ok', 't
 $router->post('/api/auth/login',  [$auth, 'login']);
 $router->post('/api/auth/logout', [$auth, 'logout']);
 $router->get('/api/auth/me',      [$auth, 'me']);
+$router->post('/api/auth/change-password', [$auth, 'changePassword']);
 
 /* ---- dashboard ---- */
 $router->get('/api/dashboard', [$dashboard, 'index']);
