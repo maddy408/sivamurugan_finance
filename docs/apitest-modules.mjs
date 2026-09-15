@@ -48,7 +48,7 @@ const run = async () => {
 
   console.log('== reports ==');
   const cat = await call('GET', '/api/reports', { token: AT });
-  ok(cat.j.data.length === 12, '12 reports in catalogue');
+  ok(cat.j.data.length === 11, '11 reports in catalogue (location-collection removed)');
   for (const rp of cat.j.data) {
     const res = await call('GET', `/api/reports/${rp.name}`, { token: AT });
     ok(res.status === 200 && Array.isArray(res.j.data.rows) && Array.isArray(res.j.data.headers), `report ${rp.name} returns rows+headers`);

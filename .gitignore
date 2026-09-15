@@ -19,3 +19,6 @@ backend/storage/uploads/*
 
 # production build output
 /web/
+
+# local DB backups (never commit dumps)
+database/backups/

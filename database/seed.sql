@@ -84,6 +84,9 @@ INSERT INTO permissions (module, action, code, description) VALUES
   ('income','delete','income.delete','Delete/cancel office income'),
   ('income','export','income.export','Export office income'),
 
+  ('transactions','view','transactions.view','View the financial transaction ledger'),
+  ('transactions','export','transactions.export','Export the financial transaction ledger'),
+
   ('settings','view','settings.view','View settings'),
   ('settings','edit','settings.edit','Edit settings'),
 
@@ -139,7 +142,8 @@ INSERT INTO payment_modes (id, code, name, is_active, sort_order) VALUES
   (1, 'CASH', 'Cash', 1, 1),
   (2, 'UPI',  'UPI',  1, 2),
   (3, 'BANK', 'Bank Transfer', 1, 3),
-  (4, 'OTHER','Other', 1, 4);
+  (4, 'OTHER','Other', 1, 4),
+  (5, 'SPLIT','Split Payment (Cash + UPI)', 1, 5);
 
 INSERT INTO accounts (id, code, name, type, opening_balance, is_active) VALUES
   (1, 'OFFICE_CASH', 'Office Cash', 'cash', 0.00, 1),

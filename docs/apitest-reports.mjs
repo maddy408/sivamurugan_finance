@@ -142,10 +142,11 @@ const run = async () => {
   const emp = await R('employee-collection', monthQ);
   ok(Array.isArray(emp.rows), 'employee-collection: returns rows array');
 
-  // ===== 7. Location-wise =====
-  const loc = await R('location-collection', monthQ);
-  ok(D(loc.totals['Total Collection']) === '26600.00', 'location-collection: TOTAL = 26600');
-  ok(loc.rows.reduce((s, r) => s + Number(r['Customers']), 0) >= 2, 'location-collection: customers counted');
+  // ===== 7. Location-wise report was intentionally removed (product requirement) =====
+  const locGone = await call('GET', '/api/reports/location-collection', { token: AT });
+  ok(locGone.status === 404, 'location-collection report no longer exists -> 404');
+  const catalogue = (await call('GET', '/api/reports', { token: AT })).j.data;
+  ok(!catalogue.some((c) => c.name === 'location-collection'), 'location-collection removed from the report catalogue');
 
   // ===== 8. Distribution =====
   const dist = await R('chit-distribution', monthQ);
@@ -214,8 +215,8 @@ const run = async () => {
   const xf = await raw(`/api/reports/full-export${monthQ}`, AT);
   ok(xf.status === 200 && xf.buf.slice(0, 2).toString() === 'PK', 'full-export -> 200 real xlsx');
   const pf = xlsxParts(xf.buf);
-  ok(pf.names.filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).length === 13,
-     'full-export -> 13 worksheet parts (Summary + 12 reports)');
+  ok(pf.names.filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).length === 12,
+     'full-export -> 12 worksheet parts (Summary + 11 reports)');
   ok(pf.workbook.includes('name="Summary"') && pf.workbook.includes('name="Chit Opening"')
      && pf.workbook.includes('name="Pending Dues"') && pf.workbook.includes('name="Financial"'),
      'full-export -> named sheets in workbook.xml');

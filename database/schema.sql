@@ -149,6 +149,7 @@ CREATE TABLE customers (
   customer_code     VARCHAR(32)  NOT NULL,
   name              VARCHAR(128) NOT NULL,
   mobile            VARCHAR(20)  NOT NULL,
+    aadhar_number     VARCHAR(20)  NULL,
   alt_mobile        VARCHAR(20)  NULL,
   email             VARCHAR(191) NULL,
   gender            ENUM('male','female','other') NULL,
@@ -318,12 +319,19 @@ CREATE TABLE collections (
   employee_id        INT UNSIGNED  NULL,
   location          VARCHAR(120)  NULL,                 -- typed customer location (denormalised copy)
   collection_date    DATE          NOT NULL,
-  amount             DECIMAL(15,2) NOT NULL,             -- principal+charges portion
+  amount             DECIMAL(15,2) NOT NULL,             -- principal+charges portion (= cash_amount+upi_amount when split)
   fine_amount        DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   other_charges      DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   total_amount       DECIMAL(15,2) NOT NULL,             -- amount + fine_amount + other_charges
   payment_mode_id    INT UNSIGNED  NOT NULL,
   account_id         INT UNSIGNED  NULL,
+  -- Split-payment (Cash + UPI in one collection): NULL unless payment_mode = SPLIT.
+  -- amount/total_amount remain authoritative (= cash_amount+upi_amount) so every
+  -- existing sum/report keeps working unchanged; these four just record the split.
+  cash_amount        DECIMAL(15,2) NULL,
+  upi_amount         DECIMAL(15,2) NULL,
+  cash_account_id    INT UNSIGNED  NULL,
+  upi_account_id     INT UNSIGNED  NULL,
   reference_no       VARCHAR(64)   NULL,
   remarks            VARCHAR(500)  NULL,
   idempotency_key    VARCHAR(80)   NULL,
@@ -355,7 +363,9 @@ CREATE TABLE collections (
   CONSTRAINT fk_coll_user     FOREIGN KEY (collected_by)    REFERENCES users (id),
   CONSTRAINT fk_coll_emp      FOREIGN KEY (employee_id)     REFERENCES employees (id) ON DELETE SET NULL,
   CONSTRAINT fk_coll_mode     FOREIGN KEY (payment_mode_id) REFERENCES payment_modes (id),
-  CONSTRAINT fk_coll_account  FOREIGN KEY (account_id)      REFERENCES accounts (id) ON DELETE SET NULL
+  CONSTRAINT fk_coll_account  FOREIGN KEY (account_id)      REFERENCES accounts (id) ON DELETE SET NULL,
+  CONSTRAINT fk_coll_cash_account FOREIGN KEY (cash_account_id) REFERENCES accounts (id) ON DELETE SET NULL,
+  CONSTRAINT fk_coll_upi_account  FOREIGN KEY (upi_account_id)  REFERENCES accounts (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
@@ -506,6 +516,50 @@ CREATE TABLE distributions (
   CONSTRAINT fk_dist_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
   CONSTRAINT fk_dist_account  FOREIGN KEY (account_id)  REFERENCES accounts (id),
   CONSTRAINT fk_dist_creator  FOREIGN KEY (created_by)  REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------------------------------
+-- transactions  (the financial ledger: one row per real money movement)
+--   Not a replacement for collections/distributions/expenses/office_income -
+--   those stay the business records. This is the append-only ledger layer:
+--   exactly one transaction row per source record (reference_type,reference_id
+--   is UNIQUE, so re-processing the same collection/expense/etc. can never
+--   double-post). status mirrors the source row's own status convention
+--   (posted -> cancelled; never hard-deleted, never re-inserted as a reversal).
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS transactions;
+CREATE TABLE transactions (
+  id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  transaction_no   VARCHAR(32)   NOT NULL,
+  txn_date         DATE          NOT NULL,
+  txn_type         ENUM('collection','distribution','expense','income') NOT NULL,
+  direction        ENUM('credit','debit') NOT NULL,       -- credit = money in, debit = money out
+  amount           DECIMAL(15,2) NOT NULL,
+  account_id       INT UNSIGNED  NULL,
+  customer_id      INT UNSIGNED  NULL,
+  loan_id          INT UNSIGNED  NULL,
+  reference_type   VARCHAR(32)   NOT NULL,                -- collection|distribution|expense|office_income
+  reference_id     BIGINT UNSIGNED NOT NULL,               -- source table's PK
+  status           ENUM('posted','cancelled') NOT NULL DEFAULT 'posted',
+  remarks          VARCHAR(500)  NULL,
+  created_by       INT UNSIGNED  NULL,
+  cancelled_by     INT UNSIGNED  NULL,
+  cancelled_at     DATETIME      NULL,
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_txn_no (transaction_no),
+  UNIQUE KEY uq_txn_reference (reference_type, reference_id),
+  KEY idx_txn_date (txn_date),
+  KEY idx_txn_account (account_id),
+  KEY idx_txn_type_status (txn_type, status),
+  KEY idx_txn_customer (customer_id),
+  KEY idx_txn_loan (loan_id),
+  CONSTRAINT fk_txn_account  FOREIGN KEY (account_id)  REFERENCES accounts (id) ON DELETE SET NULL,
+  CONSTRAINT fk_txn_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE SET NULL,
+  CONSTRAINT fk_txn_loan     FOREIGN KEY (loan_id)     REFERENCES loans_or_chits (id) ON DELETE SET NULL,
+  CONSTRAINT fk_txn_creator  FOREIGN KEY (created_by)  REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_txn_canceller FOREIGN KEY (cancelled_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
