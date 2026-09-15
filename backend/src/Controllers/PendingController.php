@@ -54,20 +54,35 @@ class PendingController
             $params
         );
 
+        $dateFrom = $req->queryParam('date_from') ?: null;
+        $dateTo   = $req->queryParam('date_to') ?: null;
+
         foreach ($chits as &$ch) {
             ScheduleService::refreshOverdue((int)$ch['chit_id']);
+            $dueWhere = ['loan_id = :l', 'balance_amount > 0'];
+            $dueParams = ['l' => $ch['chit_id']];
+            if ($dateFrom) { $dueWhere[] = 'due_date >= :df'; $dueParams['df'] = $dateFrom; }
+            if ($dateTo)   { $dueWhere[] = 'due_date <= :dt'; $dueParams['dt'] = $dateTo; }
             $ch['due_installments'] = $db->fetchAll(
                 "SELECT installment_no, due_date, payable_amount, paid_amount, balance_amount, status, last_paid_date
-                 FROM installments WHERE loan_id = :l AND balance_amount > 0 ORDER BY installment_no",
-                ['l' => $ch['chit_id']]
+                 FROM installments WHERE " . implode(' AND ', $dueWhere) . " ORDER BY installment_no",
+                $dueParams
             );
             $ch['next_due'] = $ch['due_installments'][0] ?? null;
             $ch['overdue_count'] = 0;
+            $ch['outstanding'] = 0;
             foreach ($ch['due_installments'] as $d) {
                 if ($d['status'] === 'OVERDUE') $ch['overdue_count']++;
+                $ch['outstanding'] += (float)$d['balance_amount'];
             }
         }
         unset($ch);
+
+        // When a date range is applied, only chits with at least one due
+        // installment inside that range remain relevant.
+        if ($dateFrom || $dateTo) {
+            $chits = array_values(array_filter($chits, fn($ch) => count($ch['due_installments']) > 0));
+        }
 
         // group by customer
         $byCust = [];

@@ -73,6 +73,36 @@ class AuthController
         Response::ok($this->present(Auth::user()));
     }
 
+    /** POST /api/auth/change-password */
+    public function changePassword(Request $req): void
+    {
+        $user = Guard::authorize($req);
+        $in = Validator::make($req->body, [
+            'old_password'         => 'required|string|max:128',
+            'new_password'         => 'required|string|min:6|max:128',
+            'confirm_password'     => 'required|string|max:128',
+        ])->validated();
+
+        if ($in['new_password'] !== $in['confirm_password']) {
+            throw HttpException::validation(['confirm_password' => ['New password and confirm password do not match']]);
+        }
+
+        $db = Database::instance();
+        $row = $db->fetch('SELECT password_hash FROM users WHERE id = :id', ['id' => $user['id']]);
+        if (!$row || !password_verify($in['old_password'], $row['password_hash'])) {
+            throw HttpException::validation(['old_password' => ['Current password is incorrect']]);
+        }
+
+        $db->update('users', [
+            'password_hash' => password_hash($in['new_password'], PASSWORD_BCRYPT),
+        ], 'id = :id', ['id' => $user['id']]);
+
+        Audit::log('auth.change_password', 'auth', 'user', $user['id'], null, null, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']], $req->ip(), $req->userAgent());
+
+        Response::ok(null, 'Password changed successfully');
+    }
+
     public function logout(Request $req): void
     {
         $user = Guard::authorize($req);

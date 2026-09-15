@@ -50,7 +50,9 @@ class DashboardController
         // ---- schedule figures (installments) ----
         $sched = $db->fetch(
             "SELECT
-                COALESCE(SUM(CASE WHEN i.due_date = :t1 THEN i.balance_amount ELSE 0 END),0) AS expected_today,
+                COALESCE(SUM(CASE WHEN i.due_date = :t1 THEN i.payable_amount ELSE 0 END),0) AS expected_today,
+                COALESCE(SUM(CASE WHEN i.due_date BETWEEN :wf1 AND :wt1 THEN i.payable_amount ELSE 0 END),0) AS expected_week,
+                COALESCE(SUM(CASE WHEN i.due_date BETWEEN :mf1 AND :mt1 THEN i.payable_amount ELSE 0 END),0) AS expected_month,
                 COALESCE(SUM(CASE WHEN i.status = 'OVERDUE' THEN i.balance_amount ELSE 0 END),0) AS overdue_amount,
                 COUNT(DISTINCT CASE WHEN i.balance_amount > 0 THEN l.customer_id END) AS pending_customers,
                 COUNT(DISTINCT CASE WHEN i.due_date = :t2 AND i.status <> 'COMPLETED' THEN l.customer_id END) AS due_customers,
@@ -58,7 +60,11 @@ class DashboardController
              FROM installments i
              JOIN loans_or_chits l ON l.id = i.loan_id
              WHERE l.status = 'active' AND l.deleted_at IS NULL AND $scopeSql",
-            $scopeParams + ['t1' => $today, 't2' => $today]
+            $scopeParams + [
+                't1' => $today, 't2' => $today,
+                'wf1' => $weekFrom, 'wt1' => $weekTo,
+                'mf1' => $monthFrom, 'mt1' => $monthTo,
+            ]
         );
 
         // ---- collection sums (ACTUAL amounts) ----
@@ -78,6 +84,23 @@ class DashboardController
         );
 
         $expectedToday = (float)$sched['expected_today'];
+        $expectedWeek  = (float)$sched['expected_week'];
+        $expectedMonth = (float)$sched['expected_month'];
+        $rate = fn(float $collected, float $expected) => $expected > 0 ? round(min($collected / $expected, 1) * 100) : 0;
+        $performance = [
+            'daily'   => [
+                'collected' => number_format($collectedToday, 2, '.', ''), 'expected' => number_format($expectedToday, 2, '.', ''),
+                'pending'   => number_format(max($expectedToday - $collectedToday, 0), 2, '.', ''), 'rate' => $rate($collectedToday, $expectedToday),
+            ],
+            'weekly'  => [
+                'collected' => number_format($collectedWeek, 2, '.', ''), 'expected' => number_format($expectedWeek, 2, '.', ''),
+                'pending'   => number_format(max($expectedWeek - $collectedWeek, 0), 2, '.', ''), 'rate' => $rate($collectedWeek, $expectedWeek),
+            ],
+            'monthly' => [
+                'collected' => number_format($collectedMonth, 2, '.', ''), 'expected' => number_format($expectedMonth, 2, '.', ''),
+                'pending'   => number_format(max($expectedMonth - $collectedMonth, 0), 2, '.', ''), 'rate' => $rate($collectedMonth, $expectedMonth),
+            ],
+        ];
         $ranges = [
             'today'   => ['from' => $today, 'to' => $today],
             'month'   => ['from' => $monthFrom, 'to' => $monthTo],
@@ -106,6 +129,7 @@ class DashboardController
                     'due_customers' => (int)$sched['due_customers'],
                 ],
                 'my_outstanding_customers' => (int)$sched['pending_customers'],
+                'performance' => $performance,
             ]);
             return;
         }
@@ -185,8 +209,10 @@ class DashboardController
                 'monthly_collection'=> number_format($collectedMonth, 2, '.', ''),
                 'weekly_collection' => number_format($collectedWeek, 2, '.', ''),
                 'fine_collected'    => number_format($fineCollected, 2, '.', ''),
+                'total_outstanding' => number_format((float)$sched['outstanding_total'], 2, '.', ''),
                 'accounts'          => $finance['accounts'],
             ],
+            'performance' => $performance,
             'today' => [
                 'expected'      => number_format($expectedToday, 2, '.', ''),
                 'collected'     => number_format($collectedToday, 2, '.', ''),

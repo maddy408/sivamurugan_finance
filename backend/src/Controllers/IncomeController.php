@@ -8,6 +8,7 @@ use App\Core\ListQuery;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
+use App\Services\TransactionService;
 use App\Support\Audit;
 use App\Support\BusinessDate;
 use App\Support\Xlsx;
@@ -120,21 +121,39 @@ class IncomeController
         if ($in['account_id'] && !$db->scalar('SELECT 1 FROM accounts WHERE id = :id AND is_active = 1', ['id' => $in['account_id']])) {
             throw HttpException::validation(['account_id' => ['Unknown or inactive account']]);
         }
-        $id = $db->insert('office_income', [
-            'amount'        => number_format((float)$in['amount'], 2, '.', ''),
-            'received_date' => $in['received_date'],
-            'category'      => $in['category'],
-            'account_id'    => $in['account_id'],
-            'giver_details' => $in['giver_details'] ?? null,
-            'remarks'       => $in['remarks'] ?? null,
-            'status'        => 'active',
-            'created_by'    => $user['id'],
-            'created_at'    => BusinessDate::utcNow(),
-            'updated_at'    => BusinessDate::utcNow(),
-        ]);
-        Audit::log('income.create', 'income', 'office_income', $id, null, $in, null,
-            ['id' => $user['id'], 'role_code' => $user['role_code']]);
-        Response::created($db->fetch('SELECT * FROM office_income WHERE id = :id', ['id' => $id]), 'Income recorded');
+        $amount = number_format((float)$in['amount'], 2, '.', '');
+        $row = $db->transaction(function ($db) use ($user, $in, $amount) {
+            $id = $db->insert('office_income', [
+                'amount'        => $amount,
+                'received_date' => $in['received_date'],
+                'category'      => $in['category'],
+                'account_id'    => $in['account_id'],
+                'giver_details' => $in['giver_details'] ?? null,
+                'remarks'       => $in['remarks'] ?? null,
+                'status'        => 'active',
+                'created_by'    => $user['id'],
+                'created_at'    => BusinessDate::utcNow(),
+                'updated_at'    => BusinessDate::utcNow(),
+            ]);
+
+            TransactionService::record([
+                'txn_date'       => $in['received_date'],
+                'txn_type'       => 'income',
+                'direction'      => 'credit',
+                'amount'         => $amount,
+                'account_id'     => $in['account_id'],
+                'reference_type' => 'office_income',
+                'reference_id'   => $id,
+                'remarks'        => $in['remarks'] ?? null,
+                'created_by'     => $user['id'],
+            ]);
+
+            Audit::log('income.create', 'income', 'office_income', $id, null, $in, null,
+                ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return $db->fetch('SELECT * FROM office_income WHERE id = :id', ['id' => $id]);
+        });
+        Response::created($row, 'Income recorded');
     }
 
     public function update(Request $req, array $args): void
@@ -165,10 +184,27 @@ class IncomeController
             $fields['amount'] = number_format((float)$fields['amount'], 2, '.', '');
         }
         $fields['updated_at'] = BusinessDate::utcNow();
-        $db->update('office_income', $fields, 'id = :id', ['id' => $id]);
-        Audit::log('income.update', 'income', 'office_income', $id, array_intersect_key($before, $fields), $fields, null,
-            ['id' => $user['id'], 'role_code' => $user['role_code']]);
-        Response::ok($db->fetch('SELECT * FROM office_income WHERE id = :id', ['id' => $id]), 'Income updated');
+        $row = $db->transaction(function ($db) use ($user, $id, $before, $fields) {
+            $db->update('office_income', $fields, 'id = :id', ['id' => $id]);
+
+            TransactionService::record([
+                'txn_date'       => $fields['received_date'] ?? $before['received_date'],
+                'txn_type'       => 'income',
+                'direction'      => 'credit',
+                'amount'         => $fields['amount'] ?? $before['amount'],
+                'account_id'     => array_key_exists('account_id', $fields) ? $fields['account_id'] : $before['account_id'],
+                'reference_type' => 'office_income',
+                'reference_id'   => $id,
+                'remarks'        => $fields['remarks'] ?? $before['remarks'],
+                'created_by'     => $before['created_by'],
+            ]);
+
+            Audit::log('income.update', 'income', 'office_income', $id, array_intersect_key($before, $fields), $fields, null,
+                ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return $db->fetch('SELECT * FROM office_income WHERE id = :id', ['id' => $id]);
+        });
+        Response::ok($row, 'Income updated');
     }
 
     public function cancel(Request $req, array $args): void
@@ -180,12 +216,17 @@ class IncomeController
         if (!$row) {
             throw HttpException::notFound('Income entry not found');
         }
-        $db->update('office_income', [
-            'status' => 'cancelled', 'cancelled_by' => $user['id'], 'cancelled_at' => BusinessDate::utcNow(),
-            'updated_at' => BusinessDate::utcNow(),
-        ], 'id = :id', ['id' => $id]);
-        Audit::log('income.cancel', 'income', 'office_income', $id, ['status' => $row['status']], ['status' => 'cancelled'],
-            $req->input('reason'), ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        $db->transaction(function ($db) use ($user, $id, $row, $req) {
+            $db->update('office_income', [
+                'status' => 'cancelled', 'cancelled_by' => $user['id'], 'cancelled_at' => BusinessDate::utcNow(),
+                'updated_at' => BusinessDate::utcNow(),
+            ], 'id = :id', ['id' => $id]);
+
+            TransactionService::cancelFor('office_income', $id, $user['id']);
+
+            Audit::log('income.cancel', 'income', 'office_income', $id, ['status' => $row['status']], ['status' => 'cancelled'],
+                $req->input('reason'), ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        });
         Response::ok(null, 'Income entry cancelled');
     }
 
@@ -194,13 +235,21 @@ class IncomeController
         $user = Guard::authorize($req, 'income.delete');
         $db = Database::instance();
         $id = (int)$args['id'];
-        if (!$db->scalar('SELECT 1 FROM office_income WHERE id = :id AND deleted_at IS NULL', ['id' => $id])) {
+        $row = $db->fetch('SELECT * FROM office_income WHERE id = :id AND deleted_at IS NULL', ['id' => $id]);
+        if (!$row) {
             throw HttpException::notFound('Income entry not found');
         }
-        $db->update('office_income', ['deleted_at' => BusinessDate::utcNow(), 'updated_at' => BusinessDate::utcNow()],
-            'id = :id', ['id' => $id]);
-        Audit::log('income.delete', 'income', 'office_income', $id, null, null, $req->input('reason'),
-            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        $db->transaction(function ($db) use ($user, $id, $row, $req) {
+            $db->update('office_income', ['deleted_at' => BusinessDate::utcNow(), 'updated_at' => BusinessDate::utcNow()],
+                'id = :id', ['id' => $id]);
+
+            if ($row['status'] === 'active') {
+                TransactionService::cancelFor('office_income', $id, $user['id']);
+            }
+
+            Audit::log('income.delete', 'income', 'office_income', $id, null, null, $req->input('reason'),
+                ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        });
         Response::ok(null, 'Income entry removed');
     }
 

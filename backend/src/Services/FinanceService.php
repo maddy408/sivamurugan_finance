@@ -36,7 +36,13 @@ final class FinanceService
                     COALESCE((SELECT SUM(oi.amount) FROM office_income oi
                               WHERE oi.account_id = a.id AND oi.status = 'active' AND oi.deleted_at IS NULL), 0) AS income,
                     COALESCE((SELECT SUM(c.total_amount) FROM collections c
-                              WHERE c.account_id = a.id AND c.status = 'posted' AND c.deleted_at IS NULL), 0) AS collections,
+                              WHERE c.account_id = a.id AND c.cash_account_id IS NULL
+                                AND c.status = 'posted' AND c.deleted_at IS NULL), 0)
+                  + COALESCE((SELECT SUM(c.cash_amount + c.fine_amount) FROM collections c
+                              WHERE c.cash_account_id = a.id AND c.status = 'posted' AND c.deleted_at IS NULL), 0)
+                  + COALESCE((SELECT SUM(c.upi_amount) FROM collections c
+                              WHERE c.upi_account_id = a.id AND c.status = 'posted' AND c.deleted_at IS NULL), 0)
+                    AS collections,
                     COALESCE((SELECT SUM(e.amount) FROM expenses e
                               WHERE e.account_id = a.id AND e.status = 'active' AND e.deleted_at IS NULL), 0) AS expenses,
                     COALESCE((SELECT SUM(d.amount) FROM distributions d

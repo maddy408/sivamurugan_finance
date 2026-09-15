@@ -124,13 +124,16 @@ class CollectionController
         $user = Guard::authorize($req, ['collection.view', 'reports.view']);
         $db = Database::instance();
         $col = $db->fetch(
-            "SELECT col.*, pm.name AS payment_mode, a.name AS account_name,
+            "SELECT col.*, pm.name AS payment_mode, pm.code AS payment_mode_code, a.name AS account_name,
+                    ca.name AS cash_account_name, ua.name AS upi_account_name,
                     cu.name AS customer_name, cu.customer_code, cu.mobile,
                     l.code AS chit_code, l.installment_amount, l.principal_amount,
                     ub.name AS collected_by_name
              FROM collections col
              JOIN payment_modes pm ON pm.id = col.payment_mode_id
              LEFT JOIN accounts a ON a.id = col.account_id
+             LEFT JOIN accounts ca ON ca.id = col.cash_account_id
+             LEFT JOIN accounts ua ON ua.id = col.upi_account_id
              JOIN customers cu ON cu.id = col.customer_id
              JOIN loans_or_chits l ON l.id = col.loan_id
              LEFT JOIN users ub ON ub.id = col.collected_by
@@ -157,10 +160,14 @@ class CollectionController
         $in = Validator::make($req->body, [
             'installment_id'  => 'nullable|int',
             'collection_date' => 'required|date',
-            'amount'          => 'required|numeric|min:0',   // ACTUAL amount paid
+            'amount'          => 'required|numeric|min:0',   // ACTUAL amount paid (split: cash+upi, recomputed server-side)
             'fine_amount'     => 'nullable|numeric|min:0',    // manual fine
             'payment_mode_id' => 'required|int',
             'account_id'      => 'nullable|int',
+            'cash_amount'     => 'nullable|numeric|min:0',    // split payment: Cash portion
+            'upi_amount'      => 'nullable|numeric|min:0',    // split payment: UPI portion
+            'cash_account_id' => 'nullable|int',
+            'upi_account_id'  => 'nullable|int',
             'reference_no'    => 'nullable|string|max:64',
             'remarks'         => 'nullable|string|max:500',
         ])->validated();

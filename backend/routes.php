@@ -22,6 +22,7 @@ use App\Controllers\MetaController;
 use App\Controllers\PendingController;
 use App\Controllers\ReportController;
 use App\Controllers\SettingsController;
+use App\Controllers\TransactionController;
 use App\Core\Request;
 use App\Core\Response;
 
@@ -40,6 +41,7 @@ $dashboard  = new DashboardController();
 $exports    = new ExportController();
 $pending    = new PendingController();
 $distributions = new DistributionController();
+$transactions  = new TransactionController();
 
 /* ---- health ---- */
 $router->get('/api/health', fn(Request $r) => Response::ok(['status' => 'ok', 'time' => date('c')]));
@@ -48,6 +50,7 @@ $router->get('/api/health', fn(Request $r) => Response::ok(['status' => 'ok', 't
 $router->post('/api/auth/login',  [$auth, 'login']);
 $router->post('/api/auth/logout', [$auth, 'logout']);
 $router->get('/api/auth/me',      [$auth, 'me']);
+$router->post('/api/auth/change-password', [$auth, 'changePassword']);
 
 /* ---- dashboard ---- */
 $router->get('/api/dashboard', [$dashboard, 'index']);
@@ -129,6 +132,10 @@ $router->post('/api/income',             [$income, 'store']);
 $router->put('/api/income/{id}',         [$income, 'update']);
 $router->post('/api/income/{id}/cancel', [$income, 'cancel']);
 $router->delete('/api/income/{id}',      [$income, 'destroy']);
+
+/* ---- transactions (financial ledger, read-only) ---- */
+$router->get('/api/transactions',        [$transactions, 'index']);
+$router->get('/api/transactions/export', [$transactions, 'export']);
 
 /* ---- reports ---- */
 $router->get('/api/reports',                   [$reports, 'catalogue']);
