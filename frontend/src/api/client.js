@@ -1,4 +1,16 @@
-const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost/siva-murugan-chit-fund/backend/public').replace(/\/$/, '');
+const getApiBaseUrl = (appPath) => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  let url = envUrl || ('http://' + currentHost + '/' + appPath + '/backend/public');
+
+  if (typeof window !== 'undefined' && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+    url = url.replace(/:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/, '://' + currentHost + '$2');
+  }
+
+  return url.replace(/\/$/, '');
+};
+
+const BASE = getApiBaseUrl('siva-murugan-chit-fund');
 
 // App-scoped storage key so this app never shares a session with any other app
 // served from the same origin (e.g. the reference chit-fund-system on localhost).

@@ -21,7 +21,9 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   const modes = meta?.payment_modes || [];
   const accounts = meta?.accounts || [];
   const cashMode = modes.find((m) => String(m.code).toUpperCase() === 'CASH') || modes[0];
+  const splitMode = modes.find((m) => String(m.code).toUpperCase() === 'SPLIT');
   const officeCash = accounts.find((a) => a.type === 'cash') || accounts[0];
+  const bankAccount = accounts.find((a) => a.type === 'bank') || accounts[0];
 
   const idSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
   const selectedDues = useMemo(
@@ -31,21 +33,32 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   const selected = idSet;
 
   const [collectionDate, setCollectionDate] = useState(today());
-  const [paid, setPaid] = useState('');          // ACTUAL amount paid (blank = use installment total)
+  const [paid, setPaid] = useState('');          // ACTUAL amount paid (blank = use installment total), non-split only
   const [fine, setFine] = useState('0');
   const [modeId, setModeId] = useState(cashMode?.id || '');
   const [accountId, setAccountId] = useState(officeCash?.id ? String(officeCash.id) : '');
+  const [cashAmount, setCashAmount] = useState('');
+  const [upiAmount, setUpiAmount] = useState('');
+  const [cashAccountId, setCashAccountId] = useState(officeCash?.id ? String(officeCash.id) : '');
+  const [upiAccountId, setUpiAccountId] = useState(bankAccount?.id ? String(bankAccount.id) : '');
   const [ref, setRef] = useState('');
   const [remarks, setRemarks] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const isSplit = splitMode && String(modeId) === String(splitMode.id);
+
   const installmentTotal = selectedDues.reduce((s, d) => s + Number(d.balance_amount || 0), 0);
 
-  const paidNum = paid === '' ? installmentTotal : Number(paid || 0);
+  const cashNum = Number(cashAmount || 0);
+  const upiNum = Number(upiAmount || 0);
+  const paidNum = isSplit ? cashNum + upiNum : (paid === '' ? installmentTotal : Number(paid || 0));
   const fineNum = Number(fine || 0);
   const grandTotal = paidNum + fineNum;
+  const remaining = installmentTotal - paidNum;
+
+  const splitInvalid = isSplit && (cashNum < 0 || upiNum < 0 || (cashNum === 0 && upiNum === 0));
 
   const idemKey = useMemo(
     () => `col-${loan?.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -61,7 +74,11 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         amount: paidNum,
         fine_amount: fineNum,
         payment_mode_id: Number(modeId),
-        account_id: accountId ? Number(accountId) : undefined,
+        account_id: isSplit ? undefined : (accountId ? Number(accountId) : undefined),
+        cash_amount: isSplit ? cashNum : undefined,
+        upi_amount: isSplit ? upiNum : undefined,
+        cash_account_id: isSplit && cashAccountId ? Number(cashAccountId) : undefined,
+        upi_account_id: isSplit && upiAccountId ? Number(upiAccountId) : undefined,
         reference_no: ref || undefined,
         remarks: remarks || undefined,
         idempotency_key: idemKey,
@@ -78,7 +95,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
     }
   };
 
-  const canProceed = selected.size > 0 && modeId && grandTotal > 0;
+  const canProceed = selected.size > 0 && modeId && grandTotal > 0 && !splitInvalid;
 
   // ---------- Step 2: confirmation ----------
   if (confirming) {
@@ -95,6 +112,12 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
           <dd>{selectedDues.map((d) => <span key={d.id} className="badge PENDING" style={{ marginRight: 6 }}>Due #{d.installment_no}</span>)}</dd>
           <dt>Installment Total</dt><dd style={{ fontWeight: 700 }}>{money(installmentTotal)}</dd>
           <dt>Actual Paid</dt><dd style={{ fontWeight: 700 }}>{money(paidNum)}</dd>
+          {isSplit && (
+            <>
+              <dt>&nbsp;&nbsp;· Cash</dt><dd>{money(cashNum)}</dd>
+              <dt>&nbsp;&nbsp;· UPI</dt><dd>{money(upiNum)}</dd>
+            </>
+          )}
           <dt>Fine</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
           <dt>Total</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
           <dt>Payment Method</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
@@ -145,7 +168,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         {errors.installment_ids && <span className="err">{errors.installment_ids}</span>}
       </div>
 
-      <div className="form-grid">
+      <div className="form-grid" style={{ marginBottom: 12 }}>
         <Field label="Collection date" error={errors.collection_date}>
           <input type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
         </Field>
@@ -154,45 +177,83 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
             {modes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </Field>
-        <Field label="Actual Amount Paid" error={errors.amount}>
-          <input type="number" min="0" step="0.01" value={paid}
-            onChange={(e) => setPaid(e.target.value)}
-            placeholder={money(installmentTotal)} style={{ fontWeight: 700 }} />
-        </Field>
+
+        {!isSplit && (
+          <>
+            <Field label="Cash / Bank Account">
+              <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                <option value="">(auto by payment method)</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+              </select>
+            </Field>
+            <Field label="Reference / Receipt No.">
+              <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
+            </Field>
+            <Field label="EMI Amount (Paid)" error={errors.amount}>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={String(installmentTotal)}
+                value={paid}
+                onChange={(e) => setPaid(e.target.value)}
+              />
+            </Field>
+          </>
+        )}
+
         <Field label="Fine Amount" error={errors.fine_amount}>
-          <input type="number" min="0" step="0.01" value={fine} onChange={(e) => setFine(e.target.value)} placeholder="0" style={{ fontWeight: 700 }} />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={fine}
+            onChange={(e) => setFine(e.target.value)}
+            placeholder="0"
+          />
         </Field>
-        <Field label="Cash / Bank Account">
-          <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="">(auto by payment method)</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
-          </select>
-        </Field>
-        <Field label="Reference / Receipt No.">
-          <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
-        </Field>
+
+        {isSplit && (
+          <Field label="Reference / Receipt No.">
+            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
+          </Field>
+        )}
       </div>
 
-      <div className="card" style={{ margin: '8px 0 12px', background: '#f8fafc', borderColor: '#cbd5e1' }}>
-        <div className="card-body" style={{ padding: '12px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span className="muted">Installment Total ({selected.size} due{selected.size === 1 ? '' : 's'})</span>
-            <span style={{ fontWeight: 700 }}>{money(installmentTotal)}</span>
+      {isSplit && (
+        <div className="split-payment-box" style={{ background: '#f8fafc', border: '1.5px solid var(--line)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div className="split-payment-title" style={{ fontWeight: 800, fontSize: 13, color: 'var(--blue-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            💳 SPLIT COLLECTION (CASH + UPI)
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span className="muted">Actual Amount Paid</span>
-            <span style={{ fontWeight: 700 }}>{money(paidNum)}</span>
+          <div className="split-payment-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="CASH PORTION (₹)" error={errors.cash_amount}>
+              <input type="number" min="0" step="0.01" value={cashAmount}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCashAmount(val);
+                  if (installmentTotal > 0 && val !== '') {
+                    const c = Number(val || 0);
+                    const rem = Math.max(0, installmentTotal - c);
+                    setUpiAmount(rem > 0 ? String(rem) : '0');
+                  }
+                }} placeholder="e.g. 8000" />
+            </Field>
+            <Field label="UPI PORTION (₹)" error={errors.upi_amount}>
+              <input type="number" min="0" step="0.01" value={upiAmount}
+                onChange={(e) => setUpiAmount(e.target.value)} placeholder="e.g. 4000" />
+            </Field>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span className="muted">Fine</span>
-            <span style={{ fontWeight: 700, color: '#f59e0b' }}>{money(fineNum)}</span>
+          <div className="split-payment-summary" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, padding: '8px 12px', background: '#eff4fc', borderRadius: 8, fontSize: 12 }}>
+            <div><span className="muted">Total Split:</span> <b style={{ color: 'var(--blue-primary)', fontSize: 14, marginLeft: 4 }}>{money(cashNum + upiNum)}</b></div>
+            <div><span className="muted">Selected Due Total:</span> <b style={{ marginLeft: 4 }}>{money(installmentTotal)}</b></div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #e2e8f0', paddingTop: 8 }}>
-            <span style={{ fontWeight: 800 }}>Total Collection</span>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</span>
-          </div>
+          {splitInvalid && (
+            <p className="err" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+              Enter a Cash and/or UPI portion greater than 0.
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
       <Field label="Remarks" error={errors.remarks}>
         <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional collection notes…" />

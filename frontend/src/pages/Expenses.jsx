@@ -98,7 +98,23 @@ export default function Expenses({ embedded }) {
 
   return (
     <>
-      {!embedded && <h1 style={{ marginTop: 0, fontSize: 20 }}>Expenses</h1>}
+      {!embedded && (
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h1 className="page-title" style={{ margin: 0, fontSize: 20 }}>Expenses</h1>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {can('expenses.export') && (
+              <button className="btn secondary" onClick={() => api.download('/api/reports/templates/expense').catch((e) => toast.error(e.message))}>
+                📄 Sample Template
+              </button>
+            )}
+            {can('expenses.create') && (
+              <button className="btn" onClick={() => { setForm(blank); setErrors({}); setModal({ mode: 'create' }); }}>
+                + New expense
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="stat-grid">
         <div className="stat rose"><div className="label">Total (filtered)</div><div className="value">{money(s.total_expenses)}</div></div>
         <div className="stat emerald"><div className="label">From office cash</div><div className="value">{money(s.cash_expenses)}</div></div>

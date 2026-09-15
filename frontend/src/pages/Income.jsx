@@ -92,7 +92,23 @@ export default function Income({ embedded }) {
 
   return (
     <>
-      {!embedded && <h1 style={{ marginTop: 0, fontSize: 20 }}>Office Income</h1>}
+      {!embedded && (
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h1 className="page-title" style={{ margin: 0, fontSize: 20 }}>Office Income</h1>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {can('income.export') && (
+              <button className="btn secondary" onClick={() => api.download('/api/reports/templates/income').catch((e) => toast.error(e.message))}>
+                📄 Sample Template
+              </button>
+            )}
+            {can('income.create') && (
+              <button className="btn" onClick={() => { setForm(blank); setErrors({}); setModal({ mode: 'create' }); }}>
+                + New income
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="stat-grid">
         <div className="stat indigo"><div className="label">Total (filtered)</div><div className="value">{money(s.total_income)}</div></div>
         <div className="stat emerald"><div className="label">To office cash</div><div className="value">{money(s.cash_income)}</div></div>

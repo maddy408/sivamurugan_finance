@@ -147,8 +147,8 @@ export default function LoanNew() {
         <h1 style={{ margin: 0, fontSize: 18 }}>New chit</h1>
       </div>
 
-      <div className="card">
-        <div className="card-head"><h2>Details</h2></div>
+      <div className="card chit-form-card">
+        <div className="card-head"><h2>📋 Chit Details</h2></div>
         <div className="card-body">
           <div className="form-grid">
             <Field label="Customer *" error={errors.customer_id}>
@@ -250,7 +250,7 @@ export default function LoanNew() {
       </div>
 
       {/* Optional: distribute the chit immediately on creation */}
-      <div className="card" style={{ marginTop: 16 }}>
+      <div className="card chit-form-card" style={{ marginTop: 16 }}>
         <div className="card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>💸 Distribute now <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>(optional)</span></h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>

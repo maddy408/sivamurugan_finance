@@ -56,7 +56,7 @@ export default function EmployeePermissions() {
         overrides: Object.entries(overrides).map(([code, effect]) => ({ code, effect })),
         loan_ids: loanSel,
       });
-      toast.success('Saved. The employee must sign in again.');
+      toast.success('Saved. The user must sign in again.');
       load();
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
@@ -76,8 +76,8 @@ export default function EmployeePermissions() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/employees" className="btn sm secondary">← Employees</Link>
-        <h1 style={{ margin: 0, fontSize: 18 }}>Employee access &amp; permissions</h1>
+        <Link to="/employees" className="btn sm secondary">← Users</Link>
+        <h1 style={{ margin: 0, fontSize: 18 }}>User access &amp; permissions</h1>
         <div style={{ flex: 1 }} />
         {editable && <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>}
       </div>

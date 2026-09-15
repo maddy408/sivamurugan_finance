@@ -11,6 +11,24 @@ export default function Pending({ hideTitle = false }) {
   const toast = useToast();
   const list = useList('/api/pending-dues', { initialPerPage: 25 });
   const [activeTab, setActiveTab] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [dateError, setDateError] = useState('');
+
+  const applyDateFilter = () => {
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setDateError('From Date cannot be later than To Date');
+      return;
+    }
+    setDateError('');
+    list.setFilter('date_from', dateFrom);
+    list.setFilter('date_to', dateTo);
+  };
+  const clearDateFilter = () => {
+    setDateFrom(''); setDateTo(''); setDateError('');
+    list.setFilter('date_from', '');
+    list.setFilter('date_to', '');
+  };
   const s = list.pagination?.summary || {};
   const rawCustomers = list.rows || [];
 
@@ -24,7 +42,7 @@ export default function Pending({ hideTitle = false }) {
     <>
       {!hideTitle && (
         <div className="page-header">
-          <h1 className="page-title">⏳ Pending Dues & Outstanding</h1>
+          <h1 className="page-title"> Pending Dues & Outstanding</h1>
         </div>
       )}
 
@@ -34,13 +52,13 @@ export default function Pending({ hideTitle = false }) {
           className={`pending-sub-nav-item ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => setActiveTab('all')}
         >
-          📋 All Pending Dues ({rawCustomers.length})
+           All Pending Dues ({rawCustomers.length})
         </button>
         <button
           className={`pending-sub-nav-item ${activeTab === 'overdue' ? 'active' : ''}`}
           onClick={() => setActiveTab('overdue')}
         >
-          🚨 Overdue Only ({totalOverdueCustomers})
+           Overdue Only ({totalOverdueCustomers})
         </button>
         {!hideTitle && (
           <>
@@ -71,6 +89,20 @@ export default function Pending({ hideTitle = false }) {
         {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
         <div style={{ flex: 1 }} />
         <button className="btn secondary" onClick={() => api.download('/api/pending-dues/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>
+      </div>
+
+      <div className="date-range-filter">
+        <label className="mini">From Date
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </label>
+        <label className="mini">To Date
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </label>
+        <button className="btn sm" onClick={applyDateFilter}>Apply Filter</button>
+        {(list.filters.date_from || list.filters.date_to) && (
+          <button className="btn sm secondary" onClick={clearDateFilter}>Clear</button>
+        )}
+        {dateError && <span className="err">{dateError}</span>}
       </div>
 
       {list.loading && <Spinner />}
@@ -122,7 +154,7 @@ export default function Pending({ hideTitle = false }) {
                     </td>
                     <td className="right nowrap">
                       {can('collection.create')
-                        ? <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}>⚡ Collect</Link>
+                        ? <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}> Collect</Link>
                         : <Link className="btn sm secondary" to={`/collection/chit/${ch.chit_id}`}>View</Link>}
                     </td>
                   </tr>

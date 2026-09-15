@@ -8,7 +8,7 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
 const emptyForm = {
-  name: '', mobile: '', alt_mobile: '', email: '', gender: '', dob: '',
+  name: '', mobile: '', aadhar_number: '', alt_mobile: '', email: '', gender: '', dob: '',
   address_line1: '', nominee_name: '', nominee_relation: '', nominee_mobile: '', notes: '',
 };
 
@@ -29,8 +29,6 @@ export default function Customers() {
   const [editBusy, setEditBusy] = useState(false);
   const [del, setDel] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
@@ -73,21 +71,6 @@ export default function Customers() {
     }
   };
 
-  const handleBulkDelete = async () => {
-    setBusy(true);
-    try {
-      await Promise.all(selectedIds.map((id) => api.del(`/api/customers/${id}`, { reason: 'bulk delete' })));
-      toast.success(`Successfully deleted ${selectedIds.length} customer(s)`);
-      setSelectedIds([]);
-      setBulkConfirm(false);
-      list.reload();
-    } catch (e) {
-      toast.error(e.message || 'Error deleting selected customers');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const doDelete = async () => {
     setBusy(true);
     try {
@@ -98,9 +81,10 @@ export default function Customers() {
   };
 
   const columns = [
-    { key: 'customer_code', header: 'Code', sortable: true },
-    { key: 'name', header: 'Name', sortable: true, render: (r) => <Link to={`/customers/${r.id}`}>{r.name}</Link> },
-    { key: 'mobile', header: 'Mobile' },
+    { key: '_sno', header: 'S.No', render: (r, i) => (list.page - 1) * list.perPage + i + 1 },
+    { key: 'name', header: 'Customer Name', sortable: true, render: (r) => <Link to={`/customers/${r.id}`}>{r.name}</Link> },
+    { key: 'mobile', header: 'Mobile Number', render: (r) => r.mobile || '—' },
+    { key: 'customer_code', header: 'Customer Code', sortable: true },
     { key: 'address_line1', header: 'Address', render: (r) => r.address_line1 || '—' },
     { key: 'active_loans', header: 'Active loans', align: 'right' },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
@@ -128,7 +112,7 @@ export default function Customers() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">👥 Customers Directory</h1>
+        <h1 className="page-title"> Customers Directory</h1>
       </div>
 
       {/* Main 2-column layout: LEFT = permanent Register form, RIGHT = directory */}
@@ -136,24 +120,47 @@ export default function Customers() {
         {can('customers.create') && (
           <div className="card form-rail">
             <div className="card-head">
-              <h2>✨ Register New Customer</h2>
+              <h2>Register New Customer</h2>
             </div>
             <div className="card-body">
               <form onSubmit={handleCreateCustomer}>
-                <Field label="Full Name *" error={createErrors.name}>
-                  <input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder="e.g. Ramesh Kumar" />
-                </Field>
-                <Field label="Mobile *" error={createErrors.mobile}>
-                  <input value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder="10-digit phone" />
-                </Field>
-                <Field label="Address" error={createErrors.address_line1}>
-                  <textarea rows={2} value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
-                </Field>
-                <Field label="Nominee Name" error={createErrors.nominee_name}>
-                  <input value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} />
-                </Field>
-                <button type="submit" className="btn" style={{ width: '100%', marginTop: 6 }} disabled={createBusy}>
-                  {createBusy ? 'Saving…' : '✨ Register Customer'}
+                {/* Full Name in its own single row */}
+                <div className="floating-group">
+                  <input id="c-name" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder=" " />
+                  <label htmlFor="c-name">Full Name *</label>
+                  {createErrors.name && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.name}</span>}
+                </div>
+
+                {/* Mobile in its own single row */}
+                <div className="floating-group" style={{ marginTop: 8 }}>
+                  <input id="c-mobile" value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder=" " />
+                  <label htmlFor="c-mobile">Mobile *</label>
+                  {createErrors.mobile && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.mobile}</span>}
+                </div>
+
+                {/* Aadhar Number in its own single row */}
+                <div className="floating-group" style={{ marginTop: 8 }}>
+                  <input id="c-aadhar" value={createForm.aadhar_number} onChange={(e) => setCreateForm({ ...createForm, aadhar_number: e.target.value })} placeholder=" " />
+                  <label htmlFor="c-aadhar">Aadhar Number (Optional)</label>
+                  {createErrors.aadhar_number && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.aadhar_number}</span>}
+                </div>
+
+                {/* Nominee Name in its own single row */}
+                <div className="floating-group" style={{ marginTop: 8 }}>
+                  <input id="c-nominee" value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} placeholder=" " />
+                  <label htmlFor="c-nominee">Nominee Name</label>
+                  {createErrors.nominee_name && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.nominee_name}</span>}
+                </div>
+
+                {/* Address in its own single row */}
+                <div className="floating-group" style={{ marginTop: 8 }}>
+                  <input id="c-address" value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder=" " />
+                  <label htmlFor="c-address">Address</label>
+                  {createErrors.address_line1 && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.address_line1}</span>}
+                </div>
+
+                <button type="submit" className="btn" style={{ width: '100%', marginTop: 10 }} disabled={createBusy}>
+                  {createBusy ? 'Saving…' : ' Register Customer'}
                 </button>
               </form>
             </div>
@@ -191,16 +198,6 @@ export default function Customers() {
             onPage={list.setPage}
             onPerPage={list.setPerPage}
             emptyTitle="No customers match your filters"
-            selectedIds={selectedIds}
-            onSelectChange={setSelectedIds}
-            selectable={can('customers.delete')}
-            bulkActions={
-              can('customers.delete') && (
-                <button className="btn sm danger" onClick={() => setBulkConfirm(true)}>
-                  <IconDelete /> Bulk Delete ({selectedIds.length})
-                </button>
-              )
-            }
           />
         </div>
       </div>
@@ -224,6 +221,9 @@ export default function Customers() {
             </Field>
             <Field label="Mobile *" error={editErrors.mobile}>
               <input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
+            </Field>
+            <Field label="Aadhar number (optional)" error={editErrors.aadhar_number}>
+              <input value={editForm.aadhar_number || ''} onChange={(e) => setEditForm({ ...editForm, aadhar_number: e.target.value })} placeholder="12-digit Aadhar" />
             </Field>
             <Field label="Alternate mobile" error={editErrors.alt_mobile}>
               <input value={editForm.alt_mobile} onChange={(e) => setEditForm({ ...editForm, alt_mobile: e.target.value })} />
@@ -267,12 +267,6 @@ export default function Customers() {
         <Confirm title={`Delete ${del.name}?`} danger busy={busy}
           message="The customer record will be removed."
           confirmLabel="Delete" onConfirm={doDelete} onClose={() => setDel(null)} />
-      )}
-
-      {bulkConfirm && (
-        <Confirm title={`Delete ${selectedIds.length} selected customers?`} danger busy={busy}
-          message="All selected customer records will be removed from the system."
-          confirmLabel={`Delete (${selectedIds.length})`} onConfirm={handleBulkDelete} onClose={() => setBulkConfirm(false)} />
       )}
     </>
   );

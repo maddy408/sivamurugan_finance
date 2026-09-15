@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { money, fmtDate } from '../api/client';
+import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
+import { useToast } from '../state/ToastContext';
 
 export default function Collection() {
   const nav = useNavigate();
+  const toast = useToast();
   const list = useList('/api/collection/workload', { initialPerPage: 25 });
 
   const loans = list.extra?.loans || [];
@@ -17,8 +19,14 @@ export default function Collection() {
       </div>
 
       <div className="toolbar">
-        <input type="search" placeholder="Search customer, code, mobile, chit code…"
-          value={list.q} onChange={(e) => list.setQ(e.target.value)} />
+        <input type="search" placeholder="Search customer, code, mobile, chit code… (Press Enter to open)"
+          value={list.q} onChange={(e) => list.setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && loans.length > 0) {
+              e.preventDefault();
+              nav(`/collection/chit/${loans[0].id}`);
+            }
+          }} />
         <select value={list.filters.only_due || ''} onChange={(e) => list.setFilter('only_due', e.target.value)}>
           <option value="">All chits</option>
           <option value="1">Only with outstanding</option>
@@ -32,6 +40,10 @@ export default function Collection() {
           <option value="MONTHLY_INTERVAL">Monthly interval</option>
         </select>
         {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        <div style={{ flex: 1 }} />
+        <button className="btn secondary" onClick={() => api.download('/api/reports/templates/collection').catch((e) => toast.error(e.message))}>
+          📄 Sample Template
+        </button>
       </div>
 
       {list.loading && <Spinner />}
@@ -81,7 +93,7 @@ export default function Collection() {
                     </td>
                     <td data-label="Status"><span className={`badge ${isDue ? 'OVERDUE' : 'COMPLETED'}`}>{isDue ? 'DUE' : 'CLEAR'}</span></td>
                     <td className="right" data-label="">
-                      <Link className="btn sm" to={`/collection/chit/${loan.id}`} onClick={(e) => e.stopPropagation()}>⚡ Collect</Link>
+                      <Link className="btn sm" to={`/collection/chit/${loan.id}`} onClick={(e) => e.stopPropagation()}> Collect</Link>
                     </td>
                   </tr>
                 );

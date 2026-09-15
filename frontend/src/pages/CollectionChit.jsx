@@ -4,6 +4,7 @@ import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm } from '../components/ui';
 import CollectModal from '../components/CollectModal';
 import DistributeModal from '../components/DistributeModal';
+import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
@@ -24,6 +25,7 @@ export default function CollectionChit() {
   const [distribute, setDistribute] = useState(false);
   const [act, setAct] = useState(null);              // { type:'cancel'|'delete', id, reason }
   const [busy, setBusy] = useState(false);
+  const [receipt, setReceipt] = useState(null);       // collection row being printed, or null
 
   const load = () => {
     setError(null);
@@ -66,6 +68,7 @@ export default function CollectionChit() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Collect — {loan.code}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="btn sm secondary" onClick={() => window.print()}>🖨️ Print Statement</button>
           <Badge value={loan.status} />
         </div>
       </div>
@@ -77,9 +80,7 @@ export default function CollectionChit() {
         {/* LEFT COLUMN: Customer + Chit + Distribution in ONE combined card,
             so every detail is visible at once with no internal scrolling. */}
         <div className="card">
-          <div className="card-head">
-            <h2>👤 {c.name}</h2>
-          </div>
+         
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Customer */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -91,11 +92,7 @@ export default function CollectionChit() {
                 <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{c.customer_code}</div>
               </div>
             </div>
-            <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
-              <dt>Phone</dt><dd>📞 {c.mobile || '—'}</dd>
-              <dt>Location</dt><dd>{loan.location?.name || '—'}</dd>
-              <dt>Collector</dt><dd><span className="badge PENDING">{loan.assignment?.employee_name || 'Unassigned'}</span></dd>
-            </dl>
+          
 
             <div className="section-title" style={{ margin: '2px 0 0' }}>📄 Chit</div>
             <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
@@ -109,8 +106,13 @@ export default function CollectionChit() {
 
             {can('distributions.view') && (
               <>
-                <div className="section-title" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="section-title" style={{ margin: '2px 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>💸 Distribution</span>
+                  {loan.status === 'active' && can('distributions.create') && (
+                    <button className="btn sm" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setDistribute(true)}>
+                      💸 {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit Distribution'}
+                    </button>
+                  )}
                 </div>
                 <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
                   <dt>Status</dt><dd><b>{DIST_STATUS_LABEL[d.status] || 'Not Distributed'}</b></dd>
@@ -121,11 +123,6 @@ export default function CollectionChit() {
                     {money(d.remaining_undistributed ?? loan.principal_amount)}
                   </dd>
                 </dl>
-                {loan.status === 'active' && can('distributions.create') && (
-                  <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => setDistribute(true)}>
-                    💸 {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit / Add Distribution'}
-                  </button>
-                )}
               </>
             )}
           </div>
@@ -178,7 +175,7 @@ export default function CollectionChit() {
                         <td><Badge value={i.status} /></td>
                         <td className="right">
                           {can('collection.create') && payable && (
-                            <button className="btn sm" onClick={() => setCollectIds([i.id])}>⚡ Collect</button>
+                            <button className="btn sm" onClick={() => setCollectIds([i.id])}> Collect</button>
                           )}
                         </td>
                       </tr>
@@ -214,15 +211,40 @@ export default function CollectionChit() {
                         <td style={{ fontWeight: 700 }}>{col.receipt_no}</td>
                         <td>{fmtDate(col.collection_date)}</td>
                         <td><span className="badge PENDING">{col.payment_mode}</span></td>
-                        <td className="right"><b style={{ color: '#10b981', fontSize: 14 }}>{money(col.amount)}</b></td>
+                        <td className="right">
+                          <div style={{ fontWeight: 800, color: '#10b981', fontSize: 14 }}>
+                            {money(col.total_amount || (Number(col.amount) + Number(col.fine_amount || 0)))}
+                          </div>
+                          {Number(col.fine_amount) > 0 && (
+                            <div className="muted" style={{ fontSize: 11 }}>
+                              EMI {money(col.amount)} + Fine {money(col.fine_amount)}
+                            </div>
+                          )}
+                        </td>
                         <td><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
                         <td className="right nowrap">
-                          {col.status === 'posted' && !isRev && (
-                            <>
-                              {can('collection.cancel') && <button className="btn sm secondary" onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>Cancel</button>}{' '}
-                              {can('collection.delete') && <button className="btn sm danger" onClick={() => setAct({ type: 'delete', id: col.id, reason: '' })}>Delete</button>}
-                            </>
-                          )}
+                          <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(col)}>
+                              🖨️
+                            </button>
+                            <button className="btn-icon" title="View / Edit Statement" onClick={() => setReceipt(col)}>
+                              ✏️
+                            </button>
+                            {col.status === 'posted' && !isRev && (
+                              <>
+                                {can('collection.cancel') && (
+                                  <button className="btn-icon warning" title="Cancel Collection" onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>
+                                    🚫
+                                  </button>
+                                )}
+                                {can('collection.delete') && (
+                                  <button className="btn-icon danger" title="Delete Collection" onClick={() => setAct({ type: 'delete', id: col.id, reason: '' })}>
+                                    🗑️
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -246,6 +268,10 @@ export default function CollectionChit() {
         <DistributeModal loan={loan}
           onClose={() => setDistribute(false)}
           onDone={() => { load(); refreshMeta?.(); }} />
+      )}
+
+      {receipt && (
+        <ReceiptModal collection={receipt} loan={loan} customer={c} onClose={() => setReceipt(null)} />
       )}
 
       {act && (

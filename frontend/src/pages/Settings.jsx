@@ -17,8 +17,9 @@ export default function Settings() {
 
   const tabs = [
     'Profile',
+    'Change Password',
     'Organization',
-    ...((can('employees.view') || isAdmin) ? ['Employees'] : []),
+    ...((can('employees.view') || isAdmin) ? ['Users'] : []),
     'Chit codes',
     'Schedule',
     'Fine rules',
@@ -49,14 +50,15 @@ export default function Settings() {
       <div className="sub-tab-bar" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
         {tabs.map((t) => (
           <button key={t} className={`sub-tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'Employees' ? '👨‍💼 Employees' : t}
+            {t === 'Users' ? '👥 Users' : t}
           </button>
         ))}
       </div>
 
       {tab === 'Profile' && <ProfileTab user={user} />}
+      {tab === 'Change Password' && <ChangePasswordTab toast={toast} />}
       {tab === 'Organization' && <OrgTab data={data} busy={busy} save={save} fileRef={fileRef} toast={toast} reload={load} refreshMeta={refreshMeta} />}
-      {tab === 'Employees' && <Employees />}
+      {tab === 'Users' && <Employees />}
       {tab === 'Chit codes' && <ChitCodeTab data={data} busy={busy} save={save} />}
       {tab === 'Schedule' && <ScheduleTab data={data} busy={busy} save={save} />}
       {tab === 'Fine rules' && <FineTab data={data} busy={busy} save={save} />}
@@ -90,6 +92,86 @@ function ProfileTab({ user }) {
           <dt>System Role</dt><dd style={{ textTransform: 'capitalize', fontWeight: 700 }}>{user?.role_name || user?.role}</dd>
           <dt>Active Permissions</dt><dd><span className="badge COMPLETED">{(user?.permissions || []).length} permissions active</span></dd>
         </dl>
+      </div>
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange, autoComplete, error }) {
+  const [show, setShow] = useState(false);
+  return (
+    <Field label={label} error={error}>
+      <div className="input-icon-wrap">
+        <IconLock />
+        <input type={show ? 'text' : 'password'} value={value} onChange={onChange} autoComplete={autoComplete} />
+        <button type="button" className="password-toggle-btn" onClick={() => setShow((s) => !s)} tabIndex={-1}
+          aria-label={show ? 'Hide password' : 'Show password'}>
+          {show ? <IconEyeOff /> : <IconEye />}
+        </button>
+      </div>
+    </Field>
+  );
+}
+
+function IconLock() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+}
+function IconEye() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" /><circle cx="12" cy="12" r="3" /></svg>;
+}
+function IconEyeOff() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-3.06 4.26M6.61 6.61A18.65 18.65 0 0 0 1 12s4 8 11 8a9.16 9.16 0 0 0 5.39-1.61M14.12 14.12a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>;
+}
+
+function ChangePasswordTab({ toast }) {
+  const [f, setF] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [errors, setErrors] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setErrors({});
+    if (!f.current_password || !f.new_password || !f.confirm_password) {
+      setErrors({
+        current_password: !f.current_password ? 'Required' : undefined,
+        new_password: !f.new_password ? 'Required' : undefined,
+        confirm_password: !f.confirm_password ? 'Required' : undefined,
+      });
+      return;
+    }
+    if (f.new_password.length < 8) {
+      setErrors({ new_password: 'New password must be at least 8 characters' });
+      return;
+    }
+    if (f.new_password !== f.confirm_password) {
+      setErrors({ confirm_password: 'New password and confirm password do not match' });
+      return;
+    }
+    if (f.new_password === f.current_password) {
+      setErrors({ new_password: 'New password must be different from the current password' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/api/auth/change-password', f);
+      toast.success('Password changed successfully');
+      setF({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (e) {
+      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, v[0]])));
+      else toast.error(e.message);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="card" style={{ maxWidth: 480 }}>
+      <div className="card-head"><h2>🔒 Change Password</h2></div>
+      <div className="card-body">
+        <PasswordField label="Current Password *" value={f.current_password} autoComplete="current-password" error={errors.current_password}
+          onChange={(e) => setF({ ...f, current_password: e.target.value })} />
+        <PasswordField label="New Password *" value={f.new_password} autoComplete="new-password" error={errors.new_password}
+          onChange={(e) => setF({ ...f, new_password: e.target.value })} />
+        <PasswordField label="Confirm Password *" value={f.confirm_password} autoComplete="new-password" error={errors.confirm_password}
+          onChange={(e) => setF({ ...f, confirm_password: e.target.value })} />
+        <button className="btn" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Change Password'}</button>
       </div>
     </div>
   );

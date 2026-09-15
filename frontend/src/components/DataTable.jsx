@@ -118,7 +118,7 @@ export default function DataTable({
                       data-label={/^(_a|action|actions)$/i.test(c.key) ? '' : (typeof c.header === 'string' ? c.header : '')}
                       style={{ textAlign: c.align || 'left' }}
                     >
-                      {c.render ? c.render(row) : (row[c.key] ?? '—')}
+                      {c.render ? c.render(row, i) : (row[c.key] ?? '—')}
                     </td>
                   ))}
                 </tr>

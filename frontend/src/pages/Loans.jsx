@@ -163,22 +163,20 @@ export default function Loans() {
           <Link to={`/loans/${r.id}`}>
             <span className="badge PENDING" style={{ textTransform: 'none', fontWeight: 700 }}>{r.code}</span>
           </Link>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-            📅 {fmtDate(r.start_date)}
-          </div>
+         
         </div>
       ) 
     },
     { 
       key: 'customer_name', 
-      header: 'Customer & Location', 
+      header: 'Customer & Address', 
       render: (r) => (
         <div>
           <Link to={`/customers/${r.customer_id}`} style={{ fontWeight: 700, color: '#0f172a', display: 'block' }}>
             {r.customer_name}
           </Link>
           <div style={{ fontSize: '12px', color: '#64748b' }}>
-            📍 {r.location_name || '—'} {r.employee_name ? `• 👤 ${r.employee_name}` : ''}
+         
           </div>
         </div>
       ) 
@@ -192,7 +190,7 @@ export default function Loans() {
         <div>
           <div style={{ fontWeight: 700, color: '#0f172a' }}>{money(r.principal_amount)}</div>
           <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
-            {money(r.installment_amount)} <span className="badge PENDING" style={{ fontSize: '10px', padding: '1px 5px' }}>{r.frequency}</span>
+          
           </div>
         </div>
       ) 
@@ -206,9 +204,7 @@ export default function Loans() {
           <b style={{ color: Number(r.outstanding_balance) > 0 ? '#f43f5e' : '#10b981', fontSize: '14px' }}>
             {money(r.outstanding_balance)}
           </b>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Tenure: {r.tenure} installments
-          </div>
+          
         </div>
       ) 
     },
@@ -237,7 +233,7 @@ export default function Loans() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">📜 Chits & Loans Directory</h1>
+        <h1 className="page-title"> Chits Management</h1>
       </div>
 
       {/* Main 2-column layout: LEFT = permanent Create form, RIGHT = ledger */}
@@ -245,7 +241,7 @@ export default function Loans() {
         {can('loans.create') && (
           <div className="card form-rail">
             <div className="card-head">
-              <h2>✨ Create New Chit</h2>
+              <h2> Create New Chit</h2>
             </div>
             <div className="card-body">
               <form onSubmit={handleCreateChit}>
@@ -311,7 +307,7 @@ export default function Loans() {
                 </div>
 
                 <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={formBusy || !form.customer_id}>
-                  {formBusy ? 'Creating…' : '✨ Create Chit'}
+                  {formBusy ? 'Creating…' : ' Create Chit'}
                 </button>
               </form>
             </div>
@@ -336,7 +332,12 @@ export default function Loans() {
             </select>
             {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
             <div style={{ flex: 1 }} />
-            {can('loans.export') && <button className="btn secondary" onClick={() => api.download('/api/export/chits', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>}
+            {can('loans.export') && (
+              <>
+                <button className="btn secondary" onClick={() => api.download('/api/reports/templates/chit').catch((e) => toast.error(e.message))}>📄 Sample Template</button>
+                <button className="btn secondary" onClick={() => api.download('/api/export/chits', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>
+              </>
+            )}
           </div>
 
           <DataTable

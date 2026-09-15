@@ -4,6 +4,7 @@ import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm, Modal, Field } from '../components/ui';
 import CollectModal from '../components/CollectModal';
 import DistributeModal from '../components/DistributeModal';
+import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
@@ -23,6 +24,7 @@ export default function LoanDetail() {
   const [collect, setCollect] = useState(null);
   const [distribute, setDistribute] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const [receipt, setReceipt] = useState(null);
   const [edit, setEdit] = useState(null);       // edit form state
   const [busy, setBusy] = useState(false);
 
@@ -215,16 +217,32 @@ export default function LoanDetail() {
                 <tr key={c.id} style={c.status !== 'posted' ? { opacity: 0.6 } : undefined}>
                   <td>{c.receipt_no}</td><td>{fmtDate(c.collection_date)}</td><td>{c.payment_mode}</td>
                   <td className="right">{money(c.fine_amount)}</td>
-                  <td className="right"><b>{money(c.amount)}</b></td>
-                  <td className="right">{money(c.total_amount)}</td>
+                  <td className="right">{money(c.amount)}</td>
+                  <td className="right"><b style={{ color: '#10b981', fontSize: 14 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
                   <td><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
                   <td className="right nowrap">
-                    {c.status === 'posted' && !String(c.receipt_no).endsWith('-REV') && (
-                      <>
-                        {can('collection.cancel') && <button className="btn sm secondary" onClick={() => setConfirm({ type: 'cancel', id: c.id, reason: '' })}>Cancel</button>}{' '}
-                        {can('collection.delete') && <button className="btn sm danger" onClick={() => setConfirm({ type: 'delete_col', id: c.id, reason: '' })}>Delete</button>}
-                      </>
-                    )}
+                    <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(c)}>
+                        🖨️
+                      </button>
+                      <button className="btn-icon" title="View / Edit Statement" onClick={() => setReceipt(c)}>
+                        ✏️
+                      </button>
+                      {c.status === 'posted' && !String(c.receipt_no).endsWith('-REV') && (
+                        <>
+                          {can('collection.cancel') && (
+                            <button className="btn-icon warning" title="Cancel Collection" onClick={() => setConfirm({ type: 'cancel', id: c.id, reason: '' })}>
+                              🚫
+                            </button>
+                          )}
+                          {can('collection.delete') && (
+                            <button className="btn-icon danger" title="Delete Collection" onClick={() => setConfirm({ type: 'delete_col', id: c.id, reason: '' })}>
+                              🗑️
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -366,6 +384,9 @@ export default function LoanDetail() {
             } catch (e) { toast.error(e.message); } finally { setBusy(false); }
           }}
           onClose={() => setConfirm(null)} />
+      )}
+      {receipt && (
+        <ReceiptModal collection={receipt} loan={loan} customer={loan.customer} onClose={() => setReceipt(null)} />
       )}
     </>
   );

@@ -15,10 +15,16 @@ const NAV = [
   { to: '/settings', key: 'nav.settings', defaultLabel: 'Settings', perm: 'settings.view' },
 ];
 
+const LANGS = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'ta', label: 'தமிழ்', flag: '🇮🇳' },
+];
+
 export default function Layout() {
   const { user, logout, can, isAdmin, meta } = useAuth();
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
@@ -61,6 +67,7 @@ export default function Layout() {
           </nav>
 
           <div className="user-tools">
+            <LangSwitcher lang={lang} setLang={setLang} open={langOpen} setOpen={setLangOpen} />
             <button className="btn-icon logout-icon-btn" onClick={doLogout} title={t('nav.logout', 'Logout')} aria-label={t('nav.logout', 'Logout')}>
               <IconLogout />
             </button>
@@ -97,6 +104,31 @@ export default function Layout() {
       <main className="main-layout">
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+function LangSwitcher({ lang, setLang, open, setOpen }) {
+  const current = LANGS.find((l) => l.code === lang) || LANGS[0];
+  return (
+    <div className="lang-switcher" onMouseLeave={() => setOpen(false)}>
+      <button className="lang-switcher-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
+        <span>{current.flag}</span>
+        <span className="lang-switcher-label">{current.label}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+      </button>
+      {open && (
+        <div className="lang-switcher-menu" role="listbox">
+          {LANGS.map((l) => (
+            <button key={l.code} className={`lang-switcher-item ${l.code === lang ? 'active' : ''}`}
+              role="option" aria-selected={l.code === lang}
+              onClick={() => { setLang(l.code); setOpen(false); }}>
+              <span>{l.flag}</span><span>{l.label}</span>
+              {l.code === lang && <span className="lang-switcher-check">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

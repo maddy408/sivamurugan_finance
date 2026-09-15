@@ -123,11 +123,7 @@ export default function DistributeModal({ loan, onClose, onDone }) {
       footer={<button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>}>
       {!data ? <p className="muted">Loading…</p> : (
         <>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <Stat label="Total Chit Amount" value={s.chit_amount} />
-            <Stat label="Total Distributed So Far" value={s.total_distributed} accent="#15803d" />
-            <Stat label="Remaining Undistributed" value={s.remaining_undistributed} accent={Number(s.remaining_undistributed) > 0 ? '#b45309' : undefined} />
-          </div>
+        
           <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
             Initial EMI <b>{money(s.initial_emi)}</b> &nbsp;·&nbsp; Current EMI <b>{money(s.current_emi)}</b>
             &nbsp;·&nbsp; Status <b>{STATUS_LABEL[s.status] || s.status}</b>

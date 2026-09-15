@@ -18,6 +18,7 @@ import EmployeePermissions from './pages/EmployeePermissions';
 import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
 import Finance from './pages/Finance';
+import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="finance" element={<RequirePerm perm="expenses.view"><Finance /></RequirePerm>} />
         <Route path="expenses" element={<RequirePerm perm="expenses.view"><Finance /></RequirePerm>} />
         <Route path="income" element={<RequirePerm perm="income.view"><Finance /></RequirePerm>} />
+        <Route path="transactions" element={<RequirePerm perm="transactions.view"><Transactions /></RequirePerm>} />
         <Route path="settings" element={<RequirePerm perm="settings.view"><Settings /></RequirePerm>} />
         <Route path="profile" element={<Profile />} />
       </Route>

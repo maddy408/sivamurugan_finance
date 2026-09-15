@@ -7,7 +7,7 @@ import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 
-const emptyCreate = { name: '', username: '', password: '', email: '', phone: '' };
+const emptyCreate = { name: '', username: '', password: '', email: '', phone: '', role: 'EMPLOYEE' };
 
 export default function Employees() {
   const { can } = useAuth();
@@ -23,7 +23,7 @@ export default function Employees() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [viewId, setViewId] = useState(null);       // users.id to show
-  const [detail, setDetail] = useState(null);       // fetched employee profile
+  const [detail, setDetail] = useState(null);       // fetched user profile
   const [edit, setEdit] = useState(null);           // edit form state (or null)
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function Employees() {
         name: edit.name, email: edit.email || undefined, phone: edit.phone || undefined,
         is_active: edit.is_active,
       });
-      toast.success('Employee updated');
+      toast.success('User updated');
       setEdit(null); list.reload();
     } catch (e) {
       if (e.errors) toast.error(Object.values(e.errors)[0][0]);
@@ -62,7 +62,7 @@ export default function Employees() {
     setCreateBusy(true); setCreateErrors({});
     try {
       await api.post('/api/employees', createForm);
-      toast.success('Employee created successfully!');
+      toast.success('User created successfully!');
       setCreateForm(emptyCreate);
       list.reload();
     } catch (err) {
@@ -89,9 +89,10 @@ export default function Employees() {
   };
 
   const columns = [
-    { key: 'emp_code', header: 'Code' },
+    { key: 'emp_code', header: 'Code', render: (r) => r.emp_code || '—' },
     { key: 'name', header: 'Name', sortable: true },
     { key: 'username', header: 'Username' },
+    { key: 'role', header: 'Role', render: (r) => <span className={`badge ${r.role === 'ADMIN' ? 'COMPLETED' : 'PENDING'}`}>{r.role_name || r.role}</span> },
     { key: 'phone', header: 'Phone' },
     { key: 'loan_count', header: 'Assigned chits', align: 'right' },
     { key: 'last_login_at', header: 'Last login', render: (r) => fmtDate(r.last_login_at) },
@@ -99,18 +100,18 @@ export default function Employees() {
     {
       key: '_a', header: 'Action', align: 'right', render: (r) => (
         <div className="action-buttons">
-          <button className="btn-icon view" onClick={() => setViewId(r.user_id)} title="View Employee">
+          <button className="btn-icon view" onClick={() => setViewId(r.user_id)} title="View User">
             <IconView />
           </button>
           {can('employees.edit') && (
-            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit Employee">
+            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit User">
               <IconEdit />
             </button>
           )}
-          {can('permissions.view') && <Link className="btn sm secondary" to={`/employees/${r.user_id}/permissions`}>Access</Link>}
+          {can('permissions.view') && r.role !== 'ADMIN' && <Link className="btn sm secondary" to={`/employees/${r.user_id}/permissions`}>Access</Link>}
           {can('employees.edit') && <button className="btn sm secondary" onClick={() => act(r, 'toggle')} disabled={busy}>{r.is_active ? 'Deactivate' : 'Activate'}</button>}
           {can('employees.edit') && <button className="btn sm secondary" onClick={() => setConfirm({ type: 'reset', row: r, password: '' })}>Reset PW</button>}
-          {can('permissions.edit') && <button className="btn sm danger" onClick={() => setConfirm({ type: 'force', row: r })}>Force logout</button>}
+          {can('permissions.edit') && r.role !== 'ADMIN' && <button className="btn sm danger" onClick={() => setConfirm({ type: 'force', row: r })}>Force logout</button>}
         </div>
       ),
     },
@@ -119,15 +120,15 @@ export default function Employees() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">👨‍💼 Employee Management</h1>
+        <h1 className="page-title">👥 Users Management</h1>
       </div>
 
-      {/* Main 2-column layout: LEFT = permanent Add Employee form, RIGHT = directory */}
+      {/* Main 2-column layout: LEFT = permanent Create User form, RIGHT = Users List */}
       <div className={can('employees.create') ? 'split-panel' : ''}>
         {can('employees.create') && (
           <div className="card form-rail">
             <div className="card-head">
-              <h2>✨ Add New Employee</h2>
+              <h2> Create User</h2>
             </div>
             <div className="card-body">
               <form onSubmit={handleCreateEmployee}>
@@ -140,18 +141,18 @@ export default function Employees() {
                 <Field label="Password *" error={createErrors.password}>
                   <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required placeholder="Min 8 characters" />
                 </Field>
-                <Field label="Email" error={createErrors.email}>
-                  <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="name@example.com" />
+                <Field label="Role *" error={createErrors.role}>
+                  <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} required>
+                    <option value="ADMIN">Admin</option>
+                    <option value="EMPLOYEE">Employee</option>
+                  </select>
                 </Field>
                 <Field label="Phone" error={createErrors.phone}>
                   <input value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="Mobile number" />
                 </Field>
-                <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
-                  Role is <b>Employee</b>. Employees see all customers, loans and pending dues —
-                  module access is controlled from the <b>Access</b> screen.
-                </p>
+
                 <button type="submit" className="btn" style={{ width: '100%' }} disabled={createBusy}>
-                  {createBusy ? 'Creating…' : '✨ Add Employee'}
+                  {createBusy ? 'Creating…' : ' Create User'}
                 </button>
               </form>
             </div>
@@ -173,7 +174,7 @@ export default function Employees() {
       </div>
 
       {viewId && (
-        <Modal title="Employee details" onClose={() => setViewId(null)}
+        <Modal title="User Details" onClose={() => setViewId(null)}
           footer={<button className="btn secondary" onClick={() => setViewId(null)}>Close</button>}>
           {!detail ? <Spinner /> : (
             <dl className="kv" style={{ gridTemplateColumns: '160px 1fr', rowGap: 8 }}>
@@ -182,7 +183,7 @@ export default function Employees() {
               <dt>Username</dt><dd>{detail.username}</dd>
               <dt>Mobile</dt><dd>{detail.phone || '—'}</dd>
               <dt>Email</dt><dd>{detail.email || '—'}</dd>
-              <dt>Role</dt><dd>Employee</dd>
+              <dt>Role</dt><dd>{detail.role_name || detail.role}</dd>
               <dt>Active loans/chits</dt><dd>{detail.assigned_loans ?? 0}</dd>
               <dt>Status</dt><dd><span className={`badge ${detail.is_active ? 'active' : 'inactive'}`}>{detail.is_active ? 'Active' : 'Inactive'}</span></dd>
               <dt>Joined on</dt><dd>{fmtDate(detail.joined_on)}</dd>
@@ -194,7 +195,7 @@ export default function Employees() {
       )}
 
       {edit && (
-        <Modal title={`Edit ${edit.name || 'employee'}`} onClose={() => setEdit(null)}
+        <Modal title={`Edit ${edit.name || 'user'}`} onClose={() => setEdit(null)}
           footer={<>
             <button className="btn secondary" onClick={() => setEdit(null)} disabled={busy}>Cancel</button>
             <button className="btn" onClick={saveEdit} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
