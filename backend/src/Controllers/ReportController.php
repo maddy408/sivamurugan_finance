@@ -34,6 +34,7 @@ class ReportController
         'customer-collection' => ['Customer-wise Collection Report', 'table'],
         'daily-collection'    => ['Daily Collection Report', 'table'],
         'employee-collection' => ['Employee-wise Collection Report', 'table'],
+        'location-collection' => ['Location-wise Collection Report', 'table'],
         'chit-distribution'   => ['Chit Distribution Report', 'table'],
         'pending-dues'        => ['Pending Dues Report', 'table'],
         'chit-profit'         => ['Chit Profit / Summary Report', 'table'],
@@ -149,7 +150,7 @@ class ReportController
             'chit-opening' => 'Chit Opening', 'chit-closing' => 'Chit Closing',
             'chit-collection' => 'Collections', 'customer-collection' => 'Customer Summary',
             'daily-collection' => 'Daily Collection', 'employee-collection' => 'Employee Summary',
-            'chit-distribution' => 'Distribution',
+            'location-collection' => 'Location Summary', 'chit-distribution' => 'Distribution',
             'pending-dues' => 'Pending Dues', 'chit-profit' => 'Chit Profit',
             'monthly-summary' => 'Monthly Summary', 'financial-ledger' => 'Financial',
         ];
@@ -181,11 +182,7 @@ class ReportController
                               'Reference No', 'Remarks'],
                 'example' => ['JRM-001', $today, '1,2', 6000, 0, 'Cash', 'UPI-12345', 'On time'],
             ],
-            'income' => [
-                  'headers' => ['Received Date* (YYYY-MM-DD)', 'Amount*', 'Category*', 'Destination Account* (Office Cash/Bank)', 'Giver / Details', 'Remarks'],
-                  'example' => [$today, 5000, 'Moi', 'Office Cash', 'Ramesh Kumar', 'Office event income'],
-              ],
-              'expense' => [
+            'expense' => [
                 'headers' => ['Expense Date* (YYYY-MM-DD)', 'Amount*', 'Category*', 'Account* (Office Cash/Bank)', 'Remarks'],
                 'example' => [$today, 1500, 'Travel', 'Office Cash', 'Field visit fuel'],
             ],
@@ -318,6 +315,7 @@ class ReportController
             'customer-collection' => $this->rptCustomerCollection($f, $user),
             'daily-collection'    => $this->rptDailyCollection($f, $user),
             'employee-collection' => $this->rptEmployeeCollection($f, $user),
+            'location-collection' => $this->rptLocationCollection($f, $user),
             'chit-distribution'   => $this->rptChitDistribution($f, $user),
             'pending-dues'        => $this->rptPendingDues($f, $user),
             'chit-profit'         => $this->rptChitProfit($f, $user),
@@ -374,6 +372,7 @@ class ReportController
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         $sql = "SELECT l.id, l.start_date, l.code, cu.name AS customer,
+                       cu.location AS location, " . self::EMP_NAME_SUBQ . " AS employee,
                        l.principal_amount, l.installment_amount, l.frequency, l.tenure, l.status,
                        COALESCE((SELECT SUM(d.amount) FROM distributions d
                                  WHERE d.loan_id=l.id AND d.status='active' AND d.deleted_at IS NULL),0) AS distributed
@@ -393,6 +392,8 @@ class ReportController
                 'Date' => $x['start_date'],
                 'Chit Code' => $x['code'],
                 'Customer Name' => $x['customer'],
+                'Location' => $x['location'] ?: '—',
+                'Employee' => $x['employee'] ?: 'Unassigned',
                 'Chit Amount' => (float) $x['principal_amount'],
                 'EMI Amount' => (float) $x['installment_amount'],
                 'Frequency' => ucfirst($x['frequency']),
@@ -405,7 +406,7 @@ class ReportController
             $tDist += $dist; $tRem += $rem;
         }
         $r = $this->result('NEW CHITS',
-            ['S.No','Date','Chit Code','Customer Name','Chit Amount','EMI Amount','Frequency','Tenure','Distributed Amount','Remaining Undistributed','Status'],
+            ['S.No','Date','Chit Code','Customer Name','Location','Employee','Chit Amount','EMI Amount','Frequency','Tenure','Distributed Amount','Remaining Undistributed','Status'],
             ['S.No'=>'number','Date'=>'date','Tenure'=>'number','Chit Amount'=>'money','EMI Amount'=>'money','Distributed Amount'=>'money','Remaining Undistributed'=>'money'],
             $rows,
             ['S.No'=>'TOTAL ('.$i.')','Chit Amount'=>round($tAmt,2),'EMI Amount'=>round($tEmi,2),'Distributed Amount'=>round($tDist,2),'Remaining Undistributed'=>round($tRem,2)]
@@ -429,7 +430,8 @@ class ReportController
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         // closed date = last posted collection date (fallback: chit updated_at)
-        $sql = "SELECT l.id, l.code, cu.name AS customer, l.principal_amount, l.status,
+        $sql = "SELECT l.id, l.code, cu.name AS customer, cu.location AS location,
+                       " . self::EMP_NAME_SUBQ . " AS employee, l.principal_amount, l.status,
                        COALESCE((SELECT MAX(c.collection_date) FROM collections c
                                  WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),
                                 DATE(l.updated_at)) AS closed_date,
@@ -462,6 +464,8 @@ class ReportController
                 'Closed Date' => $x['closed_date'],
                 'Chit Code' => $x['code'],
                 'Customer Name' => $x['customer'],
+                'Location' => $x['location'] ?: '—',
+                'Employee' => $x['employee'] ?: 'Unassigned',
                 'Original Chit Amount' => (float) $x['principal_amount'],
                 'Total EMI Collected' => (float) $x['emi_collected'],
                 'Total Fine Collected' => (float) $x['fine_collected'],
@@ -474,7 +478,7 @@ class ReportController
             $tFine += (float) $x['fine_collected']; $tColl += $coll; $tDist += $dist; $tProfit += $profit;
         }
         $r = $this->result('CLOSED CHITS',
-            ['S.No','Closed Date','Chit Code','Customer Name','Original Chit Amount','Total EMI Collected','Total Fine Collected','Total Collection','Distributed Amount','Profit / Surplus','Status'],
+            ['S.No','Closed Date','Chit Code','Customer Name','Location','Employee','Original Chit Amount','Total EMI Collected','Total Fine Collected','Total Collection','Distributed Amount','Profit / Surplus','Status'],
             ['S.No'=>'number','Closed Date'=>'date','Original Chit Amount'=>'money','Total EMI Collected'=>'money','Total Fine Collected'=>'money','Total Collection'=>'money','Distributed Amount'=>'money','Profit / Surplus'=>'money'],
             $rows,
             ['S.No'=>'TOTAL ('.$i.')','Original Chit Amount'=>round($tAmt,2),'Total EMI Collected'=>round($tEmi,2),'Total Fine Collected'=>round($tFine,2),'Total Collection'=>round($tColl,2),'Distributed Amount'=>round($tDist,2),'Profit / Surplus'=>round($tProfit,2)]
@@ -731,6 +735,52 @@ class ReportController
         );
     }
 
+    /* ------------------------------------------------- 7. location-wise */
+
+    private function rptLocationCollection(array $f, array $user): array
+    {
+        $db = Database::instance();
+        [$sc, $sp] = $this->scope($user, 'l');
+        [$dr, $dp] = $this->dateRange($f, 'col.collection_date');
+        $p = $sp + $dp;
+        $w = "col.status='posted' AND col.deleted_at IS NULL $sc $dr";
+        if ($f['location_id'])     { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
+        if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
+        if ($f['payment_mode_id']) { $w .= ' AND col.payment_mode_id = :pm'; $p['pm'] = $f['payment_mode_id']; }
+
+        $sql = "SELECT COALESCE(NULLIF(cu.location,''), '(unassigned)') AS location,
+                       COUNT(DISTINCT col.customer_id) AS customers,
+                       COUNT(col.id) AS collections,
+                       SUM(col.amount) AS inst, SUM(col.fine_amount) AS fine, SUM(col.total_amount) AS tot
+                FROM collections col
+                JOIN loans_or_chits l ON l.id = col.loan_id
+                JOIN customers cu ON cu.id = col.customer_id
+                WHERE $w
+                GROUP BY COALESCE(NULLIF(cu.location,''), '(unassigned)')
+                ORDER BY tot DESC";
+        $raw = $db->fetchAll($sql, $p);
+
+        $rows = []; $i=0; $tInst=0;$tFine=0;$tTot=0;
+        foreach ($raw as $x) {
+            $rows[] = [
+                'S.No' => ++$i,
+                'Location' => $x['location'],
+                'Customers' => (int) $x['customers'],
+                'Collections' => (int) $x['collections'],
+                'Installment Total' => (float) $x['inst'],
+                'Fine Total' => (float) $x['fine'],
+                'Total Collection' => (float) $x['tot'],
+            ];
+            $tInst += (float) $x['inst']; $tFine += (float) $x['fine']; $tTot += (float) $x['tot'];
+        }
+        return $this->result('LOCATION COLLECTION REPORT',
+            ['S.No','Location','Customers','Collections','Installment Total','Fine Total','Total Collection'],
+            ['S.No'=>'number','Customers'=>'number','Collections'=>'number','Installment Total'=>'money','Fine Total'=>'money','Total Collection'=>'money'],
+            $rows,
+            ['S.No'=>'TOTAL ('.$i.')','Installment Total'=>round($tInst,2),'Fine Total'=>round($tFine,2),'Total Collection'=>round($tTot,2)]
+        );
+    }
+
     /* ------------------------------------------------- 8. distribution */
 
     private function rptChitDistribution(array $f, array $user): array
@@ -747,7 +797,8 @@ class ReportController
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
         $sql = "SELECT d.id, d.distributed_date, l.code AS chit, l.id AS loan_id, l.principal_amount,
-                       cu.name AS customer,
+                       cu.name AS customer, cu.location AS location,
+                       " . self::EMP_NAME_SUBQ . " AS employee,
                        d.amount, d.new_emi_amount, d.remarks, d.status, acc.name AS account
                 FROM distributions d
                 JOIN loans_or_chits l ON l.id = d.loan_id
@@ -772,6 +823,8 @@ class ReportController
                 'Distribution Date' => $x['distributed_date'],
                 'Chit Code' => $x['chit'],
                 'Customer' => $x['customer'],
+                'Location' => $x['location'] ?: '—',
+                'Employee' => $x['employee'] ?: 'Unassigned',
                 'Chit Amount' => (float) $x['principal_amount'],
                 'Distributed Amount' => $amt,
                 'Previous Distributed' => round($prev, 2),
@@ -785,7 +838,7 @@ class ReportController
             if ($isActive) { $tDist += $amt; }
         }
         return $this->result('CHIT DISTRIBUTION REPORT',
-            ['S.No','Distribution Date','Chit Code','Customer','Chit Amount','Distributed Amount','Previous Distributed','Total Distributed','Remaining Undistributed','Distribution Account','New EMI','Remarks','Status'],
+            ['S.No','Distribution Date','Chit Code','Customer','Location','Employee','Chit Amount','Distributed Amount','Previous Distributed','Total Distributed','Remaining Undistributed','Distribution Account','New EMI','Remarks','Status'],
             ['S.No'=>'number','Distribution Date'=>'date','Chit Amount'=>'money','Distributed Amount'=>'money','Previous Distributed'=>'money','Total Distributed'=>'money','Remaining Undistributed'=>'money','New EMI'=>'money'],
             $rows,
             ['S.No'=>'TOTAL ('.$i.')','Distributed Amount'=>round($tDist,2)]

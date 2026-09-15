@@ -160,7 +160,7 @@ class LoanController
             "SELECT l.id, l.code, l.account_type, l.principal_amount,
                     l.installment_amount, l.installment_amount AS emi_amount, l.tenure,
                     l.frequency, l.schedule_type, l.start_date, l.status,
-                    c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile, c.address_line1 AS customer_address,
+                    c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile,
                     COALESCE(NULLIF(c.location,''), l.location) AS location_name,
                     (SELECT u.name FROM loan_assignments la
                        JOIN employees e ON e.id = la.employee_id
@@ -207,12 +207,8 @@ class LoanController
         $loan['distribution']  = \App\Services\DistributionService::summary((int)$loan['id']);
         $loan['distributions'] = \App\Services\DistributionService::listFor((int)$loan['id']);
         $loan['collections'] = $db->fetchAll(
-            "SELECT col.*, pm.name AS payment_mode, pm.code AS payment_mode_code,
-                    ca.name AS cash_account_name, ua.name AS upi_account_name
-             FROM collections col
+            "SELECT col.*, pm.name AS payment_mode FROM collections col
              JOIN payment_modes pm ON pm.id = col.payment_mode_id
-             LEFT JOIN accounts ca ON ca.id = col.cash_account_id
-             LEFT JOIN accounts ua ON ua.id = col.upi_account_id
              WHERE col.loan_id = :l AND col.deleted_at IS NULL ORDER BY col.collection_date DESC, col.id DESC",
             ['l' => $loan['id']]
         );

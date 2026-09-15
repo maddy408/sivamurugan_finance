@@ -56,7 +56,7 @@ class CustomerController
         $total = (int)$db->scalar("SELECT COUNT(DISTINCT c.id) $base", $params);
 
         $rows = $db->fetchAll(
-            "SELECT DISTINCT c.id, c.customer_code, c.name, c.mobile, c.aadhar_number, c.status,
+            "SELECT DISTINCT c.id, c.customer_code, c.name, c.mobile, c.status,
                     c.address_line1,
                     (SELECT COUNT(*) FROM loans_or_chits lc WHERE lc.customer_id = c.id AND lc.status = 'active') AS active_loans,
                     c.created_at
@@ -121,7 +121,6 @@ class CustomerController
         $in = Validator::make($req->body, [
             'name'             => 'required|string|max:128',
             'mobile'           => 'required|string|max:20',
-            'aadhar_number'     => 'nullable|string|max:20',
             'alt_mobile'       => 'nullable|string|max:20',
             'email'            => 'nullable|email',
             'gender'           => 'nullable|in:male,female,other',
@@ -169,7 +168,6 @@ class CustomerController
         $in = Validator::make($req->body, [
             'name'             => 'nullable|string|max:128',
             'mobile'           => 'nullable|string|max:20',
-            'aadhar_number'     => 'nullable|string|max:20',
             'alt_mobile'       => 'nullable|string|max:20',
             'email'            => 'nullable|email',
             'gender'           => 'nullable|in:male,female,other',

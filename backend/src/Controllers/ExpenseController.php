@@ -8,7 +8,6 @@ use App\Core\ListQuery;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
-use App\Services\TransactionService;
 use App\Support\Audit;
 use App\Support\BusinessDate;
 use App\Support\Xlsx;
@@ -129,38 +128,20 @@ class ExpenseController
         if ($in['account_id'] && !$db->scalar('SELECT 1 FROM accounts WHERE id = :id AND is_active = 1', ['id' => $in['account_id']])) {
             throw HttpException::validation(['account_id' => ['Unknown or inactive account']]);
         }
-        $amount = number_format((float)$in['amount'], 2, '.', '');
-        $row = $db->transaction(function ($db) use ($user, $in, $amount) {
-            $id = $db->insert('expenses', [
-                'amount'       => $amount,
-                'expense_date' => $in['expense_date'],
-                'category'     => $in['category'],
-                'account_id'   => $in['account_id'],
-                'remarks'      => $in['remarks'] ?? null,
-                'status'       => 'active',
-                'created_by'   => $user['id'],
-                'created_at'   => BusinessDate::utcNow(),
-                'updated_at'   => BusinessDate::utcNow(),
-            ]);
-
-            TransactionService::record([
-                'txn_date'       => $in['expense_date'],
-                'txn_type'       => 'expense',
-                'direction'      => 'debit',
-                'amount'         => $amount,
-                'account_id'     => $in['account_id'],
-                'reference_type' => 'expense',
-                'reference_id'   => $id,
-                'remarks'        => $in['remarks'] ?? null,
-                'created_by'     => $user['id'],
-            ]);
-
-            Audit::log('expense.create', 'expenses', 'expense', $id, null, $in, null,
-                ['id' => $user['id'], 'role_code' => $user['role_code']]);
-
-            return $db->fetch('SELECT * FROM expenses WHERE id = :id', ['id' => $id]);
-        });
-        Response::created($row, 'Expense recorded');
+        $id = $db->insert('expenses', [
+            'amount'       => number_format((float)$in['amount'], 2, '.', ''),
+            'expense_date' => $in['expense_date'],
+            'category'     => $in['category'],
+            'account_id'   => $in['account_id'],
+            'remarks'      => $in['remarks'] ?? null,
+            'status'       => 'active',
+            'created_by'   => $user['id'],
+            'created_at'   => BusinessDate::utcNow(),
+            'updated_at'   => BusinessDate::utcNow(),
+        ]);
+        Audit::log('expense.create', 'expenses', 'expense', $id, null, $in, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        Response::created($db->fetch('SELECT * FROM expenses WHERE id = :id', ['id' => $id]), 'Expense recorded');
     }
 
     /** PUT /api/expenses/{id} */
@@ -191,27 +172,10 @@ class ExpenseController
             $fields['amount'] = number_format((float)$fields['amount'], 2, '.', '');
         }
         $fields['updated_at'] = BusinessDate::utcNow();
-        $row = $db->transaction(function ($db) use ($user, $id, $before, $fields) {
-            $db->update('expenses', $fields, 'id = :id', ['id' => $id]);
-
-            TransactionService::record([
-                'txn_date'       => $fields['expense_date'] ?? $before['expense_date'],
-                'txn_type'       => 'expense',
-                'direction'      => 'debit',
-                'amount'         => $fields['amount'] ?? $before['amount'],
-                'account_id'     => array_key_exists('account_id', $fields) ? $fields['account_id'] : $before['account_id'],
-                'reference_type' => 'expense',
-                'reference_id'   => $id,
-                'remarks'        => $fields['remarks'] ?? $before['remarks'],
-                'created_by'     => $before['created_by'],
-            ]);
-
-            Audit::log('expense.update', 'expenses', 'expense', $id, array_intersect_key($before, $fields), $fields, null,
-                ['id' => $user['id'], 'role_code' => $user['role_code']]);
-
-            return $db->fetch('SELECT * FROM expenses WHERE id = :id', ['id' => $id]);
-        });
-        Response::ok($row, 'Expense updated');
+        $db->update('expenses', $fields, 'id = :id', ['id' => $id]);
+        Audit::log('expense.update', 'expenses', 'expense', $id, array_intersect_key($before, $fields), $fields, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        Response::ok($db->fetch('SELECT * FROM expenses WHERE id = :id', ['id' => $id]), 'Expense updated');
     }
 
     /** POST /api/expenses/{id}/cancel */
@@ -224,17 +188,12 @@ class ExpenseController
         if (!$row) {
             throw HttpException::notFound('Expense not found');
         }
-        $db->transaction(function ($db) use ($user, $id, $row, $req) {
-            $db->update('expenses', [
-                'status' => 'cancelled', 'cancelled_by' => $user['id'], 'cancelled_at' => BusinessDate::utcNow(),
-                'updated_at' => BusinessDate::utcNow(),
-            ], 'id = :id', ['id' => $id]);
-
-            TransactionService::cancelFor('expense', $id, $user['id']);
-
-            Audit::log('expense.cancel', 'expenses', 'expense', $id, ['status' => $row['status']], ['status' => 'cancelled'],
-                $req->input('reason'), ['id' => $user['id'], 'role_code' => $user['role_code']]);
-        });
+        $db->update('expenses', [
+            'status' => 'cancelled', 'cancelled_by' => $user['id'], 'cancelled_at' => BusinessDate::utcNow(),
+            'updated_at' => BusinessDate::utcNow(),
+        ], 'id = :id', ['id' => $id]);
+        Audit::log('expense.cancel', 'expenses', 'expense', $id, ['status' => $row['status']], ['status' => 'cancelled'],
+            $req->input('reason'), ['id' => $user['id'], 'role_code' => $user['role_code']]);
         Response::ok(null, 'Expense cancelled');
     }
 
@@ -244,21 +203,13 @@ class ExpenseController
         $user = Guard::authorize($req, 'expenses.delete');
         $db = Database::instance();
         $id = (int)$args['id'];
-        $row = $db->fetch('SELECT * FROM expenses WHERE id = :id AND deleted_at IS NULL', ['id' => $id]);
-        if (!$row) {
+        if (!$db->scalar('SELECT 1 FROM expenses WHERE id = :id AND deleted_at IS NULL', ['id' => $id])) {
             throw HttpException::notFound('Expense not found');
         }
-        $db->transaction(function ($db) use ($user, $id, $row, $req) {
-            $db->update('expenses', ['deleted_at' => BusinessDate::utcNow(), 'updated_at' => BusinessDate::utcNow()],
-                'id = :id', ['id' => $id]);
-
-            if ($row['status'] === 'active') {
-                TransactionService::cancelFor('expense', $id, $user['id']);
-            }
-
-            Audit::log('expense.delete', 'expenses', 'expense', $id, null, null, $req->input('reason'),
-                ['id' => $user['id'], 'role_code' => $user['role_code']]);
-        });
+        $db->update('expenses', ['deleted_at' => BusinessDate::utcNow(), 'updated_at' => BusinessDate::utcNow()],
+            'id = :id', ['id' => $id]);
+        Audit::log('expense.delete', 'expenses', 'expense', $id, null, null, $req->input('reason'),
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
         Response::ok(null, 'Expense removed');
     }
 

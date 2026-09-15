@@ -72,25 +72,7 @@ final class App
     {
         $origin = $req->headers['origin'] ?? '';
         $allowed = self::$config['cors_origins'] ?? [];
-                $isAllowed = false;
-        if ($origin) {
-            if (in_array($origin, $allowed, true) || in_array('*', $allowed, true)) {
-                $isAllowed = true;
-            } else {
-                $parsedHost = parse_url($origin, PHP_URL_HOST);
-                if ($parsedHost && (
-                    $parsedHost === 'localhost' ||
-                    $parsedHost === '127.0.0.1' ||
-                    preg_match('/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/', $parsedHost) ||
-                    str_ends_with($parsedHost, '.devtunnels.ms') ||
-                    str_ends_with($parsedHost, '.github.dev')
-                )) {
-                    $isAllowed = true;
-                }
-            }
-        }
-
-        if ($isAllowed && $origin) {
+        if ($origin && (in_array($origin, $allowed, true) || in_array('*', $allowed, true))) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Vary: Origin');
             header('Access-Control-Allow-Credentials: true');
@@ -104,4 +86,3 @@ final class App
         }
     }
 }
-

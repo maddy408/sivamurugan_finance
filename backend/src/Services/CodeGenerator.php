@@ -84,25 +84,6 @@ final class CodeGenerator
         ]);
     }
 
-    /** Ledger transaction number, e.g. TXN-20260914-00001 (per-day sequence). */
-    public static function transactionNo(string $txnDateYmd): string
-    {
-        $fmt = App::setting('code_format', []);
-        $prefix  = $fmt['transaction_prefix'] ?? 'TXN';
-        $pattern = $fmt['transaction_pattern'] ?? '{PREFIX}-{YYYYMMDD}-{SEQ5}';
-        $ymd = str_replace('-', '', $txnDateYmd);
-
-        $like = str_replace(['{PREFIX}', '{YYYYMMDD}', '{SEQ5}'], [$prefix, $ymd, '%'], $pattern);
-        $count = (int)Database::instance()->scalar(
-            "SELECT COUNT(*) FROM transactions WHERE transaction_no LIKE :like",
-            ['like' => $like]
-        );
-        return self::render($pattern, $prefix, [
-            'YYYYMMDD' => $ymd,
-            'SEQ5' => str_pad((string)($count + 1), 5, '0', STR_PAD_LEFT),
-        ]);
-    }
-
     private static function render(string $pattern, string $prefix, array $tokens): string
     {
         $out = str_replace('{PREFIX}', $prefix, $pattern);

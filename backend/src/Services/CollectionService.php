@@ -90,36 +90,8 @@ final class CollectionService
             }
 
             $collectionDate = $payload['collection_date'];
+            $amount = Money::of($payload['amount'] ?? 0);          // actual paid, verbatim
             $modeId = (int)$payload['payment_mode_id'];
-            $mode = $db->fetch('SELECT code FROM payment_modes WHERE id = :id', ['id' => $modeId]);
-            $isSplit = $mode && strtoupper($mode['code']) === 'SPLIT';
-
-            // ---- Split payment: Cash + UPI portions of ONE collection ----
-            $cashAmount = null; $upiAmount = null; $cashAccountId = null; $upiAccountId = null;
-            if ($isSplit) {
-                $cashAmount = Money::of($payload['cash_amount'] ?? 0);
-                $upiAmount  = Money::of($payload['upi_amount'] ?? 0);
-                if (Money::lt($cashAmount, 0) || Money::lt($upiAmount, 0)) {
-                    throw HttpException::validation(['cash_amount' => ['Cash and UPI amounts cannot be negative']]);
-                }
-                if (Money::lte(Money::add($cashAmount, $upiAmount), 0)) {
-                    throw HttpException::validation(['cash_amount' => ['Enter a Cash and/or UPI amount greater than 0']]);
-                }
-                $amount = Money::add($cashAmount, $upiAmount);   // authoritative total, never taken from the client directly
-
-                $cashAccountId = $payload['cash_account_id'] ?? null;
-                if (!$cashAccountId) {
-                    $cashAccountId = $db->scalar("SELECT id FROM accounts WHERE is_active = 1 AND type = 'cash' ORDER BY id LIMIT 1")
-                        ?: $db->scalar("SELECT id FROM accounts WHERE is_active = 1 ORDER BY id LIMIT 1");
-                }
-                $upiAccountId = $payload['upi_account_id'] ?? null;
-                if (!$upiAccountId) {
-                    $upiAccountId = $db->scalar("SELECT id FROM accounts WHERE is_active = 1 AND type = 'bank' ORDER BY id LIMIT 1")
-                        ?: $cashAccountId;
-                }
-            } else {
-                $amount = Money::of($payload['amount'] ?? 0);          // actual paid, verbatim
-            }
 
             // ---- fine: manual, editable, never merged into the installment ----
             $fineAmount = Money::of($payload['fine_amount'] ?? 0);
@@ -132,10 +104,9 @@ final class CollectionService
             }
 
             // ---- resolve the account the money lands in (Cash -> Office Cash) ----
-            // For a split payment this is just the "primary" account shown on reports;
-            // the real per-account balance uses cash_account_id/upi_account_id below.
-            $accountId = $isSplit ? $cashAccountId : ($payload['account_id'] ?? null);
+            $accountId = $payload['account_id'] ?? null;
             if (!$accountId) {
+                $mode = $db->fetch('SELECT code FROM payment_modes WHERE id = :id', ['id' => $modeId]);
                 $wantType = ($mode && strtoupper($mode['code']) === 'CASH') ? 'cash' : 'bank';
                 $accountId = $db->scalar("SELECT id FROM accounts WHERE is_active = 1 AND type = :t ORDER BY id LIMIT 1", ['t' => $wantType])
                     ?: $db->scalar("SELECT id FROM accounts WHERE is_active = 1 ORDER BY id LIMIT 1");
@@ -159,15 +130,11 @@ final class CollectionService
                 'location'        => $loan['location'] ?? null,   // denormalised typed location text
                 'collection_date' => $collectionDate,
                 'amount'          => $amount,        // <-- ACTUAL paid, verbatim
-                'cash_amount'     => $cashAmount,
-                'upi_amount'      => $upiAmount,
                 'fine_amount'     => $fineAmount,
                 'other_charges'   => '0.00',
                 'total_amount'    => $total,
                 'payment_mode_id' => $modeId,
                 'account_id'      => $accountId,
-                'cash_account_id' => $cashAccountId,
-                'upi_account_id'  => $upiAccountId,
                 'reference_no'    => $payload['reference_no'] ?? null,
                 'remarks'         => $payload['remarks'] ?? null,
                 'idempotency_key' => $idemKey,
@@ -234,20 +201,6 @@ final class CollectionService
 
             self::syncLoanStatus($db, (int)$loan['id']);
 
-            TransactionService::record([
-                'txn_date'       => $collectionDate,
-                'txn_type'       => 'collection',
-                'direction'      => 'credit',
-                'amount'         => $total,
-                'account_id'     => $accountId,
-                'customer_id'    => (int)$loan['customer_id'],
-                'loan_id'        => (int)$loan['id'],
-                'reference_type' => 'collection',
-                'reference_id'   => $collectionId,
-                'remarks'        => $payload['remarks'] ?? null,
-                'created_by'     => $user['id'],
-            ]);
-
             Audit::log('collection.create', 'collection', 'collection', $collectionId, null, [
                 'receipt_no' => $receiptNo, 'loan_id' => (int)$loan['id'],
                 'from_installment_no' => (int)$startInst['installment_no'],
@@ -299,8 +252,6 @@ final class CollectionService
 
             self::syncLoanStatus($db, (int)$col['loan_id']);
 
-            TransactionService::cancelFor('collection', $collectionId, $user['id']);
-
             Audit::log('collection.cancel', 'collection', 'collection', $collectionId,
                 ['status' => 'posted', 'amount' => $col['amount']], ['status' => 'cancelled'], $reason,
                 ['id' => $user['id'], 'role_code' => $user['role_code']]);
@@ -335,10 +286,6 @@ final class CollectionService
             ], 'id = :id', ['id' => $collectionId]);
 
             self::syncLoanStatus($db, (int)$col['loan_id']);
-
-            if ($col['status'] === 'posted') {
-                TransactionService::cancelFor('collection', $collectionId, $user['id']);
-            }
 
             Audit::log('collection.delete', 'collection', 'collection', $collectionId,
                 ['status' => $col['status'], 'amount' => $col['amount']], ['deleted' => true], $reason,
