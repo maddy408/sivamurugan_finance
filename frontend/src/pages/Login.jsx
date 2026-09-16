@@ -77,9 +77,6 @@ export default function Login() {
         <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={busy}>
           {busy ? 'Signing in…' : 'Login'}
         </button>
-        <p className="muted login-hint" style={{ fontSize: 12, marginBottom: 0 }}>
-          Default admin: <b>admin / Admin@123</b>
-        </p>
       </form>
     </div>
   );
