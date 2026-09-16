@@ -112,10 +112,151 @@ try {
                                    : "??  No user named {$user}\n";
             break;
 
+        case 'seed-users':
+            $env = $argv[2] ?? 'dev';
+            $pdo = connect($db);
+            seed_environment_users($pdo, $env);
+            break;
+
         default:
             echo file_get_contents(__FILE__, false, null, 6, 720);
     }
 } catch (Throwable $e) {
     fwrite(STDERR, "ERROR: " . $e->getMessage() . "\n");
     exit(1);
+}
+
+function seed_environment_users(PDO $pdo, string $env): void
+{
+    $env = strtolower($env);
+    if (!in_array($env, ['dev', 'prod'], true)) {
+        throw new InvalidArgumentException("Environment must be 'dev' or 'prod'");
+    }
+
+    $devUsers = [
+        [
+            'role_id' => 1,
+            'name' => 'Dev Administrator',
+            'username' => 'dev_admin',
+            'email' => 'devadmin@qynova.in',
+            'phone' => '9876500001',
+            'password' => 'DevAdmin@2026!',
+            'emp_code' => null
+        ],
+        [
+            'role_id' => 1,
+            'name' => 'Dev Finance Manager',
+            'username' => 'dev_manager',
+            'email' => 'devmanager@qynova.in',
+            'phone' => '9876500002',
+            'password' => 'DevManager@2026!',
+            'emp_code' => null
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Dev Field Collector 1',
+            'username' => 'dev_collector1',
+            'email' => 'devcollector1@qynova.in',
+            'phone' => '9876500003',
+            'password' => 'DevCollector1#2026',
+            'emp_code' => 'DEV-EMP-001'
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Dev Field Collector 2',
+            'username' => 'dev_collector2',
+            'email' => 'devcollector2@qynova.in',
+            'phone' => '9876500004',
+            'password' => 'DevCollector2#2026',
+            'emp_code' => 'DEV-EMP-002'
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Dev Internal Auditor',
+            'username' => 'dev_audit',
+            'email' => 'devauditor@qynova.in',
+            'phone' => '9876500005',
+            'password' => 'DevAudit#2026',
+            'emp_code' => 'DEV-EMP-003'
+        ],
+    ];
+
+    $prodUsers = [
+        [
+            'role_id' => 1,
+            'name' => 'Siva Murugan System Admin',
+            'username' => 'sm_admin',
+            'email' => 'admin@sivamurugan-fin.qynova.in',
+            'phone' => '9840000001',
+            'password' => 'SmProdAdmin#9876$',
+            'emp_code' => null
+        ],
+        [
+            'role_id' => 1,
+            'name' => 'Siva Murugan Finance Head',
+            'username' => 'sm_finance_head',
+            'email' => 'finance@sivamurugan-fin.qynova.in',
+            'phone' => '9840000002',
+            'password' => 'SmFinHead#4561$',
+            'emp_code' => null
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Kumar (Senior Collection Agent)',
+            'username' => 'sm_agent_kumar',
+            'email' => 'kumar@sivamurugan-fin.qynova.in',
+            'phone' => '9840000003',
+            'password' => 'SmKumarAgent%2026',
+            'emp_code' => 'PROD-EMP-001'
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Selvam (Field Collection Agent)',
+            'username' => 'sm_agent_selvam',
+            'email' => 'selvam@sivamurugan-fin.qynova.in',
+            'phone' => '9840000004',
+            'password' => 'SmSelvamAgent%2026',
+            'emp_code' => 'PROD-EMP-002'
+        ],
+        [
+            'role_id' => 2,
+            'name' => 'Murugan (Audit & Risk Agent)',
+            'username' => 'sm_auditor_murugan',
+            'email' => 'auditor@sivamurugan-fin.qynova.in',
+            'phone' => '9840000005',
+            'password' => 'SmMuruganAudit%2026',
+            'emp_code' => 'PROD-EMP-003'
+        ],
+    ];
+
+    $users = ($env === 'dev') ? $devUsers : $prodUsers;
+
+    $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+    $pdo->exec('TRUNCATE employees');
+    $pdo->exec('TRUNCATE users');
+    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+    $stmtUser = $pdo->prepare('INSERT INTO users (role_id, name, username, email, phone, password_hash, is_active, session_version) VALUES (:role_id, :name, :username, :email, :phone, :password_hash, 1, 1)');
+    $stmtEmp = $pdo->prepare('INSERT INTO employees (user_id, emp_code, joined_on, is_active) VALUES (:user_id, :emp_code, CURRENT_DATE(), 1)');
+
+    foreach ($users as $u) {
+        $hash = password_hash($u['password'], PASSWORD_BCRYPT);
+        $stmtUser->execute([
+            'role_id' => $u['role_id'],
+            'name' => $u['name'],
+            'username' => $u['username'],
+            'email' => $u['email'],
+            'phone' => $u['phone'],
+            'password_hash' => $hash,
+        ]);
+        $userId = (int)$pdo->lastInsertId();
+
+        if ($u['role_id'] === 2 && !empty($u['emp_code'])) {
+            $stmtEmp->execute([
+                'user_id' => $userId,
+                'emp_code' => $u['emp_code'],
+            ]);
+        }
+    }
+    echo "OK  Seeded 5 " . strtoupper($env) . " users successfully.\n";
 }
