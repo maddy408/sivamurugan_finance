@@ -66,7 +66,7 @@ def sync_repository(client):
     print("==========================================")
     check_repo = f"[ -d '{REPO_DIR}/.git' ] && echo 'EXISTS' || echo 'NOT_EXISTS'"
     res = run_ssh_command(client, check_repo, ignore_error=True)
-    if "EXISTS" in res:
+    if res.strip() == "EXISTS":
         print(f"Updating existing repository at {REPO_DIR}...")
         run_ssh_command(client, f"cd {REPO_DIR} && git fetch origin && git checkout {REPO_BRANCH} && git pull origin {REPO_BRANCH}")
     else:
