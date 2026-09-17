@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import DataTable from '../components/DataTable';
 import { Field, Modal, Confirm, IconView, IconEdit, IconDelete } from '../components/ui';
+import { FiX } from 'react-icons/fi';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
@@ -177,7 +178,7 @@ export default function Customers() {
               <option value="inactive">Inactive</option>
               <option value="blacklisted">Blacklisted</option>
             </select>
-            {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+            {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
             <div style={{ flex: 1 }} />
             {can('customers.export') && <button className="btn secondary" onClick={() => api.download('/api/export/customers', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>}
           </div>

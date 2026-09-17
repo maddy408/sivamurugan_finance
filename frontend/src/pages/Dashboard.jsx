@@ -4,6 +4,10 @@ import { api, money } from '../api/client';
 import { Spinner, ErrorState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
+import {
+  FiCreditCard, FiFileText, FiBarChart2, FiTrendingDown, FiTrendingUp,
+  FiRefreshCw, FiZap, FiCalendar, FiSun,
+} from 'react-icons/fi';
 
 export default function Dashboard() {
   const { user, isAdmin } = useAuth();
@@ -33,7 +37,7 @@ export default function Dashboard() {
           key: 'total_collection',
           label: 'TOTAL COLLECTION',
           subtext: 'Cash collected so far',
-          icon: '💳',
+          icon: <FiCreditCard />,
           value: c.total_collection,
           borderLeft: '4px solid #087f47',
           iconBg: '#e6f4ea',
@@ -43,7 +47,7 @@ export default function Dashboard() {
           key: 'total_chit_amount',
           label: 'TOTAL CHITS',
           subtext: 'Combined face value of every chit',
-          icon: '📜',
+          icon: <FiFileText />,
           value: c.total_chit_amount,
           borderLeft: '4px solid #6d28d9',
           iconBg: '#f5f3ff',
@@ -53,7 +57,7 @@ export default function Dashboard() {
           key: 'total_amount',
           label: 'TOTAL AMOUNT',
           subtext: 'Office Cash + Bank Cash',
-          icon: '📊',
+          icon: <FiBarChart2 />,
           value: c.total_amount,
           borderLeft: '4px solid #0d3878',
           iconBg: '#e8f0fe',
@@ -63,7 +67,7 @@ export default function Dashboard() {
           key: 'total_expense',
           label: 'TOTAL EXPENSE',
           subtext: 'All office expenses',
-          icon: '💸',
+          icon: <FiTrendingDown />,
           value: c.total_expense,
           borderLeft: '4px solid #be123c',
           iconBg: '#fff1f2',
@@ -73,7 +77,7 @@ export default function Dashboard() {
           key: 'total_income',
           label: 'TOTAL INCOME',
           subtext: 'All office income',
-          icon: '💰',
+          icon: <FiCreditCard />,
           value: c.total_income,
           borderLeft: '4px solid #d99b26',
           iconBg: '#feefc3',
@@ -85,7 +89,7 @@ export default function Dashboard() {
           key: 'my_collection_today',
           label: 'MY COLLECTION TODAY',
           subtext: 'Today collected by you',
-          icon: '📈',
+          icon: <FiTrendingUp />,
           value: c.my_collection_today,
           tone: 'emerald',
           borderLeft: '4px solid #087f47',
@@ -98,7 +102,7 @@ export default function Dashboard() {
           key: 'my_collection_month',
           label: 'MY COLLECTION THIS MONTH',
           subtext: 'This month collected by you',
-          icon: '🗓️',
+          icon: <FiCalendar />,
           value: c.my_collection_month,
           tone: 'sky',
           borderLeft: '4px solid #0d3878',
@@ -111,7 +115,7 @@ export default function Dashboard() {
           key: 'my_collection_total',
           label: 'MY TOTAL COLLECTION',
           subtext: 'All time collected by you',
-          icon: '💳',
+          icon: <FiCreditCard />,
           value: c.my_collection_total,
           tone: 'amber',
           borderLeft: '4px solid #d99b26',
@@ -123,9 +127,9 @@ export default function Dashboard() {
       ];
 
   const perfCards = [
-    { key: 'daily', label: 'Daily Chit Performance', icon: '', data: perf.daily },
-    { key: 'weekly', label: 'Weekly Chit Performance', icon: '', data: perf.weekly },
-    { key: 'monthly', label: 'Monthly Chit Performance', icon: '', data: perf.monthly },
+    { key: 'daily', label: 'Daily Chit Performance', icon: <FiSun />, data: perf.daily },
+    { key: 'weekly', label: 'Weekly Chit Performance', icon: <FiCalendar />, data: perf.weekly },
+    { key: 'monthly', label: 'Monthly Chit Performance', icon: <FiBarChart2 />, data: perf.monthly },
   ];
 
   return (
@@ -139,9 +143,9 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn sm secondary" onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            ↻ Refresh
+            <FiRefreshCw size={13} /> Refresh
           </button>
-          <Link className="btn sm" to="/collection"> Collect Dues</Link>
+          <Link className="btn sm" to="/collection" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiZap size={13} /> Collect Dues</Link>
         </div>
       </div>
 
@@ -284,27 +288,5 @@ function PerfCard({ label, icon, data }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function IconCollection() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  );
-}
-function IconDistributed() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-    </svg>
-  );
-}
-function IconOutstanding() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-    </svg>
   );
 }

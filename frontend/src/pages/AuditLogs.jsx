@@ -1,6 +1,7 @@
 import { api } from '../api/client';
 import DataTable from '../components/DataTable';
 import { useList } from '../hooks/useList';
+import { FiX } from 'react-icons/fi';
 
 export default function AuditLogs() {
   const list = useList('/api/audit-logs', { initialPerPage: 50 });
@@ -24,7 +25,7 @@ export default function AuditLogs() {
         <input placeholder="action" value={list.filters.action || ''} onChange={(e) => list.setFilter('action', e.target.value)} />
         <input type="date" value={list.filters.date_from || ''} onChange={(e) => list.setFilter('date_from', e.target.value)} />
         <input type="date" value={list.filters.date_to || ''} onChange={(e) => list.setFilter('date_to', e.target.value)} />
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
       </div>
       <DataTable
         columns={columns} rows={list.rows} loading={list.loading} error={list.error} onRetry={list.reload}

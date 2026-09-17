@@ -5,6 +5,7 @@ import { Field, Modal, Confirm, IconEdit, IconDelete } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiFileText, FiX } from 'react-icons/fi';
 
 const blank = { amount: '', expense_date: new Date().toISOString().slice(0, 10), category: '', account_id: '', remarks: '' };
 
@@ -104,7 +105,7 @@ export default function Expenses({ embedded }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {can('expenses.export') && (
               <button className="btn secondary" onClick={() => api.download('/api/reports/templates/expense').catch((e) => toast.error(e.message))}>
-                📄 Sample Template
+                <FiFileText size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Sample Template
               </button>
             )}
             {can('expenses.create') && (
@@ -136,7 +137,7 @@ export default function Expenses({ embedded }) {
         </select>
         <input type="date" value={list.filters.date_from || ''} onChange={(e) => list.setFilter('date_from', e.target.value)} />
         <input type="date" value={list.filters.date_to || ''} onChange={(e) => list.setFilter('date_to', e.target.value)} />
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
         <div style={{ flex: 1 }} />
         {can('expenses.export') && <button className="btn secondary" onClick={() => api.download('/api/expenses/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>}
         {can('expenses.create') && <button className="btn" onClick={() => { setForm(blank); setErrors({}); setModal({ mode: 'create' }); }}>+ New expense</button>}

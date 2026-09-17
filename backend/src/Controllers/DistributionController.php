@@ -88,4 +88,14 @@ class DistributionController
         $row = DistributionService::cancel($user, $id, is_string($reason) ? $reason : null);
         Response::ok($row, 'Distribution cancelled');
     }
+
+    /** DELETE /api/distributions/{id}  - soft delete (unwinds the effect first if still active) */
+    public function destroy(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'distributions.delete');
+        $id   = (int) $args['id'];
+        $reason = $req->input('reason');
+        DistributionService::delete($user, $id, is_string($reason) ? $reason : null);
+        Response::ok(null, 'Distribution deleted');
+    }
 }

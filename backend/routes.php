@@ -91,6 +91,7 @@ $router->get('/api/loans/{id}/distributions',     [$distributions, 'forLoan']);
 $router->post('/api/loans/{id}/distributions',    [$distributions, 'store']);
 $router->put('/api/distributions/{id}',           [$distributions, 'update']);
 $router->post('/api/distributions/{id}/cancel',   [$distributions, 'cancel']);
+$router->delete('/api/distributions/{id}',        [$distributions, 'destroy']);
 
 /* ---- collection ---- */
 $router->get('/api/collection/workload',              [$collection, 'workload']);

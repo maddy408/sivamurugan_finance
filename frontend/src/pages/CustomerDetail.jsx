@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge } from '../components/ui';
+import { FiArrowLeft } from 'react-icons/fi';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -21,7 +22,7 @@ export default function CustomerDetail() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/customers" className="btn sm secondary">← Customers</Link>
+        <Link to="/customers" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Customers</Link>
         <h1 style={{ margin: 0, fontSize: 18 }}>{c.name} <span className="muted">({c.customer_code})</span></h1>
         <div style={{ flex: 1 }} />
         <Badge value={c.status} />
@@ -50,11 +51,11 @@ export default function CustomerDetail() {
               <tbody>
                 {data.loans.map((l) => (
                   <tr key={l.id}>
-                    <td><Link to={`/loans/${l.id}`}>{l.code}</Link></td>
-                    <td className="right">{money(l.principal_amount)}</td>
-                    <td className="right">{money(l.installment_amount ?? l.emi_amount)}</td>
-                    <td className="right">{money(l.outstanding_balance)}</td>
-                    <td><Badge value={l.status} /></td>
+                    <td data-label="Code"><Link to={`/loans/${l.id}`}>{l.code}</Link></td>
+                    <td data-label="Chit Amount" className="right">{money(l.principal_amount)}</td>
+                    <td data-label="Installment Amount" className="right">{money(l.installment_amount ?? l.emi_amount)}</td>
+                    <td data-label="Outstanding" className="right">{money(l.outstanding_balance)}</td>
+                    <td data-label="Status"><Badge value={l.status} /></td>
                   </tr>
                 ))}
                 {data.loans.length === 0 && <tr><td colSpan={5} className="muted" style={{ textAlign: 'center' }}>No chits</td></tr>}
@@ -72,14 +73,14 @@ export default function CustomerDetail() {
             <tbody>
               {data.payment_history.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.receipt_no}</td>
-                  <td>{fmtDate(p.collection_date)}</td>
-                  <td>{p.loan_code}</td>
-                  <td>{p.payment_mode}</td>
-                  <td className="right">{money(p.amount)}</td>
-                  <td className="right">{money(p.fine_amount)}</td>
-                  <td className="right">{money(p.total_amount)}</td>
-                  <td><Badge value={p.status} /></td>
+                  <td data-label="Receipt">{p.receipt_no}</td>
+                  <td data-label="Date">{fmtDate(p.collection_date)}</td>
+                  <td data-label="Loan">{p.loan_code}</td>
+                  <td data-label="Mode">{p.payment_mode}</td>
+                  <td data-label="Amount" className="right">{money(p.amount)}</td>
+                  <td data-label="Fine" className="right">{money(p.fine_amount)}</td>
+                  <td data-label="Total" className="right">{money(p.total_amount)}</td>
+                  <td data-label="Status"><Badge value={p.status} /></td>
                 </tr>
               ))}
               {data.payment_history.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>No payments recorded</td></tr>}

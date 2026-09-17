@@ -5,6 +5,7 @@ import { useToast } from '../state/ToastContext';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
 import Employees from './Employees';
+import { FiSettings, FiUsers, FiUser, FiLock } from 'react-icons/fi';
 
 export default function Settings() {
   const toast = useToast();
@@ -44,13 +45,13 @@ export default function Settings() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">⚙️ Settings</h1>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><FiSettings /> Settings</h1>
       </div>
 
       <div className="sub-tab-bar" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
         {tabs.map((t) => (
           <button key={t} className={`sub-tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'Users' ? '👥 Users' : t}
+            {t === 'Users' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiUsers size={13} /> Users</span> : t}
           </button>
         ))}
       </div>
@@ -75,7 +76,7 @@ function ProfileTab({ user }) {
   return (
     <div className="card">
       <div className="card-head">
-        <h2>👤 User Profile Settings</h2>
+        <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiUser size={15} /> User Profile Settings</h2>
       </div>
       <div className="card-body">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--line-subtle)' }}>
@@ -163,7 +164,7 @@ function ChangePasswordTab({ toast }) {
 
   return (
     <div className="card" style={{ maxWidth: 480 }}>
-      <div className="card-head"><h2>🔒 Change Password</h2></div>
+      <div className="card-head"><h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiLock size={15} /> Change Password</h2></div>
       <div className="card-body">
         <PasswordField label="Current Password *" value={f.current_password} autoComplete="current-password" error={errors.current_password}
           onChange={(e) => setF({ ...f, current_password: e.target.value })} />

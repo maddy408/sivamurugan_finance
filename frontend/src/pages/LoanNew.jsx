@@ -4,6 +4,7 @@ import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiArrowLeft, FiFileText, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const WEEKDAYS = [
@@ -35,9 +36,9 @@ export default function LoanNew() {
   const [success, setSuccess] = useState(null);   // { chit, distribution } after a create-with-distribution
 
   useEffect(() => {
-    api.get('/api/customers', { params: { per_page: 500, sort_by: 'name' } }).then((r) => setCustomers(r.data)).catch(() => {});
-    api.get('/api/employees', { params: { per_page: 200 } }).then((r) => setEmployees(r.data)).catch(() => {});
-    api.get('/api/loans/next-code').then((r) => setNextCode(r.data.next_code)).catch(() => {});
+    api.get('/api/customers', { params: { per_page: 500, sort_by: 'name' } }).then((r) => setCustomers(r.data)).catch(() => { });
+    api.get('/api/employees', { params: { per_page: 200 } }).then((r) => setEmployees(r.data)).catch(() => { });
+    api.get('/api/loans/next-code').then((r) => setNextCode(r.data.next_code)).catch(() => { });
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -143,12 +144,12 @@ export default function LoanNew() {
   return (
     <form onSubmit={submit}>
       <div className="toolbar">
-        <button type="button" className="btn sm secondary" onClick={() => nav('/loans')}>← Chits</button>
+        <button type="button" className="btn sm secondary" onClick={() => nav('/loans')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Chits</button>
         <h1 style={{ margin: 0, fontSize: 18 }}>New chit</h1>
       </div>
 
       <div className="card chit-form-card">
-        <div className="card-head"><h2>📋 Chit Details</h2></div>
+        <div className="card-head"><h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiFileText size={15} /> Chit Details</h2></div>
         <div className="card-body">
           <div className="form-grid">
             <Field label="Customer *" error={errors.customer_id}>
@@ -252,7 +253,7 @@ export default function LoanNew() {
       {/* Optional: distribute the chit immediately on creation */}
       <div className="card chit-form-card" style={{ marginTop: 16 }}>
         <div className="card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>💸 Distribute now <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>(optional)</span></h2>
+          <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiDollarSign size={15} /> Distribute now <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>(optional)</span></h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
             <input type="checkbox" checked={distOpen} onChange={(e) => { setDistOpen(e.target.checked); if (!e.target.checked) setDist(emptyDist); }} />
             Distribute money to the customer as part of creation
@@ -321,7 +322,7 @@ export default function LoanNew() {
       )}
 
       {success && (
-        <Modal title="✓ Chit Created Successfully" onClose={() => nav(`/loans/${success.chit.id}`)}
+        <Modal title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiCheckCircle /> Chit Created Successfully</span>} onClose={() => nav(`/loans/${success.chit.id}`)}
           footer={<button className="btn" onClick={() => nav(`/loans/${success.chit.id}`)}>Open chit details</button>}>
           <dl className="kv" style={{ gridTemplateColumns: '180px 1fr', rowGap: 8 }}>
             <dt>Chit Code</dt><dd style={{ fontWeight: 700 }}>{success.chit.code}</dd>

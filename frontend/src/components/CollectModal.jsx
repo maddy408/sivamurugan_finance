@@ -3,6 +3,7 @@ import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from './ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiZap, FiCreditCard } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -139,7 +140,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
       footer={<>
         <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn" onClick={() => setConfirming(true)} disabled={!canProceed}>
-          ⚡ Collect {money(grandTotal)}
+          <FiZap size={14} style={{ marginRight: 5, verticalAlign: -2 }} />Collect {money(grandTotal)}
         </button>
       </>}
     >
@@ -223,7 +224,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
       {isSplit && (
         <div className="split-payment-box" style={{ background: '#f8fafc', border: '1.5px solid var(--line)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <div className="split-payment-title" style={{ fontWeight: 800, fontSize: 13, color: 'var(--blue-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            💳 SPLIT COLLECTION (CASH + UPI)
+            <FiCreditCard size={13} style={{ marginRight: 5, verticalAlign: -2 }} />SPLIT COLLECTION (CASH + UPI)
           </div>
           <div className="split-payment-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="CASH PORTION (₹)" error={errors.cash_amount}>

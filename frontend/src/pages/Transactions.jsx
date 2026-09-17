@@ -3,6 +3,7 @@ import DataTable from '../components/DataTable';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiX } from 'react-icons/fi';
 
 const TYPE_LABEL = { collection: 'Collection', distribution: 'Distribution', expense: 'Expense', income: 'Income' };
 
@@ -56,7 +57,7 @@ export default function Transactions() {
         </select>
         <input type="date" value={list.filters.date_from || ''} onChange={(e) => list.setFilter('date_from', e.target.value)} />
         <input type="date" value={list.filters.date_to || ''} onChange={(e) => list.setFilter('date_to', e.target.value)} />
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
         <div style={{ flex: 1 }} />
         {can('transactions.export') && (
           <button className="btn secondary" onClick={() => api.download('/api/transactions/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>

@@ -1,6 +1,7 @@
 import { API_BASE, fmtDate, money } from '../api/client';
 import { Modal } from './ui';
 import { useAuth } from '../state/AuthContext';
+import { FiPrinter } from 'react-icons/fi';
 
 /**
  * Print-friendly collection receipt. Company details come from
@@ -17,7 +18,7 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
     <Modal title="Collection Receipt" onClose={onClose} size="lg"
       footer={<>
         <button className="btn secondary" onClick={onClose}>Close</button>
-        <button className="btn" onClick={() => window.print()}>🖨️ Print</button>
+        <button className="btn" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiPrinter size={13} /> Print</button>
       </>}>
       <div className="print-receipt">
         <div className="receipt-header">

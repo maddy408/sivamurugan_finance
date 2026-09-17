@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, fmtDate } from '../api/client';
 import DataTable from '../components/DataTable';
 import { Field, Modal, Confirm, Spinner, IconView, IconEdit } from '../components/ui';
+import { FiUsers, FiX } from 'react-icons/fi';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
@@ -120,7 +121,7 @@ export default function Employees() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">👥 Users Management</h1>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><FiUsers /> Users Management</h1>
       </div>
 
       {/* Main 2-column layout: LEFT = permanent Create User form, RIGHT = Users List */}
@@ -162,7 +163,7 @@ export default function Employees() {
         <div>
           <div className="toolbar">
             <input type="search" placeholder="Search name, username, code…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-            {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+            {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
           </div>
 
           <DataTable

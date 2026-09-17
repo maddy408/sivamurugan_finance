@@ -3,14 +3,18 @@ import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import {
+  FiBarChart2, FiFileText, FiCheckCircle, FiCreditCard, FiUsers, FiCalendar,
+  FiUser, FiDollarSign, FiTrendingUp, FiClipboard, FiBookOpen, FiSearch, FiDownload,
+} from 'react-icons/fi';
 
 /* ------------------------------------------------------------------ helpers */
 
 const REPORT_ICONS = {
-  'chit-opening': '', 'chit-closing': '', 'chit-collection': '',
-  'customer-collection': '', 'daily-collection': '', 'employee-collection': '',
-  'chit-distribution': '', 'pending-dues': '',
-  'chit-profit': '', 'monthly-summary': '', 'financial-ledger': '',
+  'chit-opening': <FiFileText />, 'chit-closing': <FiCheckCircle />, 'chit-collection': <FiCreditCard />,
+  'customer-collection': <FiUsers />, 'daily-collection': <FiCalendar />, 'employee-collection': <FiUser />,
+  'chit-distribution': <FiDollarSign />, 'pending-dues': <FiClipboard />,
+  'chit-profit': <FiTrendingUp />, 'monthly-summary': <FiBarChart2 />, 'financial-ledger': <FiBookOpen />,
 };
 
 const fmtCell = (type, val) => {
@@ -98,12 +102,13 @@ export default function Reports() {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">📊 Reports</h1>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><FiBarChart2 /> Reports</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {can('reports.export') && (
             <>
-              <button className="btn secondary" onClick={() => download('/api/reports/full-export', exportParams)}>
-                 Export Full Workbook
+              <button className="btn secondary" onClick={() => download('/api/reports/full-export', exportParams)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <FiDownload size={13} /> Export Full Workbook
               </button>
               <div className="dropdown-wrap" style={{ position: 'relative' }}>
                 <TemplatesMenu onPick={(t) => download(`/api/reports/templates/${t}`)} />
@@ -129,7 +134,7 @@ export default function Reports() {
                 color: c.name === name ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}>
-              <span style={{ fontSize: 16 }}>{REPORT_ICONS[c.name] || '📄'}</span>
+              <span style={{ fontSize: 16 }}>{REPORT_ICONS[c.name] || <FiFileText />}</span>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
             </button>
           ))}
@@ -140,7 +145,7 @@ export default function Reports() {
           {/* ---------- Filters (always visible) ---------- */}
           <div className="rpt-filter-panel">
             <div className="rpt-filter-head">
-              <h2>🔎 Filters</h2>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiSearch size={14} /> Filters</h2>
               <span className="muted" style={{ fontSize: 12 }}>{data?.filters?.period || 'All time'}</span>
             </div>
             <div className="rpt-filter-grid">
@@ -185,7 +190,7 @@ export default function Reports() {
               </label>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn sm" onClick={() => apply()}>🔎 Apply Filters</button>
+              <button className="btn sm" onClick={() => apply()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiSearch size={13} /> Apply Filters</button>
               <button className="btn sm secondary" onClick={clearAll} disabled={!hasFilters}>Clear</button>
             </div>
           </div>
@@ -198,7 +203,7 @@ export default function Reports() {
               <>
                 <div className="card-head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>{REPORT_ICONS[name] || '📄'}</span>
+                    <span style={{ fontSize: 20 }}>{REPORT_ICONS[name] || <FiFileText />}</span>
                     <div>
                       <h2 style={{ margin: 0, fontSize: 16 }}>{data.title || activeMeta?.label}</h2>
                       <div className="muted" style={{ fontSize: 12 }}>
@@ -211,7 +216,7 @@ export default function Reports() {
                     {can('reports.export') && (
                       <button className="btn sm secondary"
                         onClick={() => download(`/api/reports/${name}/export`, exportParams)}>
-                        📥 Export Excel
+                        <FiDownload size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Export Excel
                       </button>
                     )}
                   </div>
@@ -286,7 +291,7 @@ function TemplatesMenu({ onPick }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className="btn secondary" onClick={() => setOpen((o) => !o)}>📄 Templates ▾</button>
+      <button className="btn secondary" onClick={() => setOpen((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiFileText size={13} /> Templates ▾</button>
       {open && (
         <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1px solid var(--line)', borderRadius: 8, boxShadow: 'var(--shadow-lg)', zIndex: 20, minWidth: 180 }}
           onMouseLeave={() => setOpen(false)}>

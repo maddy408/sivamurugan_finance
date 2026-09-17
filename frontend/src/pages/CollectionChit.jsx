@@ -7,11 +7,16 @@ import DistributeModal from '../components/DistributeModal';
 import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import {
+  FiArrowLeft, FiPrinter, FiFileText, FiDollarSign, FiCalendar, FiZap,
+  FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList,
+} from 'react-icons/fi';
 
 const DIST_STATUS_LABEL = {
   not_distributed: 'Not Distributed',
   partially_distributed: 'Partially Distributed',
   fully_distributed: 'Fully Distributed',
+  fully_distributed_extra: 'Fully Distributed + Extra',
 };
 
 export default function CollectionChit() {
@@ -23,7 +28,9 @@ export default function CollectionChit() {
   const [collectIds, setCollectIds] = useState(null); // array of installment ids being paid, or null
   const [checked, setChecked] = useState(() => new Set()); // checkboxes ticked in the due list
   const [distribute, setDistribute] = useState(false);
-  const [act, setAct] = useState(null);              // { type:'cancel'|'delete', id, reason }
+  const [distEditId, setDistEditId] = useState(null);  // open Distribute modal pre-focused on this row's edit
+  const [act, setAct] = useState(null);              // { type:'cancel'|'delete', id, reason }  (collection)
+  const [distAct, setDistAct] = useState(null);       // { type:'cancel'|'delete', row, reason }  (distribution)
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState(null);       // collection row being printed, or null
 
@@ -38,6 +45,7 @@ export default function CollectionChit() {
   const s = loan.summary || {};
   const c = loan.customer || {};
   const d = loan.distribution || {};
+  const distributions = loan.distributions || [];
   const initial = c.name ? c.name.charAt(0).toUpperCase() : 'C';
 
   const toggleDue = (instId) => setChecked((prev) => {
@@ -60,15 +68,33 @@ export default function CollectionChit() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
+  const runDistAct = async () => {
+    setBusy(true);
+    try {
+      if (distAct.type === 'cancel') {
+        await api.post(`/api/distributions/${distAct.row.id}/cancel`, { reason: distAct.reason || 'Cancelled' });
+        toast.success('Distribution cancelled — the amount is back in its account');
+      } else {
+        await api.del(`/api/distributions/${distAct.row.id}`, { reason: distAct.reason || 'Deleted' });
+        toast.success('Distribution deleted');
+      }
+      setDistAct(null); load(); refreshMeta?.();
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+
   return (
     <>
       <div className="toolbar" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link to="/collection" className="btn sm secondary">← Collection Workload</Link>
+          <Link to="/collection" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <FiArrowLeft size={14} /> Collection Workload
+          </Link>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Collect — {loan.code}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="btn sm secondary" onClick={() => window.print()}>🖨️ Print Statement</button>
+          <button className="btn sm secondary" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <FiPrinter size={14} /> Print Statement
+          </button>
           <Badge value={loan.status} />
         </div>
       </div>
@@ -80,7 +106,7 @@ export default function CollectionChit() {
         {/* LEFT COLUMN: Customer + Chit + Distribution in ONE combined card,
             so every detail is visible at once with no internal scrolling. */}
         <div className="card">
-         
+
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Customer */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -92,9 +118,11 @@ export default function CollectionChit() {
                 <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{c.customer_code}</div>
               </div>
             </div>
-          
 
-            <div className="section-title" style={{ margin: '2px 0 0' }}>📄 Chit</div>
+
+            <div className="section-title" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FiFileText size={13} /> Chit
+            </div>
             <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
               <dt>Chit Code</dt><dd><span className="badge PENDING">{loan.code}</span></dd>
               <dt>Principal</dt><dd>{money(loan.principal_amount)}</dd>
@@ -107,10 +135,11 @@ export default function CollectionChit() {
             {can('distributions.view') && (
               <>
                 <div className="section-title" style={{ margin: '2px 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>💸 Distribution</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiDollarSign size={13} /> Distribution</span>
                   {loan.status === 'active' && can('distributions.create') && (
-                    <button className="btn sm" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setDistribute(true)}>
-                      💸 {d.status === 'not_distributed' ? 'Disburse Chit' : 'Edit Distribution'}
+                    <button className="btn sm" style={{ padding: '3px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      onClick={() => { setDistEditId(null); setDistribute(true); }}>
+                      <FiDollarSign size={12} /> {d.status === 'not_distributed' ? 'Disburse Chit' : 'Disburse / Edit'}
                     </button>
                   )}
                 </div>
@@ -118,9 +147,11 @@ export default function CollectionChit() {
                   <dt>Status</dt><dd><b>{DIST_STATUS_LABEL[d.status] || 'Not Distributed'}</b></dd>
                   <dt>Current EMI</dt><dd><b style={{ color: '#2563eb' }}>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
                   <dt>Distributed</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(d.total_distributed ?? 0)}</dd>
+                  <dt>Principal Covered</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
+                  <dt>Extra Disbursed</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : '#64748b', fontWeight: 700 }}>{money(d.extra_disbursed ?? 0)}</dd>
                   <dt>Remaining</dt>
-                  <dd style={{ color: Number(d.remaining_undistributed ?? loan.principal_amount) > 0 ? '#b45309' : '#64748b', fontWeight: 700 }}>
-                    {money(d.remaining_undistributed ?? loan.principal_amount)}
+                  <dd style={{ color: Number(d.remaining_undistributed ?? 0) > 0 ? '#b45309' : '#64748b', fontWeight: 700 }}>
+                    {money(d.remaining_undistributed ?? 0)}
                   </dd>
                 </dl>
               </>
@@ -133,10 +164,10 @@ export default function CollectionChit() {
           {/* Quick Collect Action Header & Installment Schedule Table */}
           <div className="card">
             <div className="card-head">
-              <h2>📅 Installment Schedule & Collect</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiCalendar size={15} /> Installment Schedule &amp; Collect</h2>
               {can('collection.create') && loan.status === 'active' && checked.size >= 2 && (
-                <button className="btn" onClick={() => setCollectIds([...checked])}>
-                  ⚡ Pay Multiple Due ({checked.size})
+                <button className="btn" onClick={() => setCollectIds([...checked])} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <FiZap size={14} /> Pay Multiple Due ({checked.size})
                 </button>
               )}
             </div>
@@ -165,17 +196,19 @@ export default function CollectionChit() {
                               style={{ width: 16, height: 16, cursor: 'pointer' }} aria-label={`Select due #${i.installment_no}`} />
                           )}
                         </td>
-                        <td style={{ fontWeight: 700 }}>#{i.installment_no}</td>
-                        <td>{fmtDate(i.due_date)}</td>
-                        <td className="right">{money(i.payable_amount)}</td>
-                        <td className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
-                        <td className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
+                        <td data-label="#" style={{ fontWeight: 700 }}>#{i.installment_no}</td>
+                        <td data-label="Due date">{fmtDate(i.due_date)}</td>
+                        <td data-label="Installment Amount" className="right">{money(i.payable_amount)}</td>
+                        <td data-label="Paid" className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
+                        <td data-label="Balance" className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
                           {money(i.balance_amount)}
                         </td>
-                        <td><Badge value={i.status} /></td>
-                        <td className="right">
+                        <td data-label="Status"><Badge value={i.status} /></td>
+                        <td data-label="" className="right">
                           {can('collection.create') && payable && (
-                            <button className="btn sm" onClick={() => setCollectIds([i.id])}> Collect</button>
+                            <button className="btn sm" onClick={() => setCollectIds([i.id])} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <FiZap size={12} /> Collect
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -189,7 +222,7 @@ export default function CollectionChit() {
           {/* Collection History Table */}
           <div className="card">
             <div className="card-head">
-              <h2>🧾 Collection History</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiClipboard size={15} /> Collection History</h2>
             </div>
             <div className="table-wrap">
               <table className="grid">
@@ -208,10 +241,10 @@ export default function CollectionChit() {
                     const isRev = String(col.receipt_no).endsWith('-REV');
                     return (
                       <tr key={col.id} style={col.status !== 'posted' ? { opacity: 0.6 } : undefined}>
-                        <td style={{ fontWeight: 700 }}>{col.receipt_no}</td>
-                        <td>{fmtDate(col.collection_date)}</td>
-                        <td><span className="badge PENDING">{col.payment_mode}</span></td>
-                        <td className="right">
+                        <td data-label="Receipt" style={{ fontWeight: 700 }}>{col.receipt_no}</td>
+                        <td data-label="Date">{fmtDate(col.collection_date)}</td>
+                        <td data-label="Mode"><span className="badge PENDING">{col.payment_mode}</span></td>
+                        <td data-label="Paid (actual)" className="right">
                           <div style={{ fontWeight: 800, color: '#10b981', fontSize: 14 }}>
                             {money(col.total_amount || (Number(col.amount) + Number(col.fine_amount || 0)))}
                           </div>
@@ -221,25 +254,22 @@ export default function CollectionChit() {
                             </div>
                           )}
                         </td>
-                        <td><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
-                        <td className="right nowrap">
+                        <td data-label="Status"><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
+                        <td data-label="" className="right nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                             <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(col)}>
-                              🖨️
-                            </button>
-                            <button className="btn-icon" title="View / Edit Statement" onClick={() => setReceipt(col)}>
-                              ✏️
+                              <FiPrinter size={14} />
                             </button>
                             {col.status === 'posted' && !isRev && (
                               <>
                                 {can('collection.cancel') && (
                                   <button className="btn-icon warning" title="Cancel Collection" onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>
-                                    🚫
+                                    <FiXCircle size={14} />
                                   </button>
                                 )}
                                 {can('collection.delete') && (
                                   <button className="btn-icon danger" title="Delete Collection" onClick={() => setAct({ type: 'delete', id: col.id, reason: '' })}>
-                                    🗑️
+                                    <FiTrash2 size={14} />
                                   </button>
                                 )}
                               </>
@@ -256,6 +286,69 @@ export default function CollectionChit() {
               </table>
             </div>
           </div>
+
+          {/* Disbursement History Table — same area as Collection History, so both
+              money-IN and money-OUT records are visible together. */}
+          {can('distributions.view') && (
+            <div className="card">
+              <div className="card-head">
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> Disbursement History</h2>
+              </div>
+              <div className="table-wrap">
+                <table className="grid">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Account</th>
+                      <th className="right">Amount</th>
+                      <th>Remarks</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {distributions.map((row) => {
+                      const isActive = row.status === 'active';
+                      return (
+                        <tr key={row.id} style={!isActive ? { opacity: 0.6 } : undefined}>
+                          <td>{fmtDate(row.distributed_date)}</td>
+                          <td>{row.account_name}</td>
+                          <td className="right" style={{ fontWeight: 800, color: '#15803d', fontSize: 14 }}>{money(row.amount)}</td>
+                          <td>{row.remarks || '—'}</td>
+                          <td><Badge value={isActive ? 'active' : 'cancelled'} /></td>
+                          <td className="right nowrap">
+                            <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {isActive && can('distributions.edit') && (
+                                <button className="btn-icon" title="Edit Disbursement"
+                                  onClick={() => { setDistEditId(row.id); setDistribute(true); }}>
+                                  <FiEdit2 size={14} />
+                                </button>
+                              )}
+                              {isActive && can('distributions.cancel') && (
+                                <button className="btn-icon warning" title="Cancel Disbursement"
+                                  onClick={() => setDistAct({ type: 'cancel', row, reason: '' })}>
+                                  <FiXCircle size={14} />
+                                </button>
+                              )}
+                              {can('distributions.delete') && (
+                                <button className="btn-icon danger" title="Delete Disbursement"
+                                  onClick={() => setDistAct({ type: 'delete', row, reason: '' })}>
+                                  <FiTrash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {distributions.length === 0 && (
+                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>No disbursements recorded yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -265,8 +358,8 @@ export default function CollectionChit() {
       )}
 
       {distribute && (
-        <DistributeModal loan={loan}
-          onClose={() => setDistribute(false)}
+        <DistributeModal loan={loan} editRowId={distEditId}
+          onClose={() => { setDistribute(false); setDistEditId(null); }}
           onDone={() => { load(); refreshMeta?.(); }} />
       )}
 
@@ -291,6 +384,28 @@ export default function CollectionChit() {
           }
           confirmLabel={act.type === 'cancel' ? 'Cancel collection' : 'Delete'}
           onConfirm={runAct} onClose={() => setAct(null)}
+        />
+      )}
+
+      {distAct && (
+        <Confirm
+          title={distAct.type === 'cancel' ? `Cancel disbursement of ${money(distAct.row.amount)}?` : `Delete disbursement of ${money(distAct.row.amount)}?`}
+          danger busy={busy}
+          message={
+            <>
+              <p style={{ marginTop: 0 }}>
+                {distAct.type === 'cancel'
+                  ? `${money(distAct.row.amount)} returns to ${distAct.row.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`
+                  : distAct.row.status === 'active'
+                    ? `This first reverses its financial effect (${money(distAct.row.amount)} returns to ${distAct.row.account_name}), then removes it from the history list.`
+                    : 'This record is already cancelled and contributes nothing financially. It will be removed from the history list.'}
+              </p>
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--line)' }} placeholder="Reason (optional)"
+                value={distAct.reason} onChange={(e) => setDistAct({ ...distAct, reason: e.target.value })} />
+            </>
+          }
+          confirmLabel={distAct.type === 'cancel' ? 'Cancel disbursement' : 'Delete'}
+          onConfirm={runDistAct} onClose={() => setDistAct(null)}
         />
       )}
     </>

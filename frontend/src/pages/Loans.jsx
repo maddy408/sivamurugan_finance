@@ -6,6 +6,7 @@ import { Confirm, Field, Modal, IconView, IconEdit, IconDelete } from '../compon
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiFileText, FiX } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const initialForm = {
@@ -330,11 +331,11 @@ export default function Loans() {
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
             </select>
-            {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+            {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
             <div style={{ flex: 1 }} />
             {can('loans.export') && (
               <>
-                <button className="btn secondary" onClick={() => api.download('/api/reports/templates/chit').catch((e) => toast.error(e.message))}>📄 Sample Template</button>
+                <button className="btn secondary" onClick={() => api.download('/api/reports/templates/chit').catch((e) => toast.error(e.message))}><FiFileText size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Sample Template</button>
                 <button className="btn secondary" onClick={() => api.download('/api/export/chits', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>
               </>
             )}

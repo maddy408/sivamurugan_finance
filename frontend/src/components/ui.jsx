@@ -1,4 +1,23 @@
 import { useEffect, useState } from 'react';
+import {
+  FiEye, FiEdit2, FiTrash2, FiX, FiCheckCircle, FiXCircle, FiPrinter, FiClock,
+  FiLock, FiEyeOff, FiLogOut, FiPlusCircle, FiSearch, FiRefreshCw, FiList,
+  FiFileText, FiDollarSign, FiCreditCard, FiUsers, FiUser, FiCalendar,
+  FiBarChart2, FiSettings, FiHome, FiDownload, FiUpload, FiAlertTriangle,
+  FiInfo, FiChevronLeft, FiChevronRight, FiChevronDown, FiFilter, FiShield,
+} from 'react-icons/fi';
+
+// One place that maps the app's icon vocabulary to react-icons/fi — every
+// screen imports icons from here (or from this module's re-exports) instead
+// of using emoji characters, which don't render as glyphs on some systems.
+export {
+  FiEye as IconEyeOutline, FiEyeOff, FiLock, FiLogOut, FiPlusCircle, FiSearch,
+  FiRefreshCw, FiList, FiFileText, FiDollarSign, FiCreditCard, FiUsers, FiUser,
+  FiCalendar, FiBarChart2, FiSettings, FiHome, FiDownload, FiUpload,
+  FiAlertTriangle, FiInfo, FiChevronLeft, FiChevronRight, FiChevronDown,
+  FiFilter, FiShield, FiCheckCircle, FiXCircle as IconCancel, FiPrinter as IconPrint,
+  FiClock as IconHistory,
+};
 
 /**
  * Multi-select checkbox picker with search, scroll, count and clear.
@@ -106,7 +125,7 @@ export function Modal({ title, onClose, children, footer, size }) {
       <div className={`modal ${size || ''}`} role="dialog" aria-modal="true">
         <div className="modal-head">
           <h3>{title}</h3>
-          <button className="btn ghost" onClick={onClose} aria-label="Close" style={{ fontSize: 16, padding: '4px 8px' }}>✕</button>
+          <button className="btn ghost" onClick={onClose} aria-label="Close" style={{ padding: '4px 8px', display: 'flex' }}><FiX size={16} /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -145,31 +164,14 @@ export function Confirm({ title, message, confirmLabel = 'Confirm', danger, onCo
 }
 
 export function IconView(props) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+  return <FiEye size={15} {...props} />;
 }
 
 export function IconEdit(props) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
+  return <FiEdit2 size={15} {...props} />;
 }
 
 export function IconDelete(props) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
+  return <FiTrash2 size={15} {...props} />;
 }
 

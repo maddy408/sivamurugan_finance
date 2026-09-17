@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Expenses from './Expenses';
 import Income from './Income';
 import { useAuth } from '../state/AuthContext';
+import { FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
 
 export default function Finance() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,7 +31,7 @@ export default function Finance() {
             className={`sub-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
             onClick={() => handleTabChange('expenses')}
           >
-            💸 Office Expense
+            <FiTrendingDown size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Office Expense
           </button>
         )}
         {canIncome && (
@@ -38,7 +39,7 @@ export default function Finance() {
             className={`sub-tab-btn ${activeTab === 'income' ? 'active' : ''}`}
             onClick={() => handleTabChange('income')}
           >
-            💰 Office Income
+            <FiTrendingUp size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Office Income
           </button>
         )}
       </div>

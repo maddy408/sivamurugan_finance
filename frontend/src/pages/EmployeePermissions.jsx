@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { Spinner, ErrorState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 
 export default function EmployeePermissions() {
   const { id } = useParams();
@@ -76,7 +77,7 @@ export default function EmployeePermissions() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/employees" className="btn sm secondary">← Users</Link>
+        <Link to="/employees" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Users</Link>
         <h1 style={{ margin: 0, fontSize: 18 }}>User access &amp; permissions</h1>
         <div style={{ flex: 1 }} />
         {editable && <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>}
@@ -107,7 +108,7 @@ export default function EmployeePermissions() {
       <div className="card">
         <div className="card-head">
           <h2>Module &amp; action permissions</h2>
-          <span className="muted">click a row to cycle default → allow → deny</span>
+          <span className="muted">click a row to cycle default <FiArrowRight size={10} style={{verticalAlign:-1}} /> allow <FiArrowRight size={10} style={{verticalAlign:-1}} /> deny</span>
         </div>
         <div className="table-wrap">
           <table className="grid">

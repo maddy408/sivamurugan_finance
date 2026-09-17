@@ -4,6 +4,7 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiX, FiFileText, FiPhone, FiArrowRight } from 'react-icons/fi';
 
 export default function Collection() {
   const nav = useNavigate();
@@ -39,10 +40,10 @@ export default function Collection() {
           <option value="MONTHLY_DAILY">Monthly daily</option>
           <option value="MONTHLY_INTERVAL">Monthly interval</option>
         </select>
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
         <div style={{ flex: 1 }} />
         <button className="btn secondary" onClick={() => api.download('/api/reports/templates/collection').catch((e) => toast.error(e.message))}>
-          📄 Sample Template
+          <FiFileText size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Sample Template
         </button>
       </div>
 
@@ -79,7 +80,7 @@ export default function Collection() {
                   <tr key={loan.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/collection/chit/${loan.id}`)}>
                     <td data-label="Customer">
                       <div style={{ fontWeight: 700 }}>{loan.customer_name}</div>
-                      <div className="muted" style={{ fontSize: 11 }}>{loan.customer_code} · 📞 {loan.mobile || '—'}</div>
+                      <div className="muted" style={{ fontSize: 11 }}>{loan.customer_code} · <FiPhone size={10} style={{ verticalAlign: -1 }} /> {loan.mobile || '—'}</div>
                     </td>
                     <td data-label="Chit"><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></td>
                     <td className="right" data-label="Chit Amount">{money(loan.principal_amount)}</td>
@@ -113,7 +114,7 @@ export default function Collection() {
       )}
 
       <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
-        <Link to="/loans" style={{ fontWeight: 600 }}>Open full chit list →</Link>
+        <Link to="/loans" style={{ fontWeight: 600 }}>Open full chit list <FiArrowRight size={12} style={{ verticalAlign: -2 }} /></Link>
       </p>
     </>
   );

@@ -251,12 +251,6 @@ class LoanController
         $distIn = $req->input('distribution');
         $wantDistribution = is_array($distIn) && isset($distIn['amount']) && (float) $distIn['amount'] > 0;
         if ($wantDistribution) {
-            $distAmount = (float) $distIn['amount'];
-            if ($distAmount > (float) $in['principal_amount']) {
-                throw HttpException::validation(['distribution.amount' => [
-                    'Distributed amount cannot exceed the chit amount (' . number_format((float) $in['principal_amount'], 2, '.', '') . ').'
-                ]]);
-            }
             if (empty($distIn['account_id']) ||
                 !$db->scalar('SELECT 1 FROM accounts WHERE id = :id AND is_active = 1', ['id' => (int) $distIn['account_id']])) {
                 throw HttpException::validation(['distribution.account_id' => ['Choose the Office Cash or Bank account the money comes from.']]);

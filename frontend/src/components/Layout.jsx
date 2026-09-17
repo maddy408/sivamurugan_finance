@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-do
 import { API_BASE } from '../api/client';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
+import { FiX, FiMenu, FiUser, FiLogOut, FiCheck } from 'react-icons/fi';
 
 const NAV = [
   { to: '/', key: 'nav.dashboard', defaultLabel: 'Dashboard', end: true, perm: 'dashboard.view' },
@@ -73,7 +74,7 @@ export default function Layout() {
             </button>
             <button className="mobile-nav-btn" onClick={() => setMobileOpen((o) => !o)}
               aria-label="Toggle navigation" aria-expanded={mobileOpen}>
-              {mobileOpen ? '✕' : '☰'}
+              {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
             </button>
           </div>
         </div>
@@ -97,8 +98,8 @@ export default function Layout() {
             {t(n.key, n.defaultLabel)}
           </NavLink>
         ))}
-        <NavLink to="/profile">👤 {t('nav.profile', 'Profile')}</NavLink>
-        <button className="drawer-logout" onClick={doLogout}>⎋ {t('nav.logout', 'Logout')}</button>
+        <NavLink to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FiUser size={15} /> {t('nav.profile', 'Profile')}</NavLink>
+        <button className="drawer-logout" onClick={doLogout} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FiLogOut size={15} /> {t('nav.logout', 'Logout')}</button>
       </div>
 
       <main className="main-layout">
@@ -124,7 +125,7 @@ function LangSwitcher({ lang, setLang, open, setOpen }) {
               role="option" aria-selected={l.code === lang}
               onClick={() => { setLang(l.code); setOpen(false); }}>
               <span>{l.flag}</span><span>{l.label}</span>
-              {l.code === lang && <span className="lang-switcher-check">✓</span>}
+              {l.code === lang && <span className="lang-switcher-check"><FiCheck size={13} /></span>}
             </button>
           ))}
         </div>

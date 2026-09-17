@@ -147,6 +147,30 @@ final class CollectionService
             // never touching an unselected due in between. Otherwise forward-fill.
             if ($explicitSet !== null) {
                 $installments = $explicitSet;
+                // If the actual paid amount exceeds the selected dues' combined
+                // balance, the overflow must cascade forward to the next pending
+                // installments (oldest first) instead of being silently absorbed
+                // by the selected row(s) — same "advance credit" rule the plain
+                // forward-fill flow below already applies. Without this, a
+                // single-due selection (e.g. the per-row "Collect" button) that
+                // is overpaid would dump the whole excess onto that one row,
+                // floor its balance at 0, and never touch the next due's
+                // balance — silently understating the chit's outstanding.
+                $explicitBalanceSum = array_reduce(
+                    $installments,
+                    fn ($carry, $i) => Money::add($carry, $i['balance_amount']),
+                    '0.00'
+                );
+                if (Money::gt($amount, $explicitBalanceSum)) {
+                    $maxNo = max(array_map(fn ($i) => (int)$i['installment_no'], $installments));
+                    $more = $db->fetchAll(
+                        "SELECT * FROM installments
+                         WHERE loan_id = :l AND installment_no > :n AND status <> 'COMPLETED'
+                         ORDER BY installment_no FOR UPDATE",
+                        ['l' => $loan['id'], 'n' => $maxNo]
+                    );
+                    $installments = array_merge($installments, $more);
+                }
             } else {
                 $installments = $db->fetchAll(
                     "SELECT * FROM installments

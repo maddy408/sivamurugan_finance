@@ -37,13 +37,18 @@ final class DistributionService
             "SELECT COALESCE(SUM(amount),0) FROM distributions WHERE loan_id = :l AND " . self::ACTIVE,
             ['l' => $loanId]
         ));
+        $covered   = Money::min($total, $chit);
+        $extra     = Money::max(Money::sub($total, $chit), 0);
         $remaining = Money::max(Money::sub($chit, $total), 0);
         $status = Money::isZero($total) ? 'not_distributed'
-            : (Money::gte($total, $chit) ? 'fully_distributed' : 'partially_distributed');
+            : (Money::lt($total, $chit) ? 'partially_distributed'
+            : (Money::cmp($total, $chit) === 0 ? 'fully_distributed' : 'fully_distributed_extra'));
 
         return [
             'chit_amount'            => $chit,
             'total_distributed'      => $total,
+            'principal_covered'      => $covered,
+            'extra_disbursed'        => $extra,
             'remaining_undistributed'=> $remaining,
             'initial_emi'            => Money::of($loan['initial_emi_amount'] ?: $loan['installment_amount']),
             'current_emi'            => Money::of($loan['installment_amount']),
@@ -89,51 +94,53 @@ final class DistributionService
     public static function create(array $user, int $loanId, array $in): array
     {
         $db = Database::instance();
-        $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id AND deleted_at IS NULL', ['id' => $loanId]);
-        if (!$loan) {
-            throw HttpException::notFound('Chit not found');
-        }
-        if (in_array($loan['status'], ['cancelled'], true)) {
-            throw HttpException::conflict('A cancelled chit cannot be distributed');
-        }
+        return $db->transaction(function ($db) use ($user, $loanId, $in) {
+            $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id AND deleted_at IS NULL FOR UPDATE', ['id' => $loanId]);
+            if (!$loan) {
+                throw HttpException::notFound('Chit not found');
+            }
+            if (in_array($loan['status'], ['cancelled'], true)) {
+                throw HttpException::conflict('A cancelled chit cannot be distributed');
+            }
 
-        $amount  = self::assertAmount($in['amount'] ?? null);
-        $account = self::assertAccount($db, $in['account_id'] ?? null);
-        $date    = $in['distributed_date'] ?: BusinessDate::fmt(BusinessDate::today());
-        $newEmi  = self::normEmi($in['new_emi_amount'] ?? null);
+            $amount  = self::assertAmount($in['amount'] ?? null);
+            $account = self::assertAccount($db, $in['account_id'] ?? null);
+            $date    = $in['distributed_date'] ?: BusinessDate::fmt(BusinessDate::today());
+            $newEmi  = self::normEmi($in['new_emi_amount'] ?? null);
 
-        $already = Money::of((float)$db->scalar(
-            "SELECT COALESCE(SUM(amount),0) FROM distributions WHERE loan_id = :l AND " . self::ACTIVE,
-            ['l' => $loanId]
-        ));
-        $remaining = Money::sub($loan['principal_amount'], $already);
-        if (Money::gt($amount, $remaining)) {
-            throw HttpException::validation(['amount' => [
-                'Distribution (' . $amount . ') exceeds the remaining undistributed balance (' . Money::max($remaining, 0) . ').'
-            ]]);
-        }
+            $already = Money::of((float)$db->scalar(
+                "SELECT COALESCE(SUM(amount),0) FROM distributions WHERE loan_id = :l AND " . self::ACTIVE,
+                ['l' => $loanId]
+            ));
+            $remaining = Money::sub($loan['principal_amount'], $already);
+            if (Money::gt($amount, $remaining)) {
+                throw HttpException::validation(['amount' => [
+                    'Distribution (' . $amount . ') exceeds the remaining undistributed balance (' . Money::max($remaining, 0) . ').'
+                ]]);
+            }
 
-        $id = $db->insert('distributions', [
-            'loan_id'          => $loanId,
-            'customer_id'      => (int)$loan['customer_id'],
-            'distributed_date' => $date,
-            'amount'           => $amount,
-            'account_id'       => (int)$account['id'],
-            'new_emi_amount'   => $newEmi,
-            'remarks'          => $in['remarks'] ?? null,
-            'status'           => 'active',
-            'created_by'       => $user['id'],
-            'created_at'       => BusinessDate::utcNow(),
-            'updated_at'       => BusinessDate::utcNow(),
-        ]);
+            $id = $db->insert('distributions', [
+                'loan_id'          => $loanId,
+                'customer_id'      => (int)$loan['customer_id'],
+                'distributed_date' => $date,
+                'amount'           => $amount,
+                'account_id'       => (int)$account['id'],
+                'new_emi_amount'   => $newEmi,
+                'remarks'          => $in['remarks'] ?? null,
+                'status'           => 'active',
+                'created_by'       => $user['id'],
+                'created_at'       => BusinessDate::utcNow(),
+                'updated_at'       => BusinessDate::utcNow(),
+            ]);
 
-        self::syncLoanEmi($loanId);
+            self::syncLoanEmi($loanId);
 
-        Audit::log('distribution.create', 'distributions', 'distribution', $id, null,
-            ['loan_id' => $loanId, 'amount' => $amount, 'account_id' => (int)$account['id'], 'new_emi_amount' => $newEmi],
-            $in['remarks'] ?? null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+            Audit::log('distribution.create', 'distributions', 'distribution', $id, null,
+                ['loan_id' => $loanId, 'amount' => $amount, 'account_id' => (int)$account['id'], 'new_emi_amount' => $newEmi],
+                $in['remarks'] ?? null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
 
-        return self::detail($id);
+            return self::detail($id);
+        });
     }
 
     /**
@@ -143,60 +150,64 @@ final class DistributionService
      */
     public static function update(array $user, int $id, array $in): array
     {
-        $db  = Database::instance();
-        $row = $db->fetch('SELECT * FROM distributions WHERE id = :id AND deleted_at IS NULL', ['id' => $id]);
-        if (!$row) {
-            throw HttpException::notFound('Distribution not found');
-        }
-        if ($row['status'] !== 'active') {
-            throw HttpException::conflict('A cancelled distribution cannot be edited');
-        }
-        $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id', ['id' => (int)$row['loan_id']]);
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $id, $in) {
+            $row = $db->fetch('SELECT * FROM distributions WHERE id = :id AND deleted_at IS NULL FOR UPDATE', ['id' => $id]);
+            if (!$row) {
+                throw HttpException::notFound('Distribution not found');
+            }
+            if ($row['status'] !== 'active') {
+                throw HttpException::conflict('A cancelled distribution cannot be edited');
+            }
+            $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id FOR UPDATE', ['id' => (int)$row['loan_id']]);
 
-        $fields = [];
-        if (array_key_exists('amount', $in) && $in['amount'] !== null) {
-            $fields['amount'] = self::assertAmount($in['amount']);
-        }
-        if (array_key_exists('account_id', $in) && $in['account_id'] !== null) {
-            $fields['account_id'] = (int)self::assertAccount($db, $in['account_id'])['id'];
-        }
-        if (array_key_exists('distributed_date', $in) && $in['distributed_date']) {
-            $fields['distributed_date'] = $in['distributed_date'];
-        }
-        if (array_key_exists('new_emi_amount', $in)) {
-            $fields['new_emi_amount'] = self::normEmi($in['new_emi_amount']);
-        }
-        if (array_key_exists('remarks', $in)) {
-            $fields['remarks'] = $in['remarks'] !== '' ? $in['remarks'] : null;
-        }
-        if (!$fields) {
-            throw HttpException::validation(['_' => ['Nothing to update']]);
-        }
+            $fields = [];
+            if (array_key_exists('amount', $in) && $in['amount'] !== null) {
+                $fields['amount'] = self::assertAmount($in['amount']);
+            }
+            if (array_key_exists('account_id', $in) && $in['account_id'] !== null) {
+                $fields['account_id'] = (int)self::assertAccount($db, $in['account_id'])['id'];
+            }
+            if (array_key_exists('distributed_date', $in) && $in['distributed_date']) {
+                $fields['distributed_date'] = $in['distributed_date'];
+            }
+            if (array_key_exists('new_emi_amount', $in)) {
+                $fields['new_emi_amount'] = self::normEmi($in['new_emi_amount']);
+            }
+            if (array_key_exists('remarks', $in)) {
+                $fields['remarks'] = $in['remarks'] !== '' ? $in['remarks'] : null;
+            }
+            if (!$fields) {
+                throw HttpException::validation(['_' => ['Nothing to update']]);
+            }
 
-        // Re-validate the total against the chit amount, excluding THIS row's old value.
-        $newAmount = $fields['amount'] ?? $row['amount'];
-        $othersTotal = Money::of((float)$db->scalar(
-            "SELECT COALESCE(SUM(amount),0) FROM distributions
-              WHERE loan_id = :l AND id <> :id AND " . self::ACTIVE,
-            ['l' => (int)$row['loan_id'], 'id' => $id]
-        ));
-        if (Money::gt(Money::add($othersTotal, $newAmount), $loan['principal_amount'])) {
-            $remaining = Money::max(Money::sub($loan['principal_amount'], $othersTotal), 0);
-            throw HttpException::validation(['amount' => [
-                'Distribution (' . $newAmount . ') exceeds the remaining undistributed balance (' . $remaining . ').'
-            ]]);
-        }
+            // Re-validate the total against the chit amount, excluding THIS row's old value.
+            $newAmount = $fields['amount'] ?? $row['amount'];
+            $othersTotal = Money::of((float)$db->scalar(
+                "SELECT COALESCE(SUM(amount),0) FROM distributions
+                  WHERE loan_id = :l AND id <> :id AND " . self::ACTIVE,
+                ['l' => (int)$row['loan_id'], 'id' => $id]
+            ));
+            if (Money::gt(Money::add($othersTotal, $newAmount), $loan['principal_amount'])) {
+                $remaining = Money::max(Money::sub($loan['principal_amount'], $othersTotal), 0);
+                throw HttpException::validation(['amount' => [
+                    'Distribution (' . $newAmount . ') exceeds the remaining undistributed balance (' . $remaining . ').'
+                ]]);
+            }
 
-        $fields['updated_at'] = BusinessDate::utcNow();
-        $db->update('distributions', $fields, 'id = :id', ['id' => $id]);
+            $fields['updated_at'] = BusinessDate::utcNow();
+            // Single UPDATE on the SAME row — never inserts a second distribution,
+            // so editing 4000 -> 5000 replaces the old effect, it never adds to it.
+            $db->update('distributions', $fields, 'id = :id', ['id' => $id]);
 
-        self::syncLoanEmi((int)$row['loan_id']);
+            self::syncLoanEmi((int)$row['loan_id']);
 
-        Audit::log('distribution.update', 'distributions', 'distribution', $id,
-            ['amount' => $row['amount'], 'account_id' => (int)$row['account_id'], 'new_emi_amount' => $row['new_emi_amount']],
-            $fields, null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+            Audit::log('distribution.update', 'distributions', 'distribution', $id,
+                ['amount' => $row['amount'], 'account_id' => (int)$row['account_id'], 'new_emi_amount' => $row['new_emi_amount']],
+                $fields, null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
 
-        return self::detail($id);
+            return self::detail($id);
+        });
     }
 
     /**
@@ -206,29 +217,66 @@ final class DistributionService
      */
     public static function cancel(array $user, int $id, ?string $reason): array
     {
-        $db  = Database::instance();
-        $row = $db->fetch('SELECT * FROM distributions WHERE id = :id AND deleted_at IS NULL', ['id' => $id]);
-        if (!$row) {
-            throw HttpException::notFound('Distribution not found');
-        }
-        if ($row['status'] !== 'active') {
-            throw HttpException::conflict('Distribution is already cancelled');
-        }
-        $db->update('distributions', [
-            'status'        => 'cancelled',
-            'cancelled_by'  => $user['id'],
-            'cancelled_at'  => BusinessDate::utcNow(),
-            'cancel_reason' => $reason,
-            'updated_at'    => BusinessDate::utcNow(),
-        ], 'id = :id', ['id' => $id]);
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $id, $reason) {
+            $row = $db->fetch('SELECT * FROM distributions WHERE id = :id AND deleted_at IS NULL FOR UPDATE', ['id' => $id]);
+            if (!$row) {
+                throw HttpException::notFound('Distribution not found');
+            }
+            if ($row['status'] !== 'active') {
+                throw HttpException::conflict('Distribution is already cancelled');
+            }
+            $db->update('distributions', [
+                'status'        => 'cancelled',
+                'cancelled_by'  => $user['id'],
+                'cancelled_at'  => BusinessDate::utcNow(),
+                'cancel_reason' => $reason,
+                'updated_at'    => BusinessDate::utcNow(),
+            ], 'id = :id', ['id' => $id]);
 
-        self::syncLoanEmi((int)$row['loan_id']);
+            self::syncLoanEmi((int)$row['loan_id']);
 
-        Audit::log('distribution.cancel', 'distributions', 'distribution', $id,
-            ['status' => 'active', 'amount' => $row['amount']], ['status' => 'cancelled'],
-            $reason, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+            Audit::log('distribution.cancel', 'distributions', 'distribution', $id,
+                ['status' => 'active', 'amount' => $row['amount']], ['status' => 'cancelled'],
+                $reason, ['id' => $user['id'], 'role_code' => $user['role_code']]);
 
-        return self::detail($id);
+            return self::detail($id);
+        });
+    }
+
+    /**
+     * Soft-delete a distribution. If it is still active its financial effect is
+     * unwound first (status -> cancelled), exactly like collections' delete —
+     * the row is kept for audit history, just hidden from every listing.
+     */
+    public static function delete(array $user, int $id, ?string $reason): array
+    {
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $id, $reason) {
+            $row = $db->fetch('SELECT * FROM distributions WHERE id = :id AND deleted_at IS NULL FOR UPDATE', ['id' => $id]);
+            if (!$row) {
+                throw HttpException::notFound('Distribution not found');
+            }
+            $wasActive = $row['status'] === 'active';
+            $db->update('distributions', [
+                'status'        => $wasActive ? 'cancelled' : $row['status'],
+                'cancelled_by'  => $wasActive ? $user['id'] : $row['cancelled_by'],
+                'cancelled_at'  => $wasActive ? BusinessDate::utcNow() : $row['cancelled_at'],
+                'cancel_reason' => $wasActive ? $reason : $row['cancel_reason'],
+                'deleted_at'    => BusinessDate::utcNow(),
+                'updated_at'    => BusinessDate::utcNow(),
+            ], 'id = :id', ['id' => $id]);
+
+            if ($wasActive) {
+                self::syncLoanEmi((int)$row['loan_id']);
+            }
+
+            Audit::log('distribution.delete', 'distributions', 'distribution', $id,
+                ['status' => $row['status'], 'amount' => $row['amount']], ['deleted' => true],
+                $reason, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return ['id' => $id, 'loan_id' => (int)$row['loan_id']];
+        });
     }
 
     // ---------------------------------------------------------------------------

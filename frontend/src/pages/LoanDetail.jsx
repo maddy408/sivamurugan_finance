@@ -7,11 +7,13 @@ import DistributeModal from '../components/DistributeModal';
 import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiArrowLeft, FiPrinter, FiXCircle, FiTrash2 } from 'react-icons/fi';
 
 const DIST_STATUS_LABEL = {
   not_distributed: 'Not Distributed',
   partially_distributed: 'Partially Distributed',
   fully_distributed: 'Fully Distributed',
+  fully_distributed_extra: 'Fully Distributed + Extra',
 };
 
 export default function LoanDetail() {
@@ -101,7 +103,7 @@ export default function LoanDetail() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/loans" className="btn sm secondary">← Chits</Link>
+        <Link to="/loans" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Chits</Link>
         <h1 style={{ margin: 0, fontSize: 18 }}>{loan.code}</h1>
         <Badge value={loan.status} />
         <div style={{ flex: 1 }} />
@@ -163,8 +165,10 @@ export default function LoanDetail() {
               <dt>Initial EMI</dt><dd>{money(d.initial_emi ?? loan.initial_emi_amount ?? loan.installment_amount)}</dd>
               <dt><b>Current EMI</b></dt><dd><b>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
               <dt>Total Distributed</dt><dd style={{ color: '#15803d' }}>{money(d.total_distributed ?? 0)}</dd>
-              <dt>Remaining Undistributed</dt><dd style={{ color: Number(d.remaining_undistributed ?? loan.principal_amount) > 0 ? '#b45309' : undefined }}>
-                {money(d.remaining_undistributed ?? loan.principal_amount)}
+              <dt>Principal Covered</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
+              <dt>Extra Disbursed</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : undefined }}>{money(d.extra_disbursed ?? 0)}</dd>
+              <dt>Remaining Undistributed</dt><dd style={{ color: Number(d.remaining_undistributed ?? 0) > 0 ? '#b45309' : undefined }}>
+                {money(d.remaining_undistributed ?? 0)}
               </dd>
             </dl>
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
@@ -188,14 +192,14 @@ export default function LoanDetail() {
             <tbody>
               {loan.installments.map((i) => (
                 <tr key={i.id}>
-                  <td>{i.installment_no}</td>
-                  <td>{fmtDate(i.due_date)}</td>
-                  <td className="right">{money(i.payable_amount)}</td>
-                  <td className="right">{money(i.paid_amount)}</td>
-                  <td className="right">{money(i.balance_amount)}</td>
-                  <td>{fmtDate(i.last_paid_date)}</td>
-                  <td><Badge value={i.status} /></td>
-                  <td className="right">
+                  <td data-label="#">{i.installment_no}</td>
+                  <td data-label="Due date">{fmtDate(i.due_date)}</td>
+                  <td data-label="Installment Amount" className="right">{money(i.payable_amount)}</td>
+                  <td data-label="Paid" className="right">{money(i.paid_amount)}</td>
+                  <td data-label="Balance" className="right">{money(i.balance_amount)}</td>
+                  <td data-label="Last paid">{fmtDate(i.last_paid_date)}</td>
+                  <td data-label="Status"><Badge value={i.status} /></td>
+                  <td data-label="" className="right">
                     {can('collection.create') && i.status !== 'COMPLETED' && loan.status === 'active' && (
                       <button className="btn sm" onClick={() => setCollect(i)}>Collect</button>
                     )}
@@ -215,29 +219,28 @@ export default function LoanDetail() {
             <tbody>
               {loan.collections.map((c) => (
                 <tr key={c.id} style={c.status !== 'posted' ? { opacity: 0.6 } : undefined}>
-                  <td>{c.receipt_no}</td><td>{fmtDate(c.collection_date)}</td><td>{c.payment_mode}</td>
-                  <td className="right">{money(c.fine_amount)}</td>
-                  <td className="right">{money(c.amount)}</td>
-                  <td className="right"><b style={{ color: '#10b981', fontSize: 14 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
-                  <td><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
-                  <td className="right nowrap">
+                  <td data-label="Receipt">{c.receipt_no}</td>
+                  <td data-label="Date">{fmtDate(c.collection_date)}</td>
+                  <td data-label="Mode">{c.payment_mode}</td>
+                  <td data-label="Fine" className="right">{money(c.fine_amount)}</td>
+                  <td data-label="Paid (actual)" className="right">{money(c.amount)}</td>
+                  <td data-label="Total" className="right"><b style={{ color: '#10b981', fontSize: 14 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
+                  <td data-label="Status"><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
+                  <td data-label="" className="right nowrap">
                     <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                       <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(c)}>
-                        🖨️
-                      </button>
-                      <button className="btn-icon" title="View / Edit Statement" onClick={() => setReceipt(c)}>
-                        ✏️
+                        <FiPrinter size={14} />
                       </button>
                       {c.status === 'posted' && !String(c.receipt_no).endsWith('-REV') && (
                         <>
                           {can('collection.cancel') && (
                             <button className="btn-icon warning" title="Cancel Collection" onClick={() => setConfirm({ type: 'cancel', id: c.id, reason: '' })}>
-                              🚫
+                              <FiXCircle size={14} />
                             </button>
                           )}
                           {can('collection.delete') && (
                             <button className="btn-icon danger" title="Delete Collection" onClick={() => setConfirm({ type: 'delete_col', id: c.id, reason: '' })}>
-                              🗑️
+                              <FiTrash2 size={14} />
                             </button>
                           )}
                         </>
@@ -323,7 +326,7 @@ export default function LoanDetail() {
               <Field label="Preferred collection day (optional)">
                 <select value={edit.weekday} onChange={(e) => setEdit({ ...edit, weekday: e.target.value })}>
                   <option value="">From start date — no fixed day</option>
-                  {[['1','Monday'],['2','Tuesday'],['3','Wednesday'],['4','Thursday'],['5','Friday'],['6','Saturday'],['7','Sunday']].map(([v,l]) => (
+                  {[['1', 'Monday'], ['2', 'Tuesday'], ['3', 'Wednesday'], ['4', 'Thursday'], ['5', 'Friday'], ['6', 'Saturday'], ['7', 'Sunday']].map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>

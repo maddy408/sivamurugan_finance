@@ -104,6 +104,7 @@ INSERT INTO permissions (module, action, code, description) VALUES
   ('distributions','create','distributions.create','Record an actual chit distribution'),
   ('distributions','edit','distributions.edit','Edit a chit distribution'),
   ('distributions','cancel','distributions.cancel','Cancel a chit distribution'),
+  ('distributions','delete','distributions.delete','Delete a chit distribution'),
 
   ('fines','edit','fines.edit','Override fines');
 

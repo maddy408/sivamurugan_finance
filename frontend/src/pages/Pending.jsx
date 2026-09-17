@@ -5,6 +5,7 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { FiBarChart2, FiExternalLink, FiX } from 'react-icons/fi';
 
 export default function Pending({ hideTitle = false }) {
   const { can } = useAuth();
@@ -64,7 +65,7 @@ export default function Pending({ hideTitle = false }) {
           <>
             <div style={{ flex: 1 }} />
             <Link className="pending-sub-nav-item" to="/reports" style={{ color: 'var(--blue-primary)' }}>
-              📊 Detailed Dues Report ↗
+              <FiBarChart2 size={13} /> Detailed Dues Report <FiExternalLink size={11} />
             </Link>
           </>
         )}
@@ -86,7 +87,7 @@ export default function Pending({ hideTitle = false }) {
       <div className="toolbar">
         <input type="search" placeholder="Search customer, code, phone, chit, address…"
           value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear}>Clear filters ✕</button>}
+        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
         <div style={{ flex: 1 }} />
         <button className="btn secondary" onClick={() => api.download('/api/pending-dues/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>
       </div>

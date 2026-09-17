@@ -48,7 +48,7 @@ const run = async () => {
 
   console.log('== reports ==');
   const cat = await call('GET', '/api/reports', { token: AT });
-  ok(cat.j.data.length === 11, '11 reports in catalogue (location-collection removed)');
+  ok(cat.j.data.length === 12, '12 reports in catalogue');
   for (const rp of cat.j.data) {
     const res = await call('GET', `/api/reports/${rp.name}`, { token: AT });
     ok(res.status === 200 && Array.isArray(res.j.data.rows) && Array.isArray(res.j.data.headers), `report ${rp.name} returns rows+headers`);
@@ -69,8 +69,9 @@ const run = async () => {
   ok((await call('PUT', '/api/settings/schedule', { token: AT, body: { weekly_collection_day: 3, monthly_mode: 'MONTHLY_WEEKDAY', monthly_cycle_weeks: 4, monthly_interval_days: 30 } })).status === 200, 'schedule settings update');
   const fr = await call('POST', '/api/settings/fine', { token: AT, body: { fine_type: 'FIXED_PER_DAY', rate_value: 25, grace_days: 2, max_fine_type: 'percent_of_payable', max_fine_value: 15, effective_from: '2026-10-01' } });
   ok(fr.status === 201 && fr.j.data.length >= 2, 'new effective-dated fine rule added');
-  const pm = await call('POST', '/api/settings/payment-modes', { token: AT, body: { code: 'CHEQUE', name: 'Cheque', sort_order: 5 } });
-  ok(pm.status === 200 && pm.j.data.some(m => m.code === 'CHEQUE'), 'payment mode added');
+  const pmCode = 'CHQ' + Date.now().toString().slice(-6);
+  const pm = await call('POST', '/api/settings/payment-modes', { token: AT, body: { code: pmCode, name: 'Cheque', sort_order: 5 } });
+  ok(pm.status === 200 && pm.j.data.some(m => m.code === pmCode), 'payment mode added');
   ok((await call('PUT', '/api/settings/translations', { token: AT, body: { lang: 'ta', key: 'nav.reports', value: 'அறிக்கை' } })).status === 200, 'translation upsert');
 
   console.log('== employee scope on reports ==');
