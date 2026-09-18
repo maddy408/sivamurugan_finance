@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from './ui';
+import InstallmentStatementModal from './InstallmentStatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiZap, FiCreditCard } from 'react-icons/fi';
+import { FiZap, FiCreditCard, FiClock, FiPrinter } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -43,10 +44,25 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   const [cashAccountId, setCashAccountId] = useState(officeCash?.id ? String(officeCash.id) : '');
   const [upiAccountId, setUpiAccountId] = useState(bankAccount?.id ? String(bankAccount.id) : '');
   const [ref, setRef] = useState('');
+  const [billNo, setBillNo] = useState('');
   const [remarks, setRemarks] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
+  const [history, setHistory] = useState({});   // installment_id -> payments[]
+  const [printInstId, setPrintInstId] = useState(null);
+
+  // Previous Payment History — only fetched for dues that already have some
+  // amount paid, so a fresh PENDING due never triggers a network call.
+  useEffect(() => {
+    const withHistory = selectedDues.filter((d) => Number(d.paid_amount) > 0 && !history[d.id]);
+    withHistory.forEach((d) => {
+      api.get(`/api/installments/${d.id}/payments`).then((r) => {
+        setHistory((h) => ({ ...h, [d.id]: r.data.payments }));
+      }).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDues]);
 
   const isSplit = splitMode && String(modeId) === String(splitMode.id);
 
@@ -81,6 +97,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         cash_account_id: isSplit && cashAccountId ? Number(cashAccountId) : undefined,
         upi_account_id: isSplit && upiAccountId ? Number(upiAccountId) : undefined,
         reference_no: ref || undefined,
+        bill_no: billNo || undefined,
         remarks: remarks || undefined,
         idempotency_key: idemKey,
       });
@@ -119,6 +136,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
               <dt>&nbsp;&nbsp;· UPI</dt><dd>{money(upiNum)}</dd>
             </>
           )}
+          {billNo && (<><dt>Bill No</dt><dd>{billNo}</dd></>)}
           <dt>Fine</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
           <dt>Total</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
           <dt>Payment Method</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
@@ -134,6 +152,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
 
   // ---------- Step 1: selection + amounts ----------
   return (
+    <>
     <Modal
       title={`Collect — ${loan?.code || ''}`}
       onClose={onClose}
@@ -169,6 +188,41 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         {errors.installment_ids && <span className="err">{errors.installment_ids}</span>}
       </div>
 
+      {selectedDues.filter((d) => Number(d.paid_amount) > 0).map((d) => (
+        <div key={d.id} className="field" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontWeight: 800, fontSize: 12, color: '#92400e', marginBottom: 6 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FiClock size={13} /> Previous Payment History — Due #{d.installment_no}
+            </span>
+            <button type="button" className="btn-icon" title="Print / Download this due's payment statement"
+              onClick={() => setPrintInstId(d.id)} style={{ width: 24, height: 24 }}>
+              <FiPrinter size={13} />
+            </button>
+          </div>
+          {(history[d.id] || []).length > 0 && (
+            <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#fff' }}>
+              <table className="grid" style={{ fontSize: 12 }}>
+                <thead><tr><th>Date</th><th>Bill No</th><th className="right">Paid Amount</th></tr></thead>
+                <tbody>
+                  {(history[d.id] || []).map((p) => (
+                    <tr key={p.collection_id}>
+                      <td data-label="Date">{fmtDate(p.collection_date)}</td>
+                      <td data-label="Bill No">{p.bill_no || '—'}</td>
+                      <td data-label="Paid Amount" className="right">{money(p.principal_alloc)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, flexWrap: 'wrap' }}>
+            <span>Current Due Amount: <b>{money(d.payable_amount)}</b></span>
+            <span>Previously Paid: <b style={{ color: '#10b981' }}>{money(d.paid_amount)}</b></span>
+            <span>Remaining Due: <b style={{ color: '#f43f5e' }}>{money(d.balance_amount)}</b></span>
+          </div>
+        </div>
+      ))}
+
       <div className="form-grid" style={{ marginBottom: 12 }}>
         <Field label="Collection date" error={errors.collection_date}>
           <input type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
@@ -189,6 +243,9 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
             </Field>
             <Field label="Reference / Receipt No.">
               <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
+            </Field>
+            <Field label="Bill No" error={errors.bill_no}>
+              <input value={billNo} onChange={(e) => setBillNo(e.target.value)} placeholder="e.g. BILL-1025" />
             </Field>
             <Field label="EMI Amount (Paid)" error={errors.amount}>
               <input
@@ -215,9 +272,14 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         </Field>
 
         {isSplit && (
-          <Field label="Reference / Receipt No.">
-            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
-          </Field>
+          <>
+            <Field label="Reference / Receipt No.">
+              <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. UPI-12345" />
+            </Field>
+            <Field label="Bill No" error={errors.bill_no}>
+              <input value={billNo} onChange={(e) => setBillNo(e.target.value)} placeholder="e.g. BILL-1025" />
+            </Field>
+          </>
         )}
       </div>
 
@@ -263,5 +325,10 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         Each selected due gets its own payment record. The EMI amount is never changed by a collection.
       </p>
     </Modal>
+    {printInstId && (
+      <InstallmentStatementModal installmentId={printInstId} loan={loan} customer={loan?.customer}
+        onClose={() => setPrintInstId(null)} />
+    )}
+    </>
   );
 }

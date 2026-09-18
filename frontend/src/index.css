@@ -1019,6 +1019,7 @@ table.grid tbody tr:last-child td {
 }
 .rpt-table tbody tr:nth-child(even) { background: #fafbfc; }
 .rpt-table tbody tr:hover { background: #f1f5f9; }
+.rpt-table tfoot .rpt-total-row td { font-weight: 800; background: #f1f5f9; border-top: 2px solid #cbd5e1; }
 
 /* ---------- Chit / Loan create: premium polish (scoped, no global impact) ---------- */
 .chit-form-card { border-radius: 14px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
@@ -1135,15 +1136,191 @@ table.grid tbody tr:last-child td {
 .receipt-signature { font-size: 12px; font-weight: 700; border-top: 1px solid #0f172a; padding-top: 4px; min-width: 140px; text-align: center; }
 .receipt-footer-note { font-size: 10.5px; color: #94a3b8; }
 
+/* Shown only inside @media print (e.g. a report's logo/title/filters header
+   that would be redundant on-screen, since the on-screen card-head already
+   shows the title/filters). */
+.print-only-block { display: none; }
+
 @media print {
-  body * { visibility: hidden; }
-  .print-receipt, .print-receipt * { visibility: visible; }
-  .print-receipt {
-    position: absolute; top: 0; left: 0; width: 100%;
-    padding: 20px; margin: 0;
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
   }
-  .modal-backdrop, .modal { position: static !important; background: none !important; box-shadow: none !important; }
+
+  /* Report tables (many columns) print in A4 landscape - portrait is too
+     narrow to give every column a readable width. Receipts/statements
+     (.print-receipt/.print-statement) keep the default portrait @page
+     above; only .print-report opts into this named landscape page. */
+  @page rpt-landscape {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  .print-report {
+    page: rpt-landscape;
+  }
+
+  /* ==================================================================
+     CASE A — a print-purpose modal is open (Receipt / Statement /
+     Installment Statement / Confirm, all built on the shared <Modal>).
+     <Modal> now renders via a React portal straight into <body> (see
+     ui.jsx) instead of wherever it's used in the page tree, so it's a
+     flat sibling of #root. That is what actually fixes the blank-page
+     bug: the OLD approach hid #root's content with visibility:hidden,
+     which does NOT collapse layout height — every hidden ancestor
+     (navbar, sidebar, the whole Collection page) still reserved its
+     full vertical space in the print flow, so the real content got
+     pushed down by however many blank pages that hidden height was
+     worth (observed: content starting on page 5 of 6). display:none
+     actually removes #root from the flow, so the portaled modal
+     content is the ONLY thing left and starts cleanly on page 1.
+     ================================================================== */
+  body:has(> .modal-backdrop) > #root { display: none !important; }
+
+  /* Stacked modals (e.g. the Collect form's "Print" icon opens an Installment
+     Statement modal on top of it): only the modal that actually carries
+     printable content (.print-receipt/.print-statement/.print-report) should
+     print - a live form underneath it has none of those, so it's hidden. */
+  .modal-backdrop:not(:has(.print-receipt, .print-statement, .print-report)) {
+    display: none !important;
+  }
+
+  .modal-backdrop {
+    position: static !important; display: block !important;
+    background: none !important; box-shadow: none !important; border: none !important;
+    margin: 0 !important; padding: 0 !important; overflow: visible !important;
+  }
+  .modal {
+    position: static !important; background: none !important; box-shadow: none !important; border: none !important;
+    width: 100% !important; max-width: none !important;
+    overflow: visible !important; height: auto !important; max-height: none !important;
+  }
+  .modal-body { overflow: visible !important; height: auto !important; max-height: none !important; padding: 0 !important; }
   .modal-head, .modal-foot { display: none !important; }
+
+  .print-receipt, .print-statement, .print-report {
+    position: static !important; display: block !important; width: 100% !important;
+    padding: 0 !important; margin: 0 !important;
+    background: #ffffff !important; color: #0f172a !important; overflow: visible !important;
+  }
+
+  /* ==================================================================
+     CASE B — inline print on the Reports page (.print-report lives
+     inside #root, not a modal, so #root must stay). Everything that
+     isn't the report body is hidden with display:none (never
+     visibility:hidden) so it doesn't reserve blank space either.
+     ================================================================== */
+  nav, .top-navbar, .sidebar, .topbar, .page-header, .rpt-filter-panel,
+  .report-navbar-wrapper, .no-print, button, .btn, .dropdown-wrap, .toasts, .lang-switcher {
+    display: none !important;
+  }
+  .reports-main { display: block !important; }
+  .rpt-table-card .card-head { display: none !important; }
+
+  .print-only-block { display: block !important; }
+
+  body, #root, .app, .main-layout, .reports-main, .rpt-table-card, .card-body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .rpt-table-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    border: none !important;
+    margin-top: 10px !important;
+  }
+
+  /* The app's generic "narrow screen -> stacked record cards" responsive
+     table pattern (see .table-wrap table.grid inside @media (max-width:760px)
+     further down this file) turns every <td> into a flex row with a
+     content: attr(data-label) pseudo-label, one field per line - built for
+     phones. Chrome's print engine evaluates max-width against the @page
+     content box, not the screen: an A4 page at these margins is ~190mm
+     (~718px), which is NARROWER than that 760px breakpoint, so it was
+     silently winning during print/PDF and turning the report table into a
+     vertical label/value stack instead of columns - this was the actual
+     cause of "every field on its own line". .rpt-table carries both
+     `grid` and `rpt-table` classes, so it must be forced back to a real
+     table layout here regardless of the printed page's width.  */
+  .rpt-table { display: table !important; }
+  .rpt-table thead { display: table-header-group !important; position: static !important; left: auto !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
+  .rpt-table tbody { display: table-row-group !important; }
+  .rpt-table tr {
+    display: table-row !important;
+    border: none !important; border-radius: 0 !important; background: none !important;
+    padding: 0 !important; margin: 0 !important; box-shadow: none !important; box-sizing: content-box !important;
+  }
+  .rpt-table th, .rpt-table td {
+    display: table-cell !important;
+    text-align: inherit !important;
+    justify-content: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+  /* Data cells: short, unbreakable values (dates, codes, amounts, status,
+     frequency, tenure) must always stay on one line. Only .col-wrap columns
+     (customer/employee/location/remarks) opt back into wrapping, and only
+     at word boundaries - never mid-word or mid-character. */
+  .rpt-table td { white-space: nowrap !important; }
+  .rpt-table td.col-wrap { white-space: normal !important; overflow-wrap: break-word !important; }
+  /* Header labels may be two words (e.g. "DISTRIBUTED AMOUNT"); let them
+     wrap normally onto a second line by whole word rather than forcing
+     nowrap and overflowing the column - but never mid-word. */
+  .rpt-table th { white-space: normal !important; }
+  .rpt-table td::before { content: none !important; }
+
+  .rpt-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10.5px !important;
+    color: #0f172a !important;
+    table-layout: fixed !important;
+  }
+
+  .rpt-table th, .rpt-table td {
+    padding: 5px 6px !important;
+    border: 1px solid #94a3b8 !important;
+    position: static !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    vertical-align: middle !important;
+    page-break-inside: avoid !important;
+  }
+
+  .rpt-table thead th {
+    background: #f1f5f9 !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    text-transform: uppercase !important;
+    text-align: left !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .rpt-table th.right, .rpt-table td.right { text-align: right !important; }
+
+  .rpt-table tr:nth-child(even) {
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .rpt-table tfoot tr, .rpt-table tr.rpt-total-row {
+    background: #eef2f7 !important;
+    font-weight: 800 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .rpt-table tfoot td, .rpt-table tr.rpt-total-row td {
+    border-top: 2px solid #0f172a !important;
+  }
 }
 
 /* ---------- Navbar language switcher ---------- */
@@ -1226,6 +1403,32 @@ table.grid tbody tr:last-child td {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Segmented radio toggle (e.g. Auto/Custom Schedule Type) */
+.segmented {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+.segmented-opt {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.segmented-opt:not(:last-child) { border-right: 1px solid var(--line); }
+.segmented-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented-opt.active { background: var(--blue-primary); color: #fff; }
 
 .form-grid {
   display: grid;

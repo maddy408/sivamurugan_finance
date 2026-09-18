@@ -108,17 +108,9 @@ final class DistributionService
             $date    = $in['distributed_date'] ?: BusinessDate::fmt(BusinessDate::today());
             $newEmi  = self::normEmi($in['new_emi_amount'] ?? null);
 
-            $already = Money::of((float)$db->scalar(
-                "SELECT COALESCE(SUM(amount),0) FROM distributions WHERE loan_id = :l AND " . self::ACTIVE,
-                ['l' => $loanId]
-            ));
-            $remaining = Money::sub($loan['principal_amount'], $already);
-            if (Money::gt($amount, $remaining)) {
-                throw HttpException::validation(['amount' => [
-                    'Distribution (' . $amount . ') exceeds the remaining undistributed balance (' . Money::max($remaining, 0) . ').'
-                ]]);
-            }
-
+            // No upper limit tied to the chit's principal / remaining undistributed
+            // balance: any positive amount is allowed (business decision - a chit
+            // can be topped up beyond its original principal).
             $id = $db->insert('distributions', [
                 'loan_id'          => $loanId,
                 'customer_id'      => (int)$loan['customer_id'],
@@ -159,7 +151,6 @@ final class DistributionService
             if ($row['status'] !== 'active') {
                 throw HttpException::conflict('A cancelled distribution cannot be edited');
             }
-            $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id FOR UPDATE', ['id' => (int)$row['loan_id']]);
 
             $fields = [];
             if (array_key_exists('amount', $in) && $in['amount'] !== null) {
@@ -181,20 +172,7 @@ final class DistributionService
                 throw HttpException::validation(['_' => ['Nothing to update']]);
             }
 
-            // Re-validate the total against the chit amount, excluding THIS row's old value.
-            $newAmount = $fields['amount'] ?? $row['amount'];
-            $othersTotal = Money::of((float)$db->scalar(
-                "SELECT COALESCE(SUM(amount),0) FROM distributions
-                  WHERE loan_id = :l AND id <> :id AND " . self::ACTIVE,
-                ['l' => (int)$row['loan_id'], 'id' => $id]
-            ));
-            if (Money::gt(Money::add($othersTotal, $newAmount), $loan['principal_amount'])) {
-                $remaining = Money::max(Money::sub($loan['principal_amount'], $othersTotal), 0);
-                throw HttpException::validation(['amount' => [
-                    'Distribution (' . $newAmount . ') exceeds the remaining undistributed balance (' . $remaining . ').'
-                ]]);
-            }
-
+            // No upper limit tied to the chit's principal — see create() above.
             $fields['updated_at'] = BusinessDate::utcNow();
             // Single UPDATE on the SAME row — never inserts a second distribution,
             // so editing 4000 -> 5000 replaces the old effect, it never adds to it.

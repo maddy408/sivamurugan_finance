@@ -1,18 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, money, fmtDate } from '../api/client';
+import { api, API_BASE, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import {
   FiBarChart2, FiFileText, FiCheckCircle, FiCreditCard, FiUsers, FiCalendar,
-  FiUser, FiDollarSign, FiTrendingUp, FiClipboard, FiBookOpen, FiSearch, FiDownload,
+  FiUser, FiDollarSign, FiTrendingUp, FiClipboard, FiBookOpen, FiSearch, FiDownload, FiPrinter,
 } from 'react-icons/fi';
+
+/** Downloads the current report+filters as a PDF (works for any/no filter, incl. NIL results). */
+const downloadReportPdf = (name, params, toast, setBusy) => {
+  setBusy(true);
+  api.download(`/api/reports/${name}/print.pdf`, params, `${name}_report.pdf`)
+    .catch((e) => {
+      toast.error(e.message || 'PDF export unavailable. Opening print view...');
+      window.print();
+    })
+    .finally(() => setBusy(false));
+};
 
 /* ------------------------------------------------------------------ helpers */
 
 const REPORT_ICONS = {
   'chit-opening': <FiFileText />, 'chit-closing': <FiCheckCircle />, 'chit-collection': <FiCreditCard />,
-  'customer-collection': <FiUsers />, 'daily-collection': <FiCalendar />, 'employee-collection': <FiUser />,
+  'customer-collection': <FiUsers />, 'daily-collection': <FiCalendar />,
   'chit-distribution': <FiDollarSign />, 'pending-dues': <FiClipboard />,
   'chit-profit': <FiTrendingUp />, 'monthly-summary': <FiBarChart2 />, 'financial-ledger': <FiBookOpen />,
 };
@@ -25,6 +36,47 @@ const fmtCell = (type, val) => {
   return String(val);
 };
 const rightAlign = (type) => type === 'money' || type === 'number';
+
+// Print/PDF layout only: columns whose values are inherently short and must
+// never wrap (dates, codes, amounts, status, frequency, tenure) get a narrow
+// fixed share of the table width and `white-space: nowrap`; free-text
+// columns (customer/employee/location names, remarks) get a wider share and
+// are allowed to wrap normally at word boundaries. Without this, a
+// table-layout:fixed table with many columns squeezes every column to an
+// equal, too-narrow share and the browser is forced to break words —  even
+// numbers — mid-token to fit (e.g. "DATE" rendering as "D/A/T/E").
+const isWrapCol = (h) => /customer|name|remarks|address|note/i.test(String(h || ''));
+const colWidthPct = (h, type) => {
+  const lower = String(h || '').trim().toLowerCase();
+  if (lower === 's.no' || lower === 'sno' || lower === '#') return 4;
+  if (type === 'date') return 9.5;
+  if (type === 'money') return 9.5;
+  if (type === 'number') return 5.5;
+  if (isWrapCol(h)) return 15;
+  if (/code/.test(lower)) return 7.5;
+  if (/status/.test(lower)) return 7;
+  if (/frequency/.test(lower)) return 7;
+  if (/tenure/.test(lower)) return 6;
+  return 7.5;
+};
+
+const isExcludedCol = (h) => {
+  const lower = String(h || '').trim().toLowerCase();
+  return (
+    lower === 'employee' ||
+    lower === 'employee name' ||
+    lower === 'employee_name' ||
+    lower === 'employee id' ||
+    lower === 'employee_id' ||
+    lower === 'collector' ||
+    lower === 'collector name' ||
+    lower === 'location' ||
+    lower === 'location name' ||
+    lower === 'location_name' ||
+    lower === 'location code' ||
+    lower === 'location_code'
+  );
+};
 
 const cleanParams = (f) => {
   const out = {};
@@ -45,7 +97,6 @@ export default function Reports() {
 
   const [catalogue, setCatalogue] = useState([]);
   const [name, setName] = useState('chit-opening');
-  const [employees, setEmployees] = useState([]);
   const [customers, setCustomers] = useState([]);
 
   const [filters, setFilters] = useState({});
@@ -54,10 +105,10 @@ export default function Reports() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   useEffect(() => {
     api.get('/api/reports').then((r) => setCatalogue(r.data)).catch(setError);
-    api.get('/api/employees', { params: { per_page: 300 } }).then((r) => setEmployees(r.data || [])).catch(() => {});
     api.get('/api/customers', { params: { per_page: 500 } }).then((r) => setCustomers(r.data || [])).catch(() => {});
   }, []);
 
@@ -93,11 +144,88 @@ export default function Reports() {
   const activeMeta = catalogue.find((c) => c.name === name);
   const exportParams = cleanParams(applied);
 
-  const runningCols = useMemo(() => {
-    if (!data?.headers) return new Set();
-    const base = new Set(data.headers.filter((h) => !h.endsWith(' Total')));
-    return new Set(data.headers.filter((h) => h.endsWith(' Total') && base.has(h.replace(/ Total$/, ''))));
+  const visibleHeaders = useMemo(() => {
+    if (!data?.headers) return [];
+    return data.headers.filter((h) => !isExcludedCol(h));
   }, [data]);
+
+  // Print/PDF column widths (as %), normalized to sum to 100 so a
+  // table-layout:fixed table gets a sensible width per column instead of an
+  // equal too-narrow share for every column. See colWidthPct above.
+  const colWidths = useMemo(() => {
+    if (!visibleHeaders.length) return [];
+    const raw = visibleHeaders.map((h) => colWidthPct(h, data?.col_types?.[h]));
+    const total = raw.reduce((a, b) => a + b, 0) || 1;
+    return raw.map((w) => (w / total) * 100);
+  }, [visibleHeaders, data]);
+
+  const displayRows = useMemo(() => {
+    if (!data?.rows) return [];
+    let rows = data.rows;
+    const searchBillNo = (applied.bill_no || filters.bill_no || '').trim().toLowerCase();
+    if (searchBillNo) {
+      rows = rows.filter((r) => {
+        return Object.entries(r).some(([key, val]) => {
+          if (val === null || val === undefined) return false;
+          return String(val).toLowerCase().includes(searchBillNo);
+        });
+      });
+    }
+    return rows;
+  }, [data, applied.bill_no, filters.bill_no]);
+
+  const computedTotals = useMemo(() => {
+    if (!data || !displayRows || displayRows.length === 0) return null;
+    const totals = {};
+    let hasSum = false;
+    visibleHeaders.forEach((h, idx) => {
+      const type = data.col_types?.[h];
+      if (type === 'money' || type === 'number') {
+        const sum = displayRows.reduce((acc, row) => {
+          const v = Number(row[h]);
+          return acc + (isNaN(v) ? 0 : v);
+        }, 0);
+        totals[h] = sum;
+        hasSum = true;
+      } else if (idx === 0) {
+        totals[h] = 'Total';
+      }
+    });
+    return hasSum ? totals : (data.totals || null);
+  }, [data, displayRows, visibleHeaders]);
+
+  const activeFilterSummary = useMemo(() => {
+    const parts = [];
+    const p = cleanParams(applied);
+    if (p.date_from && p.date_to) parts.push(`Date: ${fmtDate(p.date_from)} to ${fmtDate(p.date_to)}`);
+    else if (p.date_from) parts.push(`From: ${fmtDate(p.date_from)}`);
+    else if (p.date_to) parts.push(`To: ${fmtDate(p.date_to)}`);
+
+    if (p.customer_id) {
+      const cust = customers.find((c) => String(c.id) === String(p.customer_id));
+      parts.push(`Customer: ${cust ? `${cust.name} (${cust.customer_code || ''})` : p.customer_id}`);
+    }
+    if (p.chit_code) parts.push(`Chit Code: ${p.chit_code}`);
+    if (p.bill_no) parts.push(`Bill No: ${p.bill_no}`);
+    if (p.payment_mode_id) {
+      const mode = (meta?.payment_modes || []).find((m) => String(m.id) === String(p.payment_mode_id));
+      parts.push(`Payment Mode: ${mode ? mode.name : p.payment_mode_id}`);
+    }
+    if (p.status) parts.push(`Status: ${p.status}`);
+    if (p.frequency) parts.push(`Frequency: ${p.frequency}`);
+
+    return parts.length > 0 ? parts.join(' • ') : 'All Records (No Filters Applied)';
+  }, [applied, customers, meta]);
+
+  const runningCols = useMemo(() => {
+    if (!visibleHeaders) return new Set();
+    const base = new Set(visibleHeaders.filter((h) => !h.endsWith(' Total')));
+    return new Set(visibleHeaders.filter((h) => h.endsWith(' Total') && base.has(h.replace(/ Total$/, ''))));
+  }, [visibleHeaders]);
+
+  const reportList = useMemo(() => {
+    return catalogue.filter((c) => c.name !== 'location-collection' && c.name !== 'employee-collection');
+  }, [catalogue]);
 
   return (
     <>
@@ -119,12 +247,12 @@ export default function Reports() {
       </div>
 
       {/* ---------- Report Types in clean grid layout (No side scroll) ---------- */}
-      <div className="card" style={{ marginBottom: 16, padding: 14 }}>
+      <div className="card no-print" style={{ marginBottom: 16, padding: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--blue-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
-          SELECT REPORT TYPE ({catalogue.filter((c) => c.name !== 'location-collection').length})
+          SELECT REPORT TYPE ({reportList.length})
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-          {catalogue.filter((c) => c.name !== 'location-collection').map((c) => (
+          {reportList.map((c) => (
             <button key={c.name} className={`report-nav-item ${c.name === name ? 'active' : ''}`}
               onClick={() => { setName(c.name); setData(null); }}
               style={{
@@ -155,12 +283,6 @@ export default function Reports() {
               <label className="mini">To
                 <input type="date" value={filters.date_to || ''} onChange={(e) => setF('date_to', e.target.value)} />
               </label>
-              <label className="mini">Employee
-                <select value={filters.employee_id || ''} onChange={(e) => setF('employee_id', e.target.value)}>
-                  <option value="">All employees</option>
-                  {employees.map((e) => <option key={e.employee_id || e.id} value={e.employee_id || e.id}>{e.name}</option>)}
-                </select>
-              </label>
               <label className="mini">Customer
                 <select value={filters.customer_id || ''} onChange={(e) => setF('customer_id', e.target.value)}>
                   <option value="">All customers</option>
@@ -168,7 +290,10 @@ export default function Reports() {
                 </select>
               </label>
               <label className="mini">Chit Code
-                <input value={filters.chit_code || ''} onChange={(e) => setF('chit_code', e.target.value)} placeholder="e.g. JRM-001" />
+                <input value={filters.chit_code || ''} onChange={(e) => setF('chit_code', e.target.value)} placeholder="e.g. SM-001" />
+              </label>
+              <label className="mini">Bill No
+                <input value={filters.bill_no || ''} onChange={(e) => setF('bill_no', e.target.value)} placeholder="e.g. BILL-1025" />
               </label>
               <label className="mini">Payment Method
                 <select value={filters.payment_mode_id || ''} onChange={(e) => setF('payment_mode_id', e.target.value)}>
@@ -211,72 +336,141 @@ export default function Reports() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className="badge COMPLETED">{data.rows.length} rows</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span className="badge COMPLETED">{displayRows.length} rows</span>
+                    <button className="btn sm secondary" onClick={() => window.print()}>
+                      <FiPrinter size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Print
+                    </button>
                     {can('reports.export') && (
-                      <button className="btn sm secondary"
-                        onClick={() => download(`/api/reports/${name}/export`, exportParams)}>
-                        <FiDownload size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Export Excel
-                      </button>
+                      <>
+                        <button className="btn sm secondary" disabled={pdfBusy}
+                          onClick={() => downloadReportPdf(name, exportParams, toast, setPdfBusy)}>
+                          <FiDownload size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Download PDF
+                        </button>
+                        <button className="btn sm secondary"
+                          onClick={() => download(`/api/reports/${name}/export`, exportParams)}>
+                          <FiDownload size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Export Excel
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {data.kind === 'summary' ? (
-                  <div className="card-body">
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                      {data.rows.map((r) => (
-                        <div key={r.Metric} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{r.Metric}</div>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
-                            {/^(Chits|Active)/.test(r.Metric) ? new Intl.NumberFormat('en-IN').format(r.Value) : money(r.Value)}
-                          </div>
+                {/* Filter Summary Banner — screen only; the print-only-block below has its own copy */}
+                <div className="no-print" style={{
+                  background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '8px 16px',
+                  fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600
+                }}>
+                  <span style={{ color: 'var(--blue-primary)', fontWeight: 800 }}>Applied Filters:</span>
+                  <span>{activeFilterSummary}</span>
+                </div>
+
+                <div className="print-report">
+                  {/* Print-only header: hidden on screen, shown only inside @media print */}
+                  <div className="receipt-header print-only-block" style={{ marginBottom: 16, borderBottom: '2px solid #0f172a', paddingBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <img className="receipt-logo" src={API_BASE + '/api/settings/organization/logo'} alt="logo" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 56, height: 56, objectFit: 'contain' }} />
+                      <div>
+                        <div className="receipt-org-name" style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Siva Murugan Chit Fund
                         </div>
-                      ))}
+                        {meta?.organization?.address && (
+                          <div className="receipt-org-line" style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                            {meta.organization.address}
+                          </div>
+                        )}
+                        <div className="receipt-org-line" style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                          {[meta?.organization?.mobile, meta?.organization?.telephone].filter(Boolean).join(' • ')}
+                          {meta?.organization?.email && meta.organization.email !== 'a@b.com' ? ` • ${meta.organization.email}` : ''}
+                        </div>
+                        {meta?.organization?.gst && (
+                          <div className="receipt-org-line" style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                            GST/Reg No: {meta.organization.gst}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ) : data.rows.length === 0 ? (
-                  <EmptyState title="No data for these filters" hint="Adjust the date range or clear the filters." />
-                ) : (
-                  <div className="table-wrap rpt-table-wrap">
-                    <table className="grid rpt-table">
-                      <thead>
-                        <tr>
-                          {data.headers.map((h) => (
-                            <th key={h} style={{
-                              textAlign: rightAlign(data.col_types[h]) ? 'right' : 'left',
-                              background: runningCols.has(h) ? '#eef2ff' : undefined,
-                            }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.rows.map((row, i) => (
-                          <tr key={i}>
-                            {data.headers.map((h) => (
-                              <td key={h} style={{
-                                textAlign: rightAlign(data.col_types[h]) ? 'right' : 'left',
-                                background: runningCols.has(h) ? '#f5f7ff' : undefined,
-                                fontVariantNumeric: rightAlign(data.col_types[h]) ? 'tabular-nums' : undefined,
-                              }}>{fmtCell(data.col_types[h], row[h])}</td>
-                            ))}
-                          </tr>
-                        ))}
-                        {data.totals && Object.keys(data.totals).length > 0 && (
-                          <tr style={{ fontWeight: 800, background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
-                            {data.headers.map((h, i) => (
-                              <td key={h} style={{ textAlign: rightAlign(data.col_types[h]) || i === 0 ? (i === 0 ? 'left' : 'right') : 'left' }}>
-                                {h in data.totals
-                                  ? (typeof data.totals[h] === 'number' ? fmtCell(data.col_types[h], data.totals[h]) : data.totals[h])
-                                  : ''}
-                              </td>
-                            ))}
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="print-only-block" style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1.5px solid #cbd5e1', paddingBottom: 8 }}>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+                          {data.title || activeMeta?.label}
+                        </h2>
+                        <div className="muted" style={{ fontSize: 11.5, color: '#64748b', marginTop: 3 }}>
+                          Period: {data.filters?.period || 'All time'} • Generated: {new Date(data.generated_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="print-filter-summary" style={{
+                      background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6,
+                      padding: '8px 12px', marginTop: 10, fontSize: 11, color: '#334155', fontWeight: 600
+                    }}>
+                      <strong style={{ color: '#0f172a', textTransform: 'uppercase' }}>Applied Filters:</strong> {activeFilterSummary}
+                    </div>
                   </div>
-                )}
+
+                  {data.kind === 'summary' ? (
+                    <div className="card-body">
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                        {displayRows.map((r) => (
+                          <div key={r.Metric} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{r.Metric}</div>
+                            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                              {/^(Chits|Active)/.test(r.Metric) ? new Intl.NumberFormat('en-IN').format(r.Value) : money(r.Value)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : displayRows.length === 0 ? (
+                    <EmptyState title="NIL — No Data Available" hint="No records match the selected filters. Adjust the date range or clear the filters." />
+                  ) : (
+                    <div className="table-wrap rpt-table-wrap">
+                      <table className="grid rpt-table">
+                        <colgroup>
+                          {visibleHeaders.map((h, i) => (
+                            <col key={h} style={{ width: `${colWidths[i]}%` }} />
+                          ))}
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            {visibleHeaders.map((h) => (
+                              <th key={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
+                                background: runningCols.has(h) ? '#eef2ff' : undefined,
+                              }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayRows.map((row, i) => (
+                            <tr key={i}>
+                              {visibleHeaders.map((h) => (
+                                <td key={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
+                                  background: runningCols.has(h) ? '#f5f7ff' : undefined,
+                                  fontVariantNumeric: rightAlign(data.col_types?.[h]) ? 'tabular-nums' : undefined,
+                                }}>{fmtCell(data.col_types?.[h], row[h])}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                        {computedTotals && Object.keys(computedTotals).length > 0 && (
+                          <tfoot>
+                            <tr className="rpt-total-row">
+                              {visibleHeaders.map((h, i) => (
+                                <td key={h} className={[i === 0 ? '' : (rightAlign(data.col_types?.[h]) ? 'right' : ''), isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')}>
+                                  {h in computedTotals
+                                    ? (typeof computedTotals[h] === 'number' ? fmtCell(data.col_types?.[h], computedTotals[h]) : computedTotals[h])
+                                    : ''}
+                                </td>
+                              ))}
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

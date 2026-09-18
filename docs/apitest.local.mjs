@@ -48,7 +48,7 @@ const run = async () => {
   const LOANID = ln.j?.data?.id;
   ok(ln.status === 201 && ln.j?.data?.installment_amount === '1000.00', 'chit created, installment 1000.00');
   ok(ln.j?.data?.installments?.length === 10, '10 installments auto-generated');
-  ok(ln.j?.data?.code?.match(/^JRM-\d+$/), 'chit code format ' + ln.j?.data?.code);
+  ok(ln.j?.data?.code?.match(/^[A-Z]+-\d+$/), 'chit code format ' + ln.j?.data?.code);
 
   const rg = await call('POST', `/api/loans/${LOANID}/generate-schedule`, { token: AT, body: {} });
   ok(rg.j?.data?.created === 0 && rg.j?.data?.installments?.length === 10, 'idempotent regen: 0 created, still 10 (no dupes)');

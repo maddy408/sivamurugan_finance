@@ -12,8 +12,8 @@ use App\Support\BusinessDate;
 final class CodeGenerator
 {
     /**
-     * Chit code. Default format PREFIX-N (plain incrementing integer, e.g. JRM-1,
-     * JRM-2, JRM-3). Prefix comes from Settings (code_format.loan_prefix).
+     * Chit code. Default format PREFIX-N (plain incrementing integer, e.g. SM-1,
+     * SM-2, SM-3). Prefix comes from Settings (code_format.loan_prefix).
      *
      * The next number = MAX(trailing integer of every existing PREFIX-... code) + 1,
      * so it is safe across deleted rows and gaps. Concurrency / duplicate submits
@@ -22,7 +22,7 @@ final class CodeGenerator
     public static function loanCode(): string
     {
         $fmt = App::setting('code_format', []);
-        $prefix  = $fmt['loan_prefix'] ?? 'JRM';
+        $prefix  = $fmt['loan_prefix'] ?? 'SM';
         $pattern = $fmt['loan_pattern'] ?? '{PREFIX}-{SEQ}';
         $year    = BusinessDate::today()->format('Y');
 

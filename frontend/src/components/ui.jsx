@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FiEye, FiEdit2, FiTrash2, FiX, FiCheckCircle, FiXCircle, FiPrinter, FiClock,
   FiLock, FiEyeOff, FiLogOut, FiPlusCircle, FiSearch, FiRefreshCw, FiList,
@@ -120,7 +121,16 @@ export function Modal({ title, onClose, children, footer, size }) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  return (
+  // Portaled to a flat child of <body> (not rendered inline wherever the
+  // modal happens to be used) — this is what makes print work correctly.
+  // A modal rendered deep inside the page tree still has every ancestor's
+  // layout HEIGHT counted during print even when hidden with visibility, so
+  // print content buried 2-3 screens deep would render several blank pages
+  // before the real content. As a flat body child there's nothing above it
+  // in the print flow, so it starts cleanly on page 1 — see @media print in
+  // index.css, which hides the rest of the app (#root) whenever a modal is
+  // open rather than trying to escape via position:absolute.
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className={`modal ${size || ''}`} role="dialog" aria-modal="true">
         <div className="modal-head">
@@ -130,7 +140,8 @@ export function Modal({ title, onClose, children, footer, size }) {
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

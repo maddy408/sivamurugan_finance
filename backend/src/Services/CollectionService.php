@@ -135,7 +135,13 @@ final class CollectionService
                 'total_amount'    => $total,
                 'payment_mode_id' => $modeId,
                 'account_id'      => $accountId,
+                // Split payment (Cash + UPI in one collection): NULL unless the mode is SPLIT.
+                'cash_amount'     => $payload['cash_amount'] ?? null,
+                'upi_amount'      => $payload['upi_amount'] ?? null,
+                'cash_account_id' => $payload['cash_account_id'] ?? null,
+                'upi_account_id'  => $payload['upi_account_id'] ?? null,
                 'reference_no'    => $payload['reference_no'] ?? null,
+                'bill_no'         => $payload['bill_no'] ?? null,
                 'remarks'         => $payload['remarks'] ?? null,
                 'idempotency_key' => $idemKey,
                 'status'          => 'posted',
@@ -143,85 +149,7 @@ final class CollectionService
             ]);
 
             // ---- allocate the amount across the target installments ----
-            // Explicit multi-due selection -> exactly the chosen dues (in due order),
-            // never touching an unselected due in between. Otherwise forward-fill.
-            if ($explicitSet !== null) {
-                $installments = $explicitSet;
-                // If the actual paid amount exceeds the selected dues' combined
-                // balance, the overflow must cascade forward to the next pending
-                // installments (oldest first) instead of being silently absorbed
-                // by the selected row(s) — same "advance credit" rule the plain
-                // forward-fill flow below already applies. Without this, a
-                // single-due selection (e.g. the per-row "Collect" button) that
-                // is overpaid would dump the whole excess onto that one row,
-                // floor its balance at 0, and never touch the next due's
-                // balance — silently understating the chit's outstanding.
-                $explicitBalanceSum = array_reduce(
-                    $installments,
-                    fn ($carry, $i) => Money::add($carry, $i['balance_amount']),
-                    '0.00'
-                );
-                if (Money::gt($amount, $explicitBalanceSum)) {
-                    $maxNo = max(array_map(fn ($i) => (int)$i['installment_no'], $installments));
-                    $more = $db->fetchAll(
-                        "SELECT * FROM installments
-                         WHERE loan_id = :l AND installment_no > :n AND status <> 'COMPLETED'
-                         ORDER BY installment_no FOR UPDATE",
-                        ['l' => $loan['id'], 'n' => $maxNo]
-                    );
-                    $installments = array_merge($installments, $more);
-                }
-            } else {
-                $installments = $db->fetchAll(
-                    "SELECT * FROM installments
-                     WHERE loan_id = :l AND installment_no >= :n AND status <> 'COMPLETED'
-                     ORDER BY installment_no FOR UPDATE",
-                    ['l' => $loan['id'], 'n' => (int)$startInst['installment_no']]
-                );
-                if (!$installments) {
-                    $installments = [$startInst]; // paying extra on an already-complete chit -> credit the start row
-                }
-            }
-
-            $remaining = $amount;
-            $touched = [];
-            $lastIdx = count($installments) - 1;
-            foreach ($installments as $idx => $inst) {
-                if (Money::lte($remaining, 0) && $idx > 0) {
-                    break;
-                }
-                $bal = Money::of($inst['balance_amount']);
-                $alloc = ($idx === $lastIdx)
-                    ? $remaining                              // dump any leftover on the last one (advance credit)
-                    : Money::min($remaining, $bal);
-                if (Money::lte($alloc, 0)) {
-                    continue;
-                }
-                $fineAlloc = ($idx === 0) ? $fineAmount : '0.00';
-
-                $db->insert('collection_allocations', [
-                    'collection_id'   => $collectionId,
-                    'installment_id'  => $inst['id'],
-                    'principal_alloc' => Money::of($alloc),
-                    'fine_alloc'      => Money::of($fineAlloc),
-                    'created_at'      => BusinessDate::utcNow(),
-                ]);
-
-                $newPaid    = Money::add($inst['paid_amount'], $alloc);
-                $newBalance = Money::max(Money::sub($inst['payable_amount'], $newPaid), 0);
-                $newFine    = Money::add($inst['fine_paid'], $fineAlloc);
-                $db->update('installments', [
-                    'paid_amount'    => Money::of($newPaid),
-                    'fine_paid'      => Money::of($newFine),
-                    'balance_amount' => Money::of($newBalance),
-                    'last_paid_date' => $collectionDate,
-                    'status'         => self::deriveStatus($newBalance, $newPaid, $inst['due_date']),
-                    'updated_at'     => BusinessDate::utcNow(),
-                ], 'id = :id', ['id' => $inst['id']]);
-
-                $touched[] = (int)$inst['id'];
-                $remaining = Money::sub($remaining, $alloc);
-            }
+            $touched = self::allocate($db, (int)$loan['id'], $startInst, $explicitSet, $amount, $fineAmount, $collectionId, $collectionDate);
 
             self::syncLoanStatus($db, (int)$loan['id']);
 
@@ -243,6 +171,195 @@ final class CollectionService
                 ),
                 'loan_summary'      => self::loanSummary((int)$loan['id']),
                 'idempotent_replay' => false,
+            ];
+        });
+    }
+
+    /**
+     * Core allocation loop shared by post() and updateCollection(): spread
+     * $amount across $installments (explicit multi-select, cascading forward
+     * past their combined balance if overpaid; or a plain forward-fill from
+     * $startInst otherwise), inserting collection_allocations rows and
+     * updating each touched installment's paid/balance/status.
+     *
+     * @return int[] ids of every installment touched
+     */
+    private static function allocate(
+        Database $db, int $loanId, array $startInst, ?array $explicitSet,
+        string $amount, string $fineAmount, int $collectionId, string $collectionDate
+    ): array {
+        if ($explicitSet !== null) {
+            $installments = $explicitSet;
+            // If the actual paid amount exceeds the selected dues' combined
+            // balance, the overflow must cascade forward to the next pending
+            // installments (oldest first) instead of being silently absorbed
+            // by the selected row(s) — same "advance credit" rule the plain
+            // forward-fill flow below already applies. Without this, a
+            // single-due selection (e.g. the per-row "Collect" button) that
+            // is overpaid would dump the whole excess onto that one row,
+            // floor its balance at 0, and never touch the next due's
+            // balance — silently understating the chit's outstanding.
+            $explicitBalanceSum = array_reduce(
+                $installments,
+                fn ($carry, $i) => Money::add($carry, $i['balance_amount']),
+                '0.00'
+            );
+            if (Money::gt($amount, $explicitBalanceSum)) {
+                $maxNo = max(array_map(fn ($i) => (int)$i['installment_no'], $installments));
+                $more = $db->fetchAll(
+                    "SELECT * FROM installments
+                     WHERE loan_id = :l AND installment_no > :n AND status <> 'COMPLETED'
+                     ORDER BY installment_no FOR UPDATE",
+                    ['l' => $loanId, 'n' => $maxNo]
+                );
+                $installments = array_merge($installments, $more);
+            }
+        } else {
+            $installments = $db->fetchAll(
+                "SELECT * FROM installments
+                 WHERE loan_id = :l AND installment_no >= :n AND status <> 'COMPLETED'
+                 ORDER BY installment_no FOR UPDATE",
+                ['l' => $loanId, 'n' => (int)$startInst['installment_no']]
+            );
+            if (!$installments) {
+                $installments = [$startInst]; // paying extra on an already-complete chit -> credit the start row
+            }
+        }
+
+        $remaining = $amount;
+        $touched = [];
+        $lastIdx = count($installments) - 1;
+        foreach ($installments as $idx => $inst) {
+            if (Money::lte($remaining, 0) && $idx > 0) {
+                break;
+            }
+            $bal = Money::of($inst['balance_amount']);
+            $alloc = ($idx === $lastIdx)
+                ? $remaining                              // dump any leftover on the last one (advance credit)
+                : Money::min($remaining, $bal);
+            if (Money::lte($alloc, 0)) {
+                continue;
+            }
+            $fineAlloc = ($idx === 0) ? $fineAmount : '0.00';
+
+            $db->insert('collection_allocations', [
+                'collection_id'   => $collectionId,
+                'installment_id'  => $inst['id'],
+                'principal_alloc' => Money::of($alloc),
+                'fine_alloc'      => Money::of($fineAlloc),
+                'created_at'      => BusinessDate::utcNow(),
+            ]);
+
+            $newPaid    = Money::add($inst['paid_amount'], $alloc);
+            $newBalance = Money::max(Money::sub($inst['payable_amount'], $newPaid), 0);
+            $newFine    = Money::add($inst['fine_paid'], $fineAlloc);
+            $db->update('installments', [
+                'paid_amount'    => Money::of($newPaid),
+                'fine_paid'      => Money::of($newFine),
+                'balance_amount' => Money::of($newBalance),
+                'last_paid_date' => $collectionDate,
+                'status'         => self::deriveStatus($newBalance, $newPaid, $inst['due_date']),
+                'updated_at'     => BusinessDate::utcNow(),
+            ], 'id = :id', ['id' => $inst['id']]);
+
+            $touched[] = (int)$inst['id'];
+            $remaining = Money::sub($remaining, $alloc);
+        }
+
+        return $touched;
+    }
+
+    /**
+     * Edit a posted collection IN PLACE: the old allocation effect is fully
+     * unwound, the collection row's own fields are updated, then the (possibly
+     * different) amount/fine is re-allocated forward from the SAME starting
+     * installment the original payment covered. Never inserts a second
+     * collection row and never leaves the old effect layered under the new one.
+     *
+     * Editable: amount, fine_amount, collection_date, payment_mode_id,
+     * account_id, cash_amount/upi_amount (split), reference_no, remarks.
+     * The set of dues covered is NOT re-choosable here — it re-targets
+     * whichever installment this collection originally started from.
+     */
+    public static function updateCollection(array $user, int $collectionId, array $in): array
+    {
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $collectionId, $in) {
+            $col = $db->fetch('SELECT * FROM collections WHERE id = :id AND deleted_at IS NULL FOR UPDATE', ['id' => $collectionId]);
+            if (!$col) {
+                throw HttpException::notFound('Collection not found');
+            }
+            if ($col['status'] !== 'posted') {
+                throw HttpException::conflict('Only a posted collection can be edited (this one is ' . $col['status'] . ')');
+            }
+
+            $firstInstId = $db->scalar(
+                'SELECT installment_id FROM collection_allocations WHERE collection_id = :c ORDER BY id LIMIT 1',
+                ['c' => $collectionId]
+            );
+            $startInst = $firstInstId ? $db->fetch('SELECT * FROM installments WHERE id = :id FOR UPDATE', ['id' => $firstInstId]) : null;
+            if (!$startInst) {
+                throw HttpException::conflict('This collection has no installment allocations to re-target');
+            }
+            $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id FOR UPDATE', ['id' => (int)$col['loan_id']]);
+            if (!$loan || $loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'deactivated'], true)) {
+                throw HttpException::conflict('This chit is not open for collection edits');
+            }
+
+            $amount = array_key_exists('amount', $in) && $in['amount'] !== null ? Money::of($in['amount']) : Money::of($col['amount']);
+            $fineAmount = array_key_exists('fine_amount', $in) && $in['fine_amount'] !== null ? Money::of($in['fine_amount']) : Money::of($col['fine_amount']);
+            if (Money::lte($amount, 0) && Money::lte($fineAmount, 0)) {
+                throw HttpException::validation(['amount' => ['Enter a payment amount greater than 0']]);
+            }
+            $collectionDate = $in['collection_date'] ?? $col['collection_date'];
+            $modeId = array_key_exists('payment_mode_id', $in) && $in['payment_mode_id'] ? (int)$in['payment_mode_id'] : (int)$col['payment_mode_id'];
+            $accountId = array_key_exists('account_id', $in) && $in['account_id'] ? (int)$in['account_id'] : $col['account_id'];
+            $cashAmount = array_key_exists('cash_amount', $in) ? $in['cash_amount'] : $col['cash_amount'];
+            $upiAmount = array_key_exists('upi_amount', $in) ? $in['upi_amount'] : $col['upi_amount'];
+            $cashAccountId = array_key_exists('cash_account_id', $in) ? $in['cash_account_id'] : $col['cash_account_id'];
+            $upiAccountId = array_key_exists('upi_account_id', $in) ? $in['upi_account_id'] : $col['upi_account_id'];
+
+            // Reverse the OLD effect exactly once, then delete its allocation rows
+            // (they're about to be replaced, not layered under new ones).
+            self::unwindAllocations($db, $collectionId);
+            $db->run('DELETE FROM collection_allocations WHERE collection_id = :c', ['c' => $collectionId]);
+
+            $total = Money::add($amount, $fineAmount);
+            $db->update('collections', [
+                'amount'          => $amount,
+                'fine_amount'     => $fineAmount,
+                'total_amount'    => $total,
+                'collection_date' => $collectionDate,
+                'payment_mode_id' => $modeId,
+                'account_id'      => $accountId,
+                'cash_amount'     => $cashAmount,
+                'upi_amount'      => $upiAmount,
+                'cash_account_id' => $cashAccountId,
+                'upi_account_id'  => $upiAccountId,
+                'reference_no'    => array_key_exists('reference_no', $in) ? $in['reference_no'] : $col['reference_no'],
+                'bill_no'         => array_key_exists('bill_no', $in) ? $in['bill_no'] : $col['bill_no'],
+                'remarks'         => array_key_exists('remarks', $in) ? $in['remarks'] : $col['remarks'],
+            ], 'id = :id', ['id' => $collectionId]);
+
+            // Re-fetch the start installment (unwind may have changed its balance/status).
+            $startInst = $db->fetch('SELECT * FROM installments WHERE id = :id FOR UPDATE', ['id' => $startInst['id']]);
+            self::allocate($db, (int)$loan['id'], $startInst, null, $amount, $fineAmount, $collectionId, $collectionDate);
+
+            self::syncLoanStatus($db, (int)$loan['id']);
+
+            Audit::log('collection.update', 'collection', 'collection', $collectionId,
+                ['amount' => $col['amount'], 'fine_amount' => $col['fine_amount'], 'collection_date' => $col['collection_date']],
+                ['amount' => $amount, 'fine_amount' => $fineAmount, 'collection_date' => $collectionDate],
+                null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return [
+                'collection'   => $db->fetch('SELECT * FROM collections WHERE id = :id', ['id' => $collectionId]),
+                'allocations'  => $db->fetchAll(
+                    "SELECT ca.*, i.installment_no FROM collection_allocations ca
+                     JOIN installments i ON i.id = ca.installment_id WHERE ca.collection_id = :c ORDER BY i.installment_no",
+                    ['c' => $collectionId]
+                ),
+                'loan_summary' => self::loanSummary((int)$loan['id']),
             ];
         });
     }
@@ -390,5 +507,29 @@ final class CollectionService
              FROM installments WHERE loan_id = :l",
             ['l' => $loanId]
         ) ?: [];
+    }
+
+    /**
+     * Every real payment transaction ever posted against one installment,
+     * oldest first - the "Previous Payment History" a due carries. Reused by
+     * the Collect form (so a partially-paid due's history shows inline
+     * without leaving the page) and by the statement generator. Cancelled /
+     * deleted collections are excluded - only what actually contributed to
+     * the installment's current paid_amount.
+     */
+    public static function installmentPayments(int $installmentId): array
+    {
+        return Database::instance()->fetchAll(
+            "SELECT ca.principal_alloc, ca.fine_alloc,
+                    col.id AS collection_id, col.receipt_no, col.collection_date, col.bill_no,
+                    col.payment_mode_id, pm.name AS payment_mode, ub.name AS collected_by_name
+             FROM collection_allocations ca
+             JOIN collections col ON col.id = ca.collection_id
+             JOIN payment_modes pm ON pm.id = col.payment_mode_id
+             LEFT JOIN users ub ON ub.id = col.collected_by
+             WHERE ca.installment_id = :i AND col.status = 'posted' AND col.deleted_at IS NULL
+             ORDER BY col.collection_date ASC, col.id ASC",
+            ['i' => $installmentId]
+        );
     }
 }

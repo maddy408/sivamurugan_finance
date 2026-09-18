@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from '../components/ui';
+import CustomScheduleModal from '../components/CustomScheduleModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiArrowLeft, FiFileText, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiFileText, FiDollarSign, FiCheckCircle, FiPlusCircle, FiX } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const WEEKDAYS = [
@@ -16,6 +17,7 @@ const initial = {
   frequency: 'weekly',
   start_date: today(),
   schedule_type: 'WEEKLY', weekday: '', employee_id: '', notes: '',
+  due_date_mode: 'auto',
 };
 const emptyDist = { amount: '', account_id: '', distributed_date: today(), new_emi_amount: '', remarks: '' };
 
@@ -34,6 +36,8 @@ export default function LoanNew() {
   const [dist, setDist] = useState(emptyDist);
   const [distOpen, setDistOpen] = useState(false);
   const [success, setSuccess] = useState(null);   // { chit, distribution } after a create-with-distribution
+  const [customRows, setCustomRows] = useState([]);   // queued custom-schedule rows, sent right after chit creation
+  const [addCustomRow, setAddCustomRow] = useState(false);
 
   useEffect(() => {
     api.get('/api/customers', { params: { per_page: 500, sort_by: 'name' } }).then((r) => setCustomers(r.data)).catch(() => { });
@@ -85,10 +89,6 @@ export default function LoanNew() {
     e.preventDefault();
     setErrors({});
     if (wantDist) {
-      if (distAmt > principal) {
-        setErrors({ 'distribution.amount': 'Distributed amount cannot exceed the chit amount.' });
-        return;
-      }
       if (!dist.account_id) {
         setErrors({ 'distribution.account_id': 'Choose the account the money comes from.' });
         return;
@@ -109,6 +109,7 @@ export default function LoanNew() {
         frequency: form.frequency,
         start_date: form.start_date,
         schedule_type: form.schedule_type,
+        due_date_mode: form.due_date_mode,
         // Collection day is OPTIONAL — only sent when the user picked one.
         schedule_config: scheduleConfig,
         // Empty -> backend auto-generates from the Settings prefix. Non-empty -> saved verbatim.
@@ -126,11 +127,24 @@ export default function LoanNew() {
         } : undefined,
       };
       const r = await api.post('/api/loans', payload);
+
+      // Custom Due Date: send every queued installment row now that the chit exists.
+      if (form.due_date_mode === 'custom' && customRows.length) {
+        for (const row of customRows) {
+          try {
+            await api.post(`/api/loans/${r.data.id}/custom-schedule`, row);
+          } catch (rowErr) {
+            toast.error(`Installment #${row.installment_no}: ${rowErr.message}`);
+          }
+        }
+      }
+
       if (wantDist) {
         await refreshMeta?.();   // Office Cash / Bank / dashboard reflect the transaction
         setSuccess({ chit: r.data, distribution: r.data.distribution });
       } else {
-        toast.success(`${r.data.code} created — ${r.data.installments.length} installments of ${money(r.data.installment_amount)}`);
+        const instCount = form.due_date_mode === 'custom' ? customRows.length : r.data.installments.length;
+        toast.success(`${r.data.code} created — ${instCount} installment${instCount === 1 ? '' : 's'} of ${money(r.data.installment_amount)}`);
         nav(`/loans/${r.data.id}`);
       }
     } catch (e2) {
@@ -195,32 +209,89 @@ export default function LoanNew() {
             <Field label="Tenure (number of installments) *" error={errors.tenure}>
               <input type="number" min="1" step="1" value={form.tenure} onChange={(e) => set('tenure', e.target.value)} required />
             </Field>
-            <Field label="Repayment Frequency">
-              <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+            <Field label="Due Date Schedule" error={errors.due_date_mode}>
+              <select value={form.due_date_mode} onChange={(e) => { set('due_date_mode', e.target.value); setCustomRows([]); }}>
+                <option value="auto">Auto Due Date</option>
+                <option value="custom">Custom Due Date</option>
               </select>
-            </Field>
-            {form.frequency === 'monthly' && (
-              <Field label="Monthly schedule style">
-                <select value={form.schedule_type} onChange={(e) => set('schedule_type', e.target.value)}>
-                  <option value="MONTHLY_DAILY">Calendar month (same day each month)</option>
-                  <option value="MONTHLY_WEEKDAY">Weekday cycle (e.g. every 4th Monday)</option>
-                  <option value="MONTHLY_INTERVAL">Fixed day interval</option>
-                </select>
-              </Field>
-            )}
-            {wantsWeekday && (
-              <Field label="Preferred collection day (optional)">
-                <select value={form.weekday} onChange={(e) => set('weekday', e.target.value)}>
-                  <option value="">From start date — no fixed day</option>
-                  {WEEKDAYS.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
-                </select>
+              {form.due_date_mode === 'custom' && (
                 <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                  Leave as “no fixed day” and the schedule simply runs weekly from the start date.
+                  No due dates are generated automatically. Add each installment's due date below.
                 </p>
-              </Field>
+              )}
+            </Field>
+            {form.due_date_mode === 'auto' && (
+              <>
+                <Field label="Repayment Frequency">
+                  <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </Field>
+                {form.frequency === 'monthly' && (
+                  <Field label="Monthly schedule style">
+                    <select value={form.schedule_type} onChange={(e) => set('schedule_type', e.target.value)}>
+                      <option value="MONTHLY_DAILY">Calendar month (same day each month)</option>
+                      <option value="MONTHLY_WEEKDAY">Weekday cycle (e.g. every 4th Monday)</option>
+                      <option value="MONTHLY_INTERVAL">Fixed day interval</option>
+                    </select>
+                  </Field>
+                )}
+                {wantsWeekday && (
+                  <Field label="Preferred collection day (optional)">
+                    <select value={form.weekday} onChange={(e) => set('weekday', e.target.value)}>
+                      <option value="">From start date — no fixed day</option>
+                      {WEEKDAYS.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
+                    </select>
+                    <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
+                      Leave as “no fixed day” and the schedule simply runs weekly from the start date.
+                    </p>
+                  </Field>
+                )}
+              </>
+            )}
+            {form.due_date_mode === 'custom' && (
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Custom Schedule</span>
+                  <button type="button" className="btn sm secondary" onClick={() => setAddCustomRow(true)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <FiPlusCircle size={12} /> Add Custom Schedule
+                  </button>
+                </label>
+                {customRows.length > 0 ? (
+                  <div className="table-wrap" style={{ border: '1px solid var(--line)', borderRadius: 10 }}>
+                    <table className="grid">
+                      <thead>
+                        <tr>
+                          <th>#</th><th>Due Date</th><th className="right">Amount Due</th>
+                          <th className="right">Amount Paid</th><th>Status</th><th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customRows.map((row, idx) => (
+                          <tr key={idx}>
+                            <td>#{row.installment_no}</td>
+                            <td>{row.due_date}</td>
+                            <td className="right">{money(row.payable_amount)}</td>
+                            <td className="right">{row.paid_amount ? money(row.paid_amount) : '—'}</td>
+                            <td>{row.status || 'Auto'}</td>
+                            <td className="right">
+                              <button type="button" className="btn-icon danger" title="Remove"
+                                onClick={() => setCustomRows((rows) => rows.filter((_, i) => i !== idx))}>
+                                <FiX size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>No installments added yet.</p>
+                )}
+              </div>
             )}
             <Field label="Start date *" error={errors.start_date}>
               <input type="date" value={form.start_date} onChange={(e) => set('start_date', e.target.value)} required />
@@ -241,8 +312,10 @@ export default function LoanNew() {
             <textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           </Field>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn secondary" onClick={runPreview}
-              disabled={!form.installment_amount || !form.tenure}>Preview schedule</button>
+            {form.due_date_mode === 'auto' && (
+              <button type="button" className="btn secondary" onClick={runPreview}
+                disabled={!form.installment_amount || !form.tenure}>Preview schedule</button>
+            )}
             <button className="btn" disabled={busy || !form.customer_id}>
               {busy ? 'Saving…' : (wantDist ? `Create chit + distribute ${money(distAmt)}` : 'Create chit')}
             </button>
@@ -265,10 +338,11 @@ export default function LoanNew() {
               <Field label="Distributed Amount *" error={errors['distribution.amount']}>
                 <input type="number" min="0.01" step="0.01" value={dist.amount}
                   onChange={(e) => setDist({ ...dist, amount: e.target.value })}
-                  placeholder={principal ? `max ${money(principal)}` : 'amount handed to the customer'} />
+                  placeholder="amount handed to the customer" />
                 {principal > 0 && distAmt > 0 && (
                   <span className="muted" style={{ fontSize: 12 }}>
-                    Remaining undistributed after this: <b>{money(Math.max(principal - distAmt, 0))}</b>
+                    Principal covered: <b>{money(Math.min(distAmt, principal))}</b>
+                    {distAmt > principal && <> · Extra disbursed: <b>{money(distAmt - principal)}</b></>}
                   </span>
                 )}
               </Field>
@@ -334,6 +408,16 @@ export default function LoanNew() {
           </dl>
           <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>Office Cash / Bank and the dashboard have been updated.</p>
         </Modal>
+      )}
+
+      {addCustomRow && (
+        <CustomScheduleModal
+          localOnly
+          nextInstallmentNo={customRows.reduce((m, r) => Math.max(m, r.installment_no), 0) + 1}
+          defaultAmount={form.installment_amount}
+          onClose={() => setAddCustomRow(false)}
+          onDone={(row) => { setCustomRows((rows) => [...rows, row]); setAddCustomRow(false); }}
+        />
       )}
     </form>
   );

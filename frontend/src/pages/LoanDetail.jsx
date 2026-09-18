@@ -5,6 +5,7 @@ import { Spinner, ErrorState, Badge, Confirm, Modal, Field } from '../components
 import CollectModal from '../components/CollectModal';
 import DistributeModal from '../components/DistributeModal';
 import ReceiptModal from '../components/ReceiptModal';
+import StatementModal from '../components/StatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { FiArrowLeft, FiPrinter, FiXCircle, FiTrash2 } from 'react-icons/fi';
@@ -27,6 +28,7 @@ export default function LoanDetail() {
   const [distribute, setDistribute] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [statement, setStatement] = useState(false);
   const [edit, setEdit] = useState(null);       // edit form state
   const [busy, setBusy] = useState(false);
 
@@ -109,6 +111,9 @@ export default function LoanDetail() {
         <div style={{ flex: 1 }} />
         {can('distributions.view') && loan.status === 'active' &&
           <button className="btn" disabled={busy} onClick={() => setDistribute(true)}>Disburse Chit</button>}
+        <button className="btn secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <FiPrinter size={14} /> Print Statement
+        </button>
         {can('loans.edit') && loan.status === 'active' &&
           <button className="btn secondary" disabled={busy} onClick={openEdit}>Edit</button>}
         {can('loans.cancel') && loan.status === 'active' &&
@@ -215,11 +220,12 @@ export default function LoanDetail() {
         <div className="card-head"><h2>Collection history</h2></div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Receipt</th><th>Date</th><th>Mode</th><th className="right">Fine</th><th className="right">Paid (actual)</th><th className="right">Total</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Receipt</th><th>Bill No</th><th>Date</th><th>Mode</th><th className="right">Fine</th><th className="right">Paid (actual)</th><th className="right">Total</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {loan.collections.map((c) => (
                 <tr key={c.id} style={c.status !== 'posted' ? { opacity: 0.6 } : undefined}>
                   <td data-label="Receipt">{c.receipt_no}</td>
+                  <td data-label="Bill No">{c.bill_no || '—'}</td>
                   <td data-label="Date">{fmtDate(c.collection_date)}</td>
                   <td data-label="Mode">{c.payment_mode}</td>
                   <td data-label="Fine" className="right">{money(c.fine_amount)}</td>
@@ -390,6 +396,9 @@ export default function LoanDetail() {
       )}
       {receipt && (
         <ReceiptModal collection={receipt} loan={loan} customer={loan.customer} onClose={() => setReceipt(null)} />
+      )}
+      {statement && (
+        <StatementModal loan={loan} onClose={() => setStatement(false)} />
       )}
     </>
   );

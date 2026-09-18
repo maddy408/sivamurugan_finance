@@ -20,6 +20,11 @@ final class App
         require_once $backendDir . '/config/config.php';
         self::$config = env_load($backendDir);
 
+        $composerAutoload = $backendDir . '/vendor/autoload.php';
+        if (is_file($composerAutoload)) {
+            require_once $composerAutoload;
+        }
+
         date_default_timezone_set(self::$config['timezone'] ?? 'Asia/Kolkata');
 
         spl_autoload_register(function (string $class) use ($backendDir) {

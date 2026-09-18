@@ -3,15 +3,17 @@ import { Link } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import DataTable from '../components/DataTable';
 import { Confirm, Field, Modal, IconView, IconEdit, IconDelete } from '../components/ui';
+import CustomScheduleModal from '../components/CustomScheduleModal';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiFileText, FiX } from 'react-icons/fi';
+import { FiFileText, FiX, FiPlusCircle } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const initialForm = {
   customer_id: '', code: '', principal_amount: '', installment_amount: '', tenure: '',
   frequency: 'weekly', start_date: today(), schedule_type: 'WEEKLY', notes: '',
+  due_date_mode: 'auto',
 };
 
 export default function Loans() {
@@ -31,6 +33,8 @@ export default function Loans() {
   const [nextCode, setNextCode] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [formBusy, setFormBusy] = useState(false);
+  const [customRows, setCustomRows] = useState([]);
+  const [addCustomRow, setAddCustomRow] = useState(false);
 
   useEffect(() => {
     if (can('loans.create')) {
@@ -67,12 +71,26 @@ export default function Loans() {
         frequency: form.frequency,
         start_date: form.start_date,
         schedule_type: form.schedule_type,
+        due_date_mode: form.due_date_mode,
         code: form.code.trim() || undefined,
         notes: form.notes || undefined,
       };
       const r = await api.post('/api/loans', payload);
+
+      // Custom Due Date: send every queued installment row now that the chit exists.
+      if (form.due_date_mode === 'custom' && customRows.length) {
+        for (const row of customRows) {
+          try {
+            await api.post(`/api/loans/${r.data.id}/custom-schedule`, row);
+          } catch (rowErr) {
+            toast.error(`Installment #${row.installment_no}: ${rowErr.message}`);
+          }
+        }
+      }
+
       toast.success(`Chit ${r.data.code} created successfully!`);
       setForm(initialForm);
+      setCustomRows([]);
       api.get('/api/loans/next-code').then((res) => setNextCode(res.data.next_code)).catch(() => {});
       list.reload();
     } catch (err) {
@@ -307,6 +325,45 @@ export default function Loans() {
                   </Field>
                 </div>
 
+                <Field label="Due Date Schedule">
+                  <select value={form.due_date_mode} onChange={(e) => { setF('due_date_mode', e.target.value); setCustomRows([]); }}>
+                    <option value="auto">Auto Due Date</option>
+                    <option value="custom">Custom Due Date</option>
+                  </select>
+                  {form.due_date_mode === 'custom' && (
+                    <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
+                      No due dates are generated automatically. Add each installment's due date below.
+                    </p>
+                  )}
+                </Field>
+
+                {form.due_date_mode === 'custom' && (
+                  <div className="field">
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Custom Schedule</span>
+                      <button type="button" className="btn sm secondary" onClick={() => setAddCustomRow(true)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <FiPlusCircle size={12} /> Add Custom Schedule
+                      </button>
+                    </label>
+                    {customRows.length > 0 ? (
+                      <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+                        {customRows.map((row, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9' }}>
+                            <span>#{row.installment_no} · {row.due_date} · {money(row.payable_amount)}</span>
+                            <button type="button" className="btn-icon danger" title="Remove" style={{ width: 22, height: 22 }}
+                              onClick={() => setCustomRows((rows) => rows.filter((_, i) => i !== idx))}>
+                              <FiX size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>No installments added yet.</p>
+                    )}
+                  </div>
+                )}
+
                 <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={formBusy || !form.customer_id}>
                   {formBusy ? 'Creating…' : ' Create Chit'}
                 </button>
@@ -434,6 +491,16 @@ export default function Loans() {
             installments and every recorded collection are left exactly as they are.
           </p>
         </Modal>
+      )}
+
+      {addCustomRow && (
+        <CustomScheduleModal
+          localOnly
+          nextInstallmentNo={customRows.reduce((m, r) => Math.max(m, r.installment_no), 0) + 1}
+          defaultAmount={form.installment_amount}
+          onClose={() => setAddCustomRow(false)}
+          onDone={(row) => { setCustomRows((rows) => [...rows, row]); setAddCustomRow(false); }}
+        />
       )}
     </>
   );

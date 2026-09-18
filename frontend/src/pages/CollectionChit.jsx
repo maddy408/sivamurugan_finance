@@ -5,11 +5,15 @@ import { Spinner, ErrorState, Badge, Confirm } from '../components/ui';
 import CollectModal from '../components/CollectModal';
 import DistributeModal from '../components/DistributeModal';
 import ReceiptModal from '../components/ReceiptModal';
+import StatementModal from '../components/StatementModal';
+import CustomScheduleModal from '../components/CustomScheduleModal';
+import CollectionEditModal from '../components/CollectionEditModal';
+import InstallmentStatementModal from '../components/InstallmentStatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import {
   FiArrowLeft, FiPrinter, FiFileText, FiDollarSign, FiCalendar, FiZap,
-  FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList,
+  FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList, FiPlusCircle, FiDownload,
 } from 'react-icons/fi';
 
 const DIST_STATUS_LABEL = {
@@ -33,6 +37,13 @@ export default function CollectionChit() {
   const [distAct, setDistAct] = useState(null);       // { type:'cancel'|'delete', row, reason }  (distribution)
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState(null);       // collection row being printed, or null
+  const [statement, setStatement] = useState(false);   // printable statement modal
+  const [customSchedule, setCustomSchedule] = useState(false); // Add Custom Schedule modal
+  const [editCollection, setEditCollection] = useState(null);  // collection row being edited, or null
+  const [printInstId, setPrintInstId] = useState(null);        // installment id being printed, or null
+  const [editCustomInst, setEditCustomInst] = useState(null);  // custom-schedule installment row being edited
+  const [deleteCustomInst, setDeleteCustomInst] = useState(null); // custom-schedule installment row pending delete
+  const [customDeleteBusy, setCustomDeleteBusy] = useState(false);
 
   const load = () => {
     setError(null);
@@ -68,6 +79,32 @@ export default function CollectionChit() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
+  const openReceipt = async (col) => {
+    try {
+      const r = await api.get(`/api/collections/${col.id}`);
+      setReceipt(r.data);
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const downloadCollectionPdf = async (col) => {
+    try { await api.download(`/api/collections/${col.id}/receipt.pdf`, null, `Receipt-${col.receipt_no}.pdf`); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  const runDeleteCustomInst = async () => {
+    setCustomDeleteBusy(true);
+    try {
+      await api.del(`/api/loans/${loan.id}/custom-schedule/${deleteCustomInst.id}`);
+      toast.success(`Installment #${deleteCustomInst.installment_no} deleted`);
+      setDeleteCustomInst(null);
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setCustomDeleteBusy(false);
+    }
+  };
+
   const runDistAct = async () => {
     setBusy(true);
     try {
@@ -92,7 +129,7 @@ export default function CollectionChit() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Collect — {loan.code}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="btn sm secondary" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button className="btn sm secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <FiPrinter size={14} /> Print Statement
           </button>
           <Badge value={loan.status} />
@@ -165,11 +202,18 @@ export default function CollectionChit() {
           <div className="card">
             <div className="card-head">
               <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiCalendar size={15} /> Installment Schedule &amp; Collect</h2>
-              {can('collection.create') && loan.status === 'active' && checked.size >= 2 && (
-                <button className="btn" onClick={() => setCollectIds([...checked])} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <FiZap size={14} /> Pay Multiple Due ({checked.size})
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {loan.due_date_mode === 'custom' && loan.status === 'active' && (can('loans.create') || can('loans.edit')) && (
+                  <button className="btn sm secondary" onClick={() => setCustomSchedule(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <FiPlusCircle size={12} /> Add Custom Schedule
+                  </button>
+                )}
+                {can('collection.create') && loan.status === 'active' && checked.size >= 2 && (
+                  <button className="btn" onClick={() => setCollectIds([...checked])} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <FiZap size={14} /> Pay Multiple Due ({checked.size})
+                  </button>
+                )}
+              </div>
             </div>
             <div className="table-wrap">
               <table className="grid">
@@ -219,6 +263,66 @@ export default function CollectionChit() {
             </div>
           </div>
 
+          {/* Custom Schedule History — only for due_date_mode='custom' chits.
+              Same installment rows as above, but the action set here is
+              schedule MANAGEMENT (Edit/Delete/Print/PDF) rather than Collect. */}
+          {loan.due_date_mode === 'custom' && (
+            <div className="card">
+              <div className="card-head">
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> Custom Schedule History</h2>
+              </div>
+              <div className="table-wrap">
+                <table className="grid">
+                  <thead>
+                    <tr>
+                      <th>Installment</th>
+                      <th>Due Date</th>
+                      <th className="right">Amount</th>
+                      <th className="right">Paid</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loan.installments.map((i) => {
+                      const hasPayments = Number(i.paid_amount) > 0;
+                      return (
+                        <tr key={i.id}>
+                          <td data-label="Installment" style={{ fontWeight: 700 }}>#{i.installment_no}</td>
+                          <td data-label="Due Date">{fmtDate(i.due_date)}</td>
+                          <td data-label="Amount" className="right">{money(i.payable_amount)}</td>
+                          <td data-label="Paid" className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
+                          <td data-label="Status"><Badge value={i.status} /></td>
+                          <td data-label="" className="right nowrap">
+                            <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                              <button className="btn-icon" title="Print / Download PDF" onClick={() => setPrintInstId(i.id)}>
+                                <FiPrinter size={14} />
+                              </button>
+                              {(can('loans.create') || can('loans.edit')) && (
+                                <button className="btn-icon" title="Edit Schedule" onClick={() => setEditCustomInst(i)}>
+                                  <FiEdit2 size={14} />
+                                </button>
+                              )}
+                              {(can('loans.create') || can('loans.edit')) && (
+                                <button className="btn-icon danger" title={hasPayments ? 'Cannot delete — payments already recorded' : 'Delete Schedule'}
+                                  disabled={hasPayments} onClick={() => setDeleteCustomInst(i)}>
+                                  <FiTrash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {loan.installments.length === 0 && (
+                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>No custom installments added yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Collection History Table */}
           <div className="card">
             <div className="card-head">
@@ -229,6 +333,7 @@ export default function CollectionChit() {
                 <thead>
                   <tr>
                     <th>Receipt</th>
+                    <th>Bill No</th>
                     <th>Date</th>
                     <th>Mode</th>
                     <th className="right">Paid (actual)</th>
@@ -242,6 +347,7 @@ export default function CollectionChit() {
                     return (
                       <tr key={col.id} style={col.status !== 'posted' ? { opacity: 0.6 } : undefined}>
                         <td data-label="Receipt" style={{ fontWeight: 700 }}>{col.receipt_no}</td>
+                        <td data-label="Bill No">{col.bill_no || '—'}</td>
                         <td data-label="Date">{fmtDate(col.collection_date)}</td>
                         <td data-label="Mode"><span className="badge PENDING">{col.payment_mode}</span></td>
                         <td data-label="Paid (actual)" className="right">
@@ -257,11 +363,19 @@ export default function CollectionChit() {
                         <td data-label="Status"><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
                         <td data-label="" className="right nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(col)}>
+                            <button className="btn-icon" title="Print Receipt" onClick={() => openReceipt(col)}>
                               <FiPrinter size={14} />
+                            </button>
+                            <button className="btn-icon" title="Download Receipt PDF" onClick={() => downloadCollectionPdf(col)}>
+                              <FiDownload size={14} />
                             </button>
                             {col.status === 'posted' && !isRev && (
                               <>
+                                {can('collection.edit') && (
+                                  <button className="btn-icon" title="Edit Collection" onClick={() => setEditCollection(col)}>
+                                    <FiEdit2 size={14} />
+                                  </button>
+                                )}
                                 {can('collection.cancel') && (
                                   <button className="btn-icon warning" title="Cancel Collection" onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>
                                     <FiXCircle size={14} />
@@ -365,6 +479,41 @@ export default function CollectionChit() {
 
       {receipt && (
         <ReceiptModal collection={receipt} loan={loan} customer={c} onClose={() => setReceipt(null)} />
+      )}
+
+      {statement && (
+        <StatementModal loan={loan} onClose={() => setStatement(false)} />
+      )}
+
+      {customSchedule && (
+        <CustomScheduleModal loan={loan} onClose={() => setCustomSchedule(false)}
+          onDone={() => { setCustomSchedule(false); load(); }} />
+      )}
+
+      {editCollection && (
+        <CollectionEditModal collection={editCollection} onClose={() => setEditCollection(null)}
+          onDone={() => { setEditCollection(null); load(); }} />
+      )}
+
+      {printInstId && (
+        <InstallmentStatementModal installmentId={printInstId} loan={loan} customer={c}
+          onClose={() => setPrintInstId(null)} />
+      )}
+
+      {editCustomInst && (
+        <CustomScheduleModal loan={loan} editInstallment={editCustomInst} onClose={() => setEditCustomInst(null)}
+          onDone={() => { setEditCustomInst(null); load(); }} />
+      )}
+
+      {deleteCustomInst && (
+        <Confirm
+          title={`Delete Installment #${deleteCustomInst.installment_no}?`}
+          danger busy={customDeleteBusy}
+          message="This custom schedule row will be permanently removed. This is only possible because it has no payments recorded against it yet."
+          confirmLabel="Delete"
+          onConfirm={runDeleteCustomInst}
+          onClose={() => setDeleteCustomInst(null)}
+        />
       )}
 
       {act && (

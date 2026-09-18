@@ -181,7 +181,7 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
   )),
   ('collection',    JSON_OBJECT('allow_advance_default', false)),
   -- chit code = PREFIX-N (plain incrementing number). Prefix is editable in Settings.
-  ('code_format',   JSON_OBJECT('loan_prefix','JRM','loan_pattern','{PREFIX}-{SEQ}',
+  ('code_format',   JSON_OBJECT('loan_prefix','SM','loan_pattern','{PREFIX}-{SEQ}',
                                 'customer_prefix','CUST','customer_pattern','{PREFIX}-{SEQ6}',
                                 'receipt_prefix','RCPT','receipt_pattern','{PREFIX}-{YYYYMMDD}-{SEQ5}')),
   ('security',      JSON_OBJECT('token_ttl_hours', 12, 'password_min_length', 8));

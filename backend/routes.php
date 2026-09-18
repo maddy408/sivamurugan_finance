@@ -19,6 +19,7 @@ use App\Controllers\ExportController;
 use App\Controllers\IncomeController;
 use App\Controllers\LoanController;
 use App\Controllers\MetaController;
+use App\Controllers\PdfController;
 use App\Controllers\PendingController;
 use App\Controllers\ReportController;
 use App\Controllers\SettingsController;
@@ -40,6 +41,7 @@ $dashboard  = new DashboardController();
 $exports    = new ExportController();
 $pending    = new PendingController();
 $distributions = new DistributionController();
+$pdf        = new PdfController();
 
 /* ---- health ---- */
 $router->get('/api/health', fn(Request $r) => Response::ok(['status' => 'ok', 'time' => date('c')]));
@@ -84,6 +86,11 @@ $router->put('/api/loans/{id}',                  [$loans, 'update']);
 $router->delete('/api/loans/{id}',               [$loans, 'destroy']);
 $router->post('/api/loans/{id}/cancel',          [$loans, 'cancel']);
 $router->post('/api/loans/{id}/generate-schedule',[$loans, 'generateSchedule']);
+$router->post('/api/loans/{id}/custom-schedule',       [$loans, 'addCustomSchedule']);
+$router->put('/api/loans/{id}/custom-schedule/{instId}', [$loans, 'updateCustomSchedule']);
+$router->delete('/api/loans/{id}/custom-schedule/{instId}', [$loans, 'deleteCustomSchedule']);
+$router->get('/api/loans/{id}/statement.pdf',    [$pdf, 'statement']);
+$router->get('/api/loans/{id}/statement.xlsx',   [$pdf, 'statementExcel']);
 
 /* ---- distributions (actual money handed to the customer for a chit) ---- */
 $router->get('/api/distributions',                [$distributions, 'index']);
@@ -95,9 +102,13 @@ $router->delete('/api/distributions/{id}',        [$distributions, 'destroy']);
 
 /* ---- collection ---- */
 $router->get('/api/collection/workload',              [$collection, 'workload']);
+$router->get('/api/installments/{id}/payments',       [$collection, 'installmentPayments']);
+$router->get('/api/installments/{id}/statement.pdf',  [$pdf, 'installmentStatement']);
 $router->get('/api/collections',                      [$collection, 'index']);
 $router->get('/api/collections/{id}',                 [$collection, 'show']);
+$router->get('/api/collections/{id}/receipt.pdf',     [$pdf, 'receipt']);
 $router->post('/api/collections',                     [$collection, 'store']);
+$router->put('/api/collections/{id}',                 [$collection, 'update']);
 $router->post('/api/collections/{id}/cancel',         [$collection, 'cancel']);
 $router->post('/api/collections/{id}/reverse',        [$collection, 'reverse']);
 $router->delete('/api/collections/{id}',              [$collection, 'destroy']);
@@ -138,6 +149,7 @@ $router->get('/api/reports/summary',           [$reports, 'summary']);
 $router->get('/api/reports/full-export',       [$reports, 'fullExport']);
 $router->get('/api/reports/templates/{type}',  [$reports, 'template']);
 $router->get('/api/reports/{name}/export',     [$reports, 'export']);
+$router->get('/api/reports/{name}/print.pdf',  [$reports, 'printPdf']);
 $router->get('/api/reports/{name}',            [$reports, 'show']);
 
 /* ---- settings ---- */

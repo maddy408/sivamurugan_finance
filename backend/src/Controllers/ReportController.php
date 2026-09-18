@@ -121,6 +121,49 @@ class ReportController
         Xlsx::book($name . '_' . date('Ymd_His') . '.xlsx', [$sheet]);
     }
 
+    /**
+     * GET /api/reports/{name}/print.pdf - the exact same backend-built report
+     * (any filter combination: all customers/all chits, one customer, one
+     * chit, customer+chit, etc.) rendered as a professional PDF. Empty result
+     * set renders a clear NIL notice, never a blank/broken PDF.
+     */
+    public function printPdf(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'reports.view');
+        $name = $args['name'];
+        if (!isset(self::CATALOGUE[$name])) {
+            throw HttpException::notFound('Unknown report');
+        }
+        $f = $this->filters($req, $user);
+        $r = $this->build($name, $f, $user);
+
+        Audit::log('report.print', 'reports', 'report', $name, null,
+            ['filters' => $this->filterEcho($f), 'rows' => count($r['rows'])], null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+        $db = Database::instance();
+        $filterLines = ['Period' => $this->periodLabel($f)];
+        if ($f['customer_id']) {
+            $filterLines['Customer'] = $db->scalar('SELECT CONCAT(name, " (", customer_code, ")") FROM customers WHERE id = :id', ['id' => $f['customer_id']]) ?: ('#' . $f['customer_id']);
+        }
+        if ($f['loan_id']) {
+            $filterLines['Chit / Loan'] = $db->scalar('SELECT code FROM loans_or_chits WHERE id = :id', ['id' => $f['loan_id']]) ?: ('#' . $f['loan_id']);
+        }
+        if ($f['employee_id']) {
+            $filterLines['Employee'] = $db->scalar(
+                "SELECT u.name FROM employees e JOIN users u ON u.id = e.user_id WHERE e.id = :id", ['id' => $f['employee_id']]
+            ) ?: ('#' . $f['employee_id']);
+        }
+        if ($f['status'])    { $filterLines['Status'] = $f['status']; }
+        if ($f['frequency']) { $filterLines['Frequency'] = $f['frequency']; }
+        if ($f['bill_no'])   { $filterLines['Bill No'] = $f['bill_no']; }
+
+        \App\Support\Pdf::report(
+            self::CATALOGUE[$name][0], $r['headers'], $r['col_types'], $r['rows'], $r['totals'],
+            $filterLines, App::setting('organization', [])
+        );
+    }
+
     /** GET /api/reports/full-export  - one workbook, every report as a sheet */
     public function fullExport(Request $req): void
     {
@@ -174,13 +217,13 @@ class ReportController
                 'headers' => ['Customer Code*', 'Chit Code (optional)', 'Chit Amount*', 'EMI Amount*',
                               'Tenure*', 'Frequency* (daily/weekly/monthly)', 'Start Date* (YYYY-MM-DD)',
                               'Distributed Amount (optional)', 'Remarks'],
-                'example' => ['CUS0001', 'JRM-001', 40000, 2000, 20, 'monthly', $today, 0, 'New chit'],
+                'example' => ['CUS0001', 'SM-001', 40000, 2000, 20, 'monthly', $today, 0, 'New chit'],
             ],
             'collection' => [
                 'headers' => ['Chit Code*', 'Collection Date* (YYYY-MM-DD)', 'Due Numbers* (e.g. 1 or 1,2,3)',
                               'Installment Amount*', 'Fine Amount (optional)', 'Payment Method* (Cash/UPI/Bank)',
                               'Reference No', 'Remarks'],
-                'example' => ['JRM-001', $today, '1,2', 6000, 0, 'Cash', 'UPI-12345', 'On time'],
+                'example' => ['SM-001', $today, '1,2', 6000, 0, 'Cash', 'UPI-12345', 'On time'],
             ],
             'expense' => [
                 'headers' => ['Expense Date* (YYYY-MM-DD)', 'Amount*', 'Category*', 'Account* (Office Cash/Bank)', 'Remarks'],
@@ -257,6 +300,7 @@ class ReportController
             'payment_mode_id' => $p('payment_mode_id') ? (int) $p('payment_mode_id') : null,
             'status'          => $p('status'),
             'frequency'       => $p('frequency'),
+            'bill_no'         => $p('bill_no'),
         ];
     }
 
@@ -503,8 +547,9 @@ class ReportController
         if ($f['loan_id'])         { $w .= ' AND col.loan_id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['employee_id'])     { $w .= ' AND col.employee_id = :eid'; $p['eid'] = $f['employee_id']; }
         if ($f['payment_mode_id']) { $w .= ' AND col.payment_mode_id = :pm'; $p['pm'] = $f['payment_mode_id']; }
+        if (!empty($f['bill_no'])) { $w .= ' AND col.bill_no LIKE :bn'; $p['bn'] = '%' . $f['bill_no'] . '%'; }
 
-        $sql = "SELECT col.id, col.collection_date, cu.name AS customer, cu.customer_code,
+        $sql = "SELECT col.id, col.collection_date, col.bill_no, cu.name AS customer, cu.customer_code,
                        l.code AS chit, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee,
                        i.installment_no, ca.principal_alloc, ca.fine_alloc,
@@ -526,6 +571,7 @@ class ReportController
             $rows[] = [
                 'S.No' => ++$i,
                 'Collection Date' => $x['collection_date'],
+                'Bill No' => $x['bill_no'] ?: '—',
                 'Customer Name' => $x['customer'],
                 'Customer Code' => $x['customer_code'],
                 'Chit Code' => $x['chit'],
@@ -542,7 +588,7 @@ class ReportController
             $tInst += $inst; $tFine += $fine; $tTot += $inst + $fine;
         }
         return $this->result('CHIT COLLECTION REPORT',
-            ['S.No','Collection Date','Customer Name','Customer Code','Chit Code','Location','Employee','Due Number','Installment Amount','Fine Amount','Total Collected','Payment Method','Collection Status','Collected By'],
+            ['S.No','Collection Date','Bill No','Customer Name','Customer Code','Chit Code','Location','Employee','Due Number','Installment Amount','Fine Amount','Total Collected','Payment Method','Collection Status','Collected By'],
             ['S.No'=>'number','Collection Date'=>'date','Installment Amount'=>'money','Fine Amount'=>'money','Total Collected'=>'money'],
             $rows,
             ['S.No'=>'TOTAL ('.$i.')','Installment Amount'=>round($tInst,2),'Fine Amount'=>round($tFine,2),'Total Collected'=>round($tTot,2)]

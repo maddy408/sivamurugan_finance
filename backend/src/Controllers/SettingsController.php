@@ -166,7 +166,7 @@ class SettingsController
     }
 
     /**
-     * PUT /api/settings/chit-prefix  { prefix: "JRM" }
+     * PUT /api/settings/chit-prefix  { prefix: "SM" }
      * Only touches the chit code prefix; the pattern stays PREFIX-N.
      * Existing chit codes are NOT changed - only new chits use the new prefix.
      */

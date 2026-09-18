@@ -201,6 +201,7 @@ CREATE TABLE loans_or_chits (
   start_date          DATE          NOT NULL,
   schedule_type       ENUM('DAILY','WEEKLY','MONTHLY_WEEKDAY','MONTHLY_DAILY','MONTHLY_INTERVAL') NOT NULL DEFAULT 'WEEKLY',
   schedule_config     JSON          NULL,                 -- {weekday:1, anchor_date:"", interval_days:30, cycle_weeks:4}
+  due_date_mode       ENUM('auto','custom') NOT NULL DEFAULT 'auto', -- 'auto' = ScheduleService generates installments; 'custom' = staff add each installment manually, backend never auto-generates
   fine_setting_id     INT UNSIGNED  NULL,                 -- snapshot pointer; NULL = use global active
   allow_advance       TINYINT(1)    NOT NULL DEFAULT 1,   -- overpayment always allowed for chits
   deleted_at          DATETIME      NULL,                 -- soft delete
@@ -333,6 +334,7 @@ CREATE TABLE collections (
   cash_account_id    INT UNSIGNED  NULL,
   upi_account_id     INT UNSIGNED  NULL,
   reference_no       VARCHAR(64)   NULL,
+  bill_no            VARCHAR(64)   NULL,                 -- optional manual bill/voucher number
   remarks            VARCHAR(500)  NULL,
   idempotency_key    VARCHAR(80)   NULL,
   -- posted  = live, counts toward totals / cash / outstanding
@@ -358,6 +360,7 @@ CREATE TABLE collections (
   KEY idx_coll_location (location),
   KEY idx_coll_mode (payment_mode_id),
   KEY idx_coll_status (status),
+  KEY idx_coll_bill_no (bill_no),
   CONSTRAINT fk_coll_loan     FOREIGN KEY (loan_id)         REFERENCES loans_or_chits (id),
   CONSTRAINT fk_coll_customer FOREIGN KEY (customer_id)     REFERENCES customers (id),
   CONSTRAINT fk_coll_user     FOREIGN KEY (collected_by)    REFERENCES users (id),

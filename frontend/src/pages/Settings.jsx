@@ -407,7 +407,7 @@ function OpeningBalanceRow({ account, busy, save }) {
 
 function ChitCodeTab({ data, busy, save }) {
   const cf = data.code_format || {};
-  const [prefix, setPrefix] = useState(cf.loan_prefix || 'JRM');
+  const [prefix, setPrefix] = useState(cf.loan_prefix || 'SM');
   const clean = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return (
     <div className="card"><div className="card-body">

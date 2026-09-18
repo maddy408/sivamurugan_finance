@@ -1,24 +1,40 @@
-import { API_BASE, fmtDate, money } from '../api/client';
+import { useState } from 'react';
+import { api, API_BASE, fmtDate, money } from '../api/client';
 import { Modal } from './ui';
 import { useAuth } from '../state/AuthContext';
-import { FiPrinter } from 'react-icons/fi';
+import { useToast } from '../state/ToastContext';
+import { FiPrinter, FiDownload } from 'react-icons/fi';
 
 /**
  * Print-friendly collection receipt. Company details come from
  * Settings -> Organization (meta.organization) - never hardcoded.
+ * `collection.allocations` (from GET /api/collections/{id}) drives the
+ * per-installment breakdown when a payment covered more than one due.
  */
 export default function ReceiptModal({ collection, loan, customer, onClose }) {
   const { meta } = useAuth();
+  const toast = useToast();
   const org = meta?.organization || {};
+  const [busy, setBusy] = useState(false);
 
   const total = Number(collection.total_amount ?? (Number(collection.amount) + Number(collection.fine_amount || 0)));
   const isSplit = collection.payment_mode_code === 'SPLIT' || (collection.cash_amount !== null && collection.cash_amount !== undefined);
+  const allocations = collection.allocations || [];
+
+  const downloadPdf = async () => {
+    setBusy(true);
+    try { await api.download(`/api/collections/${collection.id}/receipt.pdf`, null, `Receipt-${collection.receipt_no}.pdf`); }
+    catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
 
   return (
     <Modal title="Collection Receipt" onClose={onClose} size="lg"
       footer={<>
-        <button className="btn secondary" onClick={onClose}>Close</button>
-        <button className="btn" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiPrinter size={13} /> Print</button>
+        <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
+        <button className="btn secondary" onClick={downloadPdf} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <FiDownload size={13} /> Download PDF
+        </button>
+        <button className="btn" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiPrinter size={13} /> Print</button>
       </>}>
       <div className="print-receipt">
         <div className="receipt-header">
@@ -38,6 +54,7 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
           <div className="receipt-title">Collection Receipt</div>
           <div className="receipt-meta">
             <div><b>Receipt No:</b> {collection.receipt_no}</div>
+            {collection.bill_no && <div><b>Bill No:</b> {collection.bill_no}</div>}
             <div><b>Date:</b> {fmtDate(collection.collection_date)}</div>
           </div>
         </div>
@@ -59,6 +76,22 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
           </div>
         </div>
 
+        {allocations.length > 0 && (
+          <table className="receipt-table" style={{ marginBottom: 10 }}>
+            <thead>
+              <tr><th>Installment No</th><th>Due Date</th><th className="right">Amount Paid</th></tr>
+            </thead>
+            <tbody>
+              {allocations.map((a) => (
+                <tr key={a.id}>
+                  <td>#{a.installment_no}</td>
+                  <td>{fmtDate(a.due_date)}</td>
+                  <td className="right">{money(a.principal_alloc)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <table className="receipt-table">
           <thead>
             <tr><th>Description</th><th className="right">Amount</th></tr>
@@ -69,9 +102,9 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
                 <tr><td>Cash Portion{collection.cash_account_name ? ` (${collection.cash_account_name})` : ''}</td><td className="right">{money(collection.cash_amount)}</td></tr>
                 <tr><td>UPI Portion{collection.upi_account_name ? ` (${collection.upi_account_name})` : ''}</td><td className="right">{money(collection.upi_amount)}</td></tr>
               </>
-            ) : (
+            ) : allocations.length === 0 ? (
               <tr><td>Installment Amount</td><td className="right">{money(collection.amount)}</td></tr>
-            )}
+            ) : null}
             {Number(collection.fine_amount) > 0 && (
               <tr><td>Fine Amount</td><td className="right">{money(collection.fine_amount)}</td></tr>
             )}

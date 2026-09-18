@@ -31,26 +31,26 @@ const run = async () => {
     frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', location_id: loc.id, ...extra,
   } })).j;
   const nc = (await call('GET', '/api/loans/next-code', { token: AT })).j.data;
-  ok(nc.prefix === 'JRM' && nc.next_code === 'JRM-1', `next-code = ${nc.next_code} (JRM-1)`);
+  ok(nc.prefix === 'SM' && nc.next_code === 'SM-1', `next-code = ${nc.next_code} (SM-1)`);
   const c1 = (await mk()).data;
-  ok(c1.code === 'JRM-1', `chit 1 auto code = ${c1.code}`);
+  ok(c1.code === 'SM-1', `chit 1 auto code = ${c1.code}`);
   const c2 = (await mk()).data;
-  ok(c2.code === 'JRM-2', `chit 2 auto code = ${c2.code} (auto increment)`);
+  ok(c2.code === 'SM-2', `chit 2 auto code = ${c2.code} (auto increment)`);
   const cm = (await mk({ code: 'SPECIAL-001' })).data;
   ok(cm.code === 'SPECIAL-001', 'manual chit code SPECIAL-001 saved');
   const dup = await call('POST', '/api/loans', { token: AT, body: { customer_id: cust.id, account_type: 'chit', principal_amount: 20000, installment_amount: 3000, tenure: 6, frequency: 'weekly', start_date: '2026-01-05', schedule_type: 'WEEKLY', code: 'SPECIAL-001' } });
   ok(dup.status === 409, 'duplicate chit code rejected by backend (409)');
   const c3 = (await mk()).data;
-  ok(c3.code === 'JRM-3', `next auto still JRM-3 (unaffected by manual/deleted) = ${c3.code}`);
+  ok(c3.code === 'SM-3', `next auto still SM-3 (unaffected by manual/deleted) = ${c3.code}`);
 
   console.log('== CHIT PREFIX SETTING ==');
   const sp = await call('PUT', '/api/settings/chit-prefix', { token: AT, body: { prefix: 'abc' } });
   ok(sp.status === 200 && sp.j.data.prefix === 'ABC' && sp.j.data.next_example === 'ABC-1', `prefix -> ABC, next ${sp.j.data.next_example}`);
   const c4 = (await mk()).data;
-  ok(c4.code === 'ABC-1', `after prefix change new chit = ${c4.code}; JRM-1 unchanged`);
-  ok((await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data.code === 'JRM-1', 'existing chit code NOT rewritten by prefix change');
+  ok(c4.code === 'ABC-1', `after prefix change new chit = ${c4.code}; SM-1 unchanged`);
+  ok((await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data.code === 'SM-1', 'existing chit code NOT rewritten by prefix change');
   ok((await call('PUT', '/api/settings/chit-prefix', { token: ET0, body: { prefix: 'X' } })).status === 403, 'employee cannot change chit prefix (403)');
-  await call('PUT', '/api/settings/chit-prefix', { token: AT, body: { prefix: 'JRM' } }); // restore
+  await call('PUT', '/api/settings/chit-prefix', { token: AT, body: { prefix: 'SM' } }); // restore
 
   console.log('== COLLECTION: actual paid 3000 vs 6000, multi-installment, fine ==');
   const det = (await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data;
@@ -166,7 +166,7 @@ const run = async () => {
   ok((await call('GET', '/api/locations', { token: AT })).status === 404, 'no Location Master endpoint');
 
   console.log('== regression: existing suites still meaningful (installment amount fixed) ==');
-  ok(D((await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data.installment_amount) === '3000.00', 'JRM-1 installment_amount still 3000.00 at end of run');
+  ok(D((await call('GET', `/api/loans/${c1.id}`, { token: AT })).j.data.installment_amount) === '3000.00', 'SM-1 installment_amount still 3000.00 at end of run');
 
   console.log(`\n================  ${pass} passed / ${fail} failed  ================`);
   process.exit(fail ? 1 : 0);

@@ -148,6 +148,26 @@ class CollectionController
         Response::ok($col);
     }
 
+    /**
+     * GET /api/installments/{id}/payments - every real payment already
+     * collected against one due, oldest first. Powers the "Previous Payment
+     * History" section inside the Collect form for a partially-paid due.
+     */
+    public function installmentPayments(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, ['collection.view', 'collection.create']);
+        $db = Database::instance();
+        $inst = $db->fetch('SELECT * FROM installments WHERE id = :id', ['id' => (int)$args['id']]);
+        if (!$inst) {
+            throw HttpException::notFound('Installment not found');
+        }
+        Guard::assertLoanInScope($user, (int)$inst['loan_id']);
+        Response::ok([
+            'installment' => $inst,
+            'payments'    => CollectionService::installmentPayments((int)$inst['id']),
+        ]);
+    }
+
     /** POST /api/collections */
     public function store(Request $req): void
     {
@@ -161,7 +181,12 @@ class CollectionController
             'fine_amount'     => 'nullable|numeric|min:0',    // manual fine
             'payment_mode_id' => 'required|int',
             'account_id'      => 'nullable|int',
+            'cash_amount'     => 'nullable|numeric|min:0',
+            'upi_amount'      => 'nullable|numeric|min:0',
+            'cash_account_id' => 'nullable|int',
+            'upi_account_id'  => 'nullable|int',
             'reference_no'    => 'nullable|string|max:64',
+            'bill_no'         => 'nullable|string|max:64',
             'remarks'         => 'nullable|string|max:500',
         ])->validated();
 
@@ -217,7 +242,7 @@ class CollectionController
             $params += $sp;
         }
         if (($q = ListQuery::search($req)) !== '') {
-            $where[] = '(cu.name LIKE :q OR cu.customer_code LIKE :q OR cu.mobile LIKE :q OR l.code LIKE :q OR col.receipt_no LIKE :q)';
+            $where[] = '(cu.name LIKE :q OR cu.customer_code LIKE :q OR cu.mobile LIKE :q OR l.code LIKE :q OR col.receipt_no LIKE :q OR col.bill_no LIKE :q)';
             $params['q'] = "%$q%";
         }
         if ($from = $req->queryParam('date_from')) { $where[] = 'col.collection_date >= :df'; $params['df'] = $from; }
@@ -226,6 +251,7 @@ class CollectionController
         if ($cid  = $req->queryParam('customer_id')) { $where[] = 'col.customer_id = :cid'; $params['cid'] = (int)$cid; }
         if ($pm   = $req->queryParam('payment_mode_id')) { $where[] = 'col.payment_mode_id = :pm'; $params['pm'] = (int)$pm; }
         if ($stt  = $req->queryParam('status')) { $where[] = 'col.status = :stt'; $params['stt'] = $stt; }
+        if ($bn   = $req->queryParam('bill_no')) { $where[] = 'col.bill_no LIKE :bn'; $params['bn'] = "%$bn%"; }
 
         $whereSql = implode(' AND ', $where);
         $perPage = ListQuery::perPage($req);
@@ -238,13 +264,51 @@ class CollectionController
         $total = (int)$db->scalar("SELECT COUNT(*) $bs", $params);
         $rows = $db->fetchAll(
             "SELECT col.id, col.receipt_no, col.collection_date, col.amount, col.fine_amount,
-                    col.total_amount, col.status, col.reference_no, col.loan_id,
+                    col.total_amount, col.status, col.reference_no, col.bill_no, col.loan_id,
                     l.code AS loan_code, cu.id AS customer_id, cu.name AS customer_name, cu.customer_code,
                     pm.name AS payment_mode
              $bs ORDER BY col.collection_date DESC, col.id DESC LIMIT $perPage OFFSET $offset",
             $params
         );
         Response::paginated($rows, $total, ListQuery::page($req), $perPage);
+    }
+
+    /**
+     * PUT /api/collections/{id} - edit a posted collection IN PLACE (never
+     * additive, never a second record). The set of dues covered can't be
+     * re-chosen here; everything else the Collect form accepts can be edited.
+     */
+    public function update(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'collection.edit');
+        $db = Database::instance();
+        $col = $db->fetch('SELECT * FROM collections WHERE id = :id AND deleted_at IS NULL', ['id' => (int)$args['id']]);
+        if (!$col) {
+            throw HttpException::notFound('Collection not found');
+        }
+        Guard::assertLoanInScope($user, (int)$col['loan_id']);
+
+        $in = Validator::make($req->body, [
+            'amount'          => 'nullable|numeric|min:0',
+            'fine_amount'     => 'nullable|numeric|min:0',
+            'collection_date' => 'nullable|date',
+            'payment_mode_id' => 'nullable|int',
+            'account_id'      => 'nullable|int',
+            'cash_amount'     => 'nullable|numeric|min:0',
+            'upi_amount'      => 'nullable|numeric|min:0',
+            'cash_account_id' => 'nullable|int',
+            'upi_account_id'  => 'nullable|int',
+            'reference_no'    => 'nullable|string|max:64',
+            'bill_no'         => 'nullable|string|max:64',
+            'remarks'         => 'nullable|string|max:500',
+        ])->validated();
+
+        if (!empty($in['payment_mode_id']) && !$db->scalar('SELECT 1 FROM payment_modes WHERE id = :id AND is_active = 1', ['id' => $in['payment_mode_id']])) {
+            throw HttpException::validation(['payment_mode_id' => ['Unknown or inactive payment mode']]);
+        }
+
+        $result = CollectionService::updateCollection($user, (int)$col['id'], $in);
+        Response::ok($result, 'Collection updated');
     }
 
     /** POST /api/collections/{id}/cancel */

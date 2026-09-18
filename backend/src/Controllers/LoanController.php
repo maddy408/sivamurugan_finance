@@ -31,7 +31,7 @@ class LoanController
         Guard::authorize($req, ['loans.create', 'loans.edit']);
         $fmt = \App\Core\App::setting('code_format', []);
         Response::ok([
-            'prefix'    => $fmt['loan_prefix'] ?? 'JRM',
+            'prefix'    => $fmt['loan_prefix'] ?? 'SM',
             'next_code' => CodeGenerator::loanCode(),
         ]);
     }
@@ -231,11 +231,13 @@ class LoanController
             'frequency'          => 'required|in:daily,weekly,monthly',
             'start_date'         => 'required|date',
             'schedule_type'      => 'required|in:DAILY,WEEKLY,MONTHLY_WEEKDAY,MONTHLY_DAILY,MONTHLY_INTERVAL',
+            'due_date_mode'      => 'nullable|in:auto,custom',
             'employee_id'        => 'nullable|int',
             'notes'              => 'nullable|string|max:500',
             'code'               => 'nullable|string|max:40',
         ])->validated();
         $in['schedule_type'] = self::syncScheduleType($in['frequency'], $in['schedule_type']);
+        $dueDateMode = $in['due_date_mode'] ?? 'auto';
 
         $customer = $db->fetch('SELECT * FROM customers WHERE id = :id AND deleted_at IS NULL', ['id' => $in['customer_id']]);
         if (!$customer) {
@@ -293,6 +295,7 @@ class LoanController
             'start_date'         => $in['start_date'],
             'schedule_type'      => $in['schedule_type'],
             'schedule_config'    => $scheduleConfig ? json_encode($scheduleConfig) : null,
+            'due_date_mode'      => $dueDateMode,
             'allow_advance'      => 1,
             'status'             => 'active',
             'notes'              => $in['notes'] ?? null,
@@ -343,9 +346,29 @@ class LoanController
         // Automatic, deterministic, idempotent flat schedule generation.
         $gen = ScheduleService::generate($loanId);
 
+        // If custom schedule mode is enabled and custom schedule rows were provided, insert them.
+        $customSchedule = $req->input('custom_schedule');
+        if ($dueDateMode === 'custom' && is_array($customSchedule)) {
+            $createdCount = 0;
+            foreach ($customSchedule as $cInst) {
+                if (is_array($cInst) && !empty($cInst['due_date'])) {
+                    ScheduleService::addCustomInstallment($loanId, [
+                        'installment_no' => (int) ($cInst['installment_no'] ?? ($createdCount + 1)),
+                        'due_date'       => $cInst['due_date'],
+                        'payable_amount' => $cInst['payable_amount'] ?? $in['installment_amount'],
+                        'paid_amount'    => $cInst['paid_amount'] ?? 0,
+                        'paid_date'      => $cInst['paid_date'] ?? null,
+                        'status'         => $cInst['status'] ?? 'PENDING',
+                    ]);
+                    $createdCount++;
+                }
+            }
+            $gen['created'] = $createdCount;
+        }
+
         Audit::log('loan.create', 'loans', 'loan', $loanId, null,
             ['code' => $code, 'principal' => $in['principal_amount'], 'tenure' => $in['tenure'],
-             'installment_amount' => $installment, 'installments_created' => $gen['created']],
+             'installment_amount' => $installment, 'due_date_mode' => $dueDateMode, 'installments_created' => $gen['created']],
             null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
 
         // Immediate distribution (optional) — same service as a later distribution.
@@ -389,6 +412,56 @@ class LoanController
             'created' => $gen['created'], 'updated' => $gen['updated'], 'skipped_paid' => $gen['skipped_paid'],
             'installments' => $gen['installments'],
         ], 'Schedule synchronised (no duplicates created)');
+    }
+
+    /** POST /api/loans/{id}/custom-schedule  - add one manually-entered installment (due_date_mode = 'custom' only) */
+    public function addCustomSchedule(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, ['loans.create', 'loans.edit']);
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        $in = Validator::make($req->body, [
+            'installment_no' => 'required|int|min:1',
+            'due_date'       => 'required|date',
+            'payable_amount' => 'required|numeric|min:0.01',
+            'paid_amount'    => 'nullable|numeric|min:0',
+            'paid_date'      => 'nullable|date',
+            'status'         => 'nullable|in:PENDING,PARTIAL,COMPLETED,OVERDUE',
+        ])->validated();
+        $row = ScheduleService::addCustomInstallment((int)$loan['id'], $in);
+        Audit::log('loan.custom_schedule_add', 'loans', 'installment', $row['id'], null, $in, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        Response::created($row, 'Custom installment added');
+    }
+
+    /** PUT /api/loans/{id}/custom-schedule/{instId}  - edit a manually-entered installment */
+    public function updateCustomSchedule(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, ['loans.create', 'loans.edit']);
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        $in = Validator::make($req->body, [
+            'installment_no' => 'nullable|int|min:1',
+            'due_date'       => 'nullable|date',
+            'payable_amount' => 'nullable|numeric|min:0.01',
+            'paid_amount'    => 'nullable|numeric|min:0',
+            'paid_date'      => 'nullable|date',
+            'status'         => 'nullable|in:PENDING,PARTIAL,COMPLETED,OVERDUE',
+        ])->validated();
+        $row = ScheduleService::updateCustomInstallment((int)$loan['id'], (int)$args['instId'], $in);
+        Audit::log('loan.custom_schedule_update', 'loans', 'installment', $row['id'], null, $in, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        Response::ok($row, 'Custom installment updated');
+    }
+
+    /** DELETE /api/loans/{id}/custom-schedule/{instId} - refused if a real collection already exists against it */
+    public function deleteCustomSchedule(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, ['loans.create', 'loans.edit']);
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        $instId = (int)$args['instId'];
+        ScheduleService::deleteCustomInstallment((int)$loan['id'], $instId);
+        Audit::log('loan.custom_schedule_delete', 'loans', 'installment', $instId, null, null, null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+        Response::ok(null, 'Custom installment deleted');
     }
 
     /**
