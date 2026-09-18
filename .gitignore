@@ -1,0 +1,5 @@
+# Deployment & environment secrets
+deploy.py
+.env
+*.pyc
+__pycache__/
