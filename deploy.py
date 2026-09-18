@@ -5,6 +5,9 @@ Targets: Dev and Prod environments on remote server (45.199.139.18)
 """
 
 import sys
+import os
+import tarfile
+import tempfile
 import argparse
 import paramiko
 
@@ -45,15 +48,27 @@ ENV_CONFIGS = {
     }
 }
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 def run_ssh_command(client, cmd, ignore_error=False):
     print(f"--> Executing: {cmd}")
     stdin, stdout, stderr = client.exec_command(cmd)
     out = stdout.read().decode('utf-8', errors='ignore')
     err = stderr.read().decode('utf-8', errors='ignore')
     if out.strip():
-        print(out.strip())
+        try:
+            print(out.strip())
+        except UnicodeEncodeError:
+            print(out.strip().encode('ascii', errors='replace').decode('ascii'))
     if err.strip():
-        print(f"[STDERR] {err.strip()}")
+        try:
+            print(f"[STDERR] {err.strip()}")
+        except UnicodeEncodeError:
+            print(f"[STDERR] {err.strip().encode('ascii', errors='replace').decode('ascii')}")
     exit_code = stdout.channel.recv_exit_status()
     if exit_code != 0 and not ignore_error:
         print(f"Error executing command: {cmd} (Exit Code: {exit_code})")
@@ -62,16 +77,43 @@ def run_ssh_command(client, cmd, ignore_error=False):
 
 def sync_repository(client):
     print("\n==========================================")
-    print("STEP 1: Syncing Git Repository on Remote Server")
+    print("STEP 1: Syncing Codebase to Remote Server via SFTP")
     print("==========================================")
-    check_repo = f"[ -d '{REPO_DIR}/.git' ] && echo 'EXISTS' || echo 'NOT_EXISTS'"
-    res = run_ssh_command(client, check_repo, ignore_error=True)
-    if res.strip() == "EXISTS":
-        print(f"Updating existing repository at {REPO_DIR}...")
-        run_ssh_command(client, f"cd {REPO_DIR} && git fetch origin && git checkout {REPO_BRANCH} && git pull origin {REPO_BRANCH}")
-    else:
-        print(f"Cloning repository into {REPO_DIR}...")
-        run_ssh_command(client, f"git clone -b {REPO_BRANCH} {REPO_URL} {REPO_DIR}")
+    
+    local_root = os.path.dirname(os.path.abspath(__file__))
+    tar_path = os.path.join(tempfile.gettempdir(), "sivamurugan_deploy.tar.gz")
+    if os.path.exists(tar_path):
+        os.remove(tar_path)
+        
+    print("Packing local codebase...")
+    ignore_dirs = {'.git', 'node_modules', '.env', 'dist', 'web', 'scratch', '__pycache__'}
+    
+    with tarfile.open(tar_path, "w:gz") as tar:
+        for root, dirs, files in os.walk(local_root):
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]
+            for file in files:
+                if file.endswith('.pyc') or file.endswith('.tar.gz'):
+                    continue
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, local_root)
+                tar.add(full_path, arcname=rel_path)
+
+    print(f"Archive created: {tar_path} ({os.path.getsize(tar_path)} bytes)")
+
+    print(f"Uploading archive to remote {REPO_DIR}...")
+    run_ssh_command(client, f"mkdir -p {REPO_DIR}")
+    
+    sftp = client.open_sftp()
+    remote_tar = f"{REPO_DIR}/codebase.tar.gz"
+    sftp.put(tar_path, remote_tar)
+    sftp.close()
+    
+    if os.path.exists(tar_path):
+        os.remove(tar_path)
+
+    print("Extracting codebase archive on remote server...")
+    run_ssh_command(client, f"tar -xzf {remote_tar} -C {REPO_DIR} && rm -f {remote_tar}")
+    print("Codebase sync complete.")
 
 def deploy_environment(client, target_env):
     cfg = ENV_CONFIGS[target_env]
@@ -164,8 +206,10 @@ try {
     run_ssh_command(client, create_htaccess_cmd)
 
     # 2. Database Initialization & User Seeding
-    print(f"\n--- 2. Initializing Database and Seeding 5 Users for {target_env.upper()} ---")
+    print(f"\n--- 2. Installing Composer Dependencies, Initializing Database & Seeding 5 Users for {target_env.upper()} ---")
+    run_ssh_command(client, f"cd {cfg['api_dir']} && composer install --no-dev --optimize-autoloader")
     run_ssh_command(client, f"cd {cfg['api_dir']} && php setup.php install")
+    run_ssh_command(client, f"cd {cfg['api_dir']} && php setup.php migrate-all")
     run_ssh_command(client, f"cd {cfg['api_dir']} && php setup.php seed-users {target_env}")
 
     # 3. Frontend Build & Deploy

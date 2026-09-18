@@ -55,6 +55,8 @@ function run_sql_file(PDO $pdo, string $path): int
     return $count;
 }
 
+$dbDir = is_dir($backendDir . '/database') ? $backendDir . '/database' : dirname($backendDir) . '/database';
+
 try {
     switch ($cmd) {
         case 'check':
@@ -70,20 +72,20 @@ try {
             echo "OK  Database `{$db['database']}` ready\n";
             $pdo = connect($db);
             echo "..  Running schema.sql\n";
-            echo "OK  " . run_sql_file($pdo, dirname($backendDir) . '/database/schema.sql') . " statements\n";
+            echo "OK  " . run_sql_file($pdo, $dbDir . '/schema.sql') . " statements\n";
             echo "..  Running seed.sql\n";
-            echo "OK  " . run_sql_file($pdo, dirname($backendDir) . '/database/seed.sql') . " statements\n";
+            echo "OK  " . run_sql_file($pdo, $dbDir . '/seed.sql') . " statements\n";
             echo "\nDefault logins:\n  admin / Admin@123\n  ravi  / Employee@123\n";
             break;
 
         case 'migrate':
             $pdo = connect($db);
-            echo "OK  " . run_sql_file($pdo, dirname($backendDir) . '/database/schema.sql') . " statements executed\n";
+            echo "OK  " . run_sql_file($pdo, $dbDir . '/schema.sql') . " statements executed\n";
             break;
 
         case 'seed':
             $pdo = connect($db);
-            echo "OK  " . run_sql_file($pdo, dirname($backendDir) . '/database/seed.sql') . " statements executed\n";
+            echo "OK  " . run_sql_file($pdo, $dbDir . '/seed.sql') . " statements executed\n";
             break;
 
         case 'apply':
@@ -93,9 +95,26 @@ try {
                 fwrite(STDERR, "Usage: php setup.php apply <path-to.sql>\n");
                 exit(1);
             }
-            $path = is_file($file) ? $file : dirname($backendDir) . '/' . ltrim($file, '/\\');
+            $path = is_file($file) ? $file : (is_file($backendDir . '/' . ltrim($file, '/\\')) ? $backendDir . '/' . ltrim($file, '/\\') : dirname($backendDir) . '/' . ltrim($file, '/\\'));
             $pdo = connect($db);
             echo "OK  " . run_sql_file($pdo, $path) . " statements executed from " . basename($path) . "\n";
+            break;
+
+        case 'migrate-all':
+            $pdo = connect($db);
+            $migDir = $dbDir . '/migrations';
+            if (is_dir($migDir)) {
+                $files = glob($migDir . '/*.sql');
+                sort($files);
+                foreach ($files as $f) {
+                    try {
+                        $cnt = run_sql_file($pdo, $f);
+                        echo "OK  Applied " . basename($f) . " ({$cnt} statements)\n";
+                    } catch (Throwable $e) {
+                        echo "SKIP " . basename($f) . ": " . $e->getMessage() . "\n";
+                    }
+                }
+            }
             break;
 
         case 'set-password':
