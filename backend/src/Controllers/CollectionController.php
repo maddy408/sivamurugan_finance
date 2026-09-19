@@ -10,6 +10,7 @@ use App\Core\Response;
 use App\Core\Validator;
 use App\Services\CollectionService;
 use App\Services\ScheduleService;
+use App\Support\Audit;
 use App\Support\BusinessDate;
 use App\Support\Money;
 
@@ -166,6 +167,38 @@ class CollectionController
             'installment' => $inst,
             'payments'    => CollectionService::installmentPayments((int)$inst['id']),
         ]);
+    }
+
+    /**
+     * PUT /api/installments/{id} - "Edit Due": correct a single due's EMI/due
+     * date (and, only while unpaid, its amount). Separate from collection/paid
+     * date, which is set only by recording/editing an actual payment.
+     */
+    public function updateDue(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, ['loans.edit', 'loans.create']);
+        $db = Database::instance();
+        $inst = $db->fetch('SELECT * FROM installments WHERE id = :id', ['id' => (int)$args['id']]);
+        if (!$inst) {
+            throw HttpException::notFound('Installment not found');
+        }
+        $loan = Guard::assertLoanInScope($user, (int)$inst['loan_id']);
+        if ($loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'closed', 'deactivated'], true)) {
+            throw HttpException::conflict('This chit is ' . ($loan['deleted_at'] ? 'deleted' : $loan['status']) . '; its due schedule cannot be edited');
+        }
+        $in = Validator::make($req->body, [
+            'due_date'       => 'nullable|date',
+            'payable_amount' => 'nullable|numeric|min:0.01',
+        ])->validated();
+
+        $before = ['due_date' => $inst['due_date'], 'payable_amount' => $inst['payable_amount']];
+        $row = ScheduleService::editDueDate((int)$loan['id'], (int)$inst['id'], $in);
+
+        Audit::log('installment.due_date_update', 'loans', 'installment', $inst['id'], $before,
+            ['due_date' => $row['due_date'], 'payable_amount' => $row['payable_amount']], $req->input('reason'),
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+        Response::ok($row, 'Due updated');
     }
 
     /** POST /api/collections */

@@ -330,22 +330,12 @@ export default function Loans() {
                     <option value="auto">Auto Due Date</option>
                     <option value="custom">Custom Due Date</option>
                   </select>
-                  {form.due_date_mode === 'custom' && (
-                    <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                      No due dates are generated automatically. Add each installment's due date below.
-                    </p>
-                  )}
+
                 </Field>
 
                 {form.due_date_mode === 'custom' && (
                   <div className="field">
-                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Custom Schedule</span>
-                      <button type="button" className="btn sm secondary" onClick={() => setAddCustomRow(true)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <FiPlusCircle size={12} /> Add Custom Schedule
-                      </button>
-                    </label>
+                  
                     {customRows.length > 0 ? (
                       <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
                         {customRows.map((row, idx) => (
@@ -359,7 +349,7 @@ export default function Loans() {
                         ))}
                       </div>
                     ) : (
-                      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>No installments added yet.</p>
+                      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}></p>
                     )}
                   </div>
                 )}

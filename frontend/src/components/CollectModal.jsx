@@ -115,37 +115,58 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
 
   const canProceed = selected.size > 0 && modeId && grandTotal > 0 && !splitInvalid;
 
+  useEffect(() => {
+    if (!confirming) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && !busy) {
+        e.preventDefault();
+        submit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [confirming, busy]);
+
+  const handleCollectSubmit = (e) => {
+    e.preventDefault();
+    if (canProceed && !busy) {
+      setConfirming(true);
+    }
+  };
+
   // ---------- Step 2: confirmation ----------
   if (confirming) {
     return (
       <Modal title="Confirm Collection" size="sm" onClose={() => setConfirming(false)}
         footer={<>
-          <button className="btn secondary" onClick={() => setConfirming(false)} disabled={busy}>Back</button>
-          <button className="btn" onClick={submit} disabled={busy}>{busy ? 'Posting…' : `Confirm ${money(grandTotal)}`}</button>
+          <button type="button" className="btn secondary" onClick={() => setConfirming(false)} disabled={busy}>Back</button>
+          <button type="submit" form="confirm-collect-form" className="btn" disabled={busy}>{busy ? 'Posting…' : `Confirm ${money(grandTotal)}`}</button>
         </>}>
-        <dl className="kv" style={{ gridTemplateColumns: '150px 1fr', rowGap: 8 }}>
-          <dt>Customer</dt><dd style={{ fontWeight: 700 }}>{loan?.customer?.name || loan?.customer_name || '—'}</dd>
-          <dt>Chit</dt><dd>{loan?.code}</dd>
-          <dt>Selected dues</dt>
-          <dd>{selectedDues.map((d) => <span key={d.id} className="badge PENDING" style={{ marginRight: 6 }}>Due #{d.installment_no}</span>)}</dd>
-          <dt>Installment Total</dt><dd style={{ fontWeight: 700 }}>{money(installmentTotal)}</dd>
-          <dt>Actual Paid</dt><dd style={{ fontWeight: 700 }}>{money(paidNum)}</dd>
-          {isSplit && (
-            <>
-              <dt>&nbsp;&nbsp;· Cash</dt><dd>{money(cashNum)}</dd>
-              <dt>&nbsp;&nbsp;· UPI</dt><dd>{money(upiNum)}</dd>
-            </>
+        <form id="confirm-collect-form" onSubmit={(e) => { e.preventDefault(); if (!busy) submit(); }}>
+          <dl className="kv" style={{ gridTemplateColumns: '150px 1fr', rowGap: 8 }}>
+            <dt>Customer</dt><dd style={{ fontWeight: 700 }}>{loan?.customer?.name || loan?.customer_name || '—'}</dd>
+            <dt>Chit</dt><dd>{loan?.code}</dd>
+            <dt>Selected dues</dt>
+            <dd>{selectedDues.map((d) => <span key={d.id} className="badge PENDING" style={{ marginRight: 6 }}>Due #{d.installment_no}</span>)}</dd>
+            <dt>Installment Total</dt><dd style={{ fontWeight: 700 }}>{money(installmentTotal)}</dd>
+            <dt>Actual Paid</dt><dd style={{ fontWeight: 700 }}>{money(paidNum)}</dd>
+            {isSplit && (
+              <>
+                <dt>&nbsp;&nbsp;· Cash</dt><dd>{money(cashNum)}</dd>
+                <dt>&nbsp;&nbsp;· UPI</dt><dd>{money(upiNum)}</dd>
+              </>
+            )}
+            {billNo && (<><dt>Bill No</dt><dd>{billNo}</dd></>)}
+            <dt>Fine</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
+            <dt>Total</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
+            <dt>Payment Method</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
+          </dl>
+          {paidNum < installmentTotal && (
+            <p className="muted" style={{ fontSize: 12, background: '#fffbeb', color: '#92400e', padding: '6px 10px', borderRadius: 6 }}>
+              Partial payment — allocated across the selected dues in order; the last due keeps its remaining balance.
+            </p>
           )}
-          {billNo && (<><dt>Bill No</dt><dd>{billNo}</dd></>)}
-          <dt>Fine</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
-          <dt>Total</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
-          <dt>Payment Method</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
-        </dl>
-        {paidNum < installmentTotal && (
-          <p className="muted" style={{ fontSize: 12, background: '#fffbeb', color: '#92400e', padding: '6px 10px', borderRadius: 6 }}>
-            Partial payment — allocated across the selected dues in order; the last due keeps its remaining balance.
-          </p>
-        )}
+        </form>
       </Modal>
     );
   }
@@ -157,12 +178,13 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
       title={`Collect — ${loan?.code || ''}`}
       onClose={onClose}
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="btn" onClick={() => setConfirming(true)} disabled={!canProceed}>
+        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="submit" form="collect-modal-form" className="btn" disabled={!canProceed}>
           <FiZap size={14} style={{ marginRight: 5, verticalAlign: -2 }} />Collect {money(grandTotal)}
         </button>
       </>}
     >
+      <form id="collect-modal-form" onSubmit={handleCollectSubmit}>
       {/* Read-only summary of the dues that were checked in the installment
           table — selection itself never happens inside this form. */}
       <div className="field">
@@ -324,6 +346,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>
         Each selected due gets its own payment record. The EMI amount is never changed by a collection.
       </p>
+      </form>
     </Modal>
     {printInstId && (
       <InstallmentStatementModal installmentId={printInstId} loan={loan} customer={loan?.customer}

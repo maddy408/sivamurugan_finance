@@ -9,6 +9,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
 use App\Services\CodeGenerator;
+use App\Services\CollectionService;
 use App\Services\EmiService;
 use App\Services\ScheduleService;
 use App\Support\Audit;
@@ -580,9 +581,127 @@ class LoanController
     }
 
     /**
+     * POST /api/loans/{id}/close  - "Close Chit": ends the chit regardless of
+     * whether every due was paid. Unlike cancel(), this does NOT touch any
+     * installment - paid dues stay PAID, unpaid dues stay PENDING/OVERDUE
+     * exactly as they are; nothing is auto-marked paid. The close amount is
+     * stored as a separate `collections` row (collection_type=
+     * 'close_settlement', see CollectionService::createCloseSettlement) -
+     * it is NOT merged into any due/installment amount and appears
+     * everywhere collections already do (history, dashboard, ledger).
+     * There is deliberately NO upper bound on the close amount: it is not
+     * validated against remaining/pending/principal - only "numeric, >= 0".
+     * Future normal collection/distribution actions are blocked (see
+     * CollectionService::post/updateCollection and DistributionService::create).
+     */
+    public function closeChit(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'loans.cancel');
+        $db = Database::instance();
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        if ($loan['deleted_at'] !== null) {
+            throw HttpException::notFound('Chit not found');
+        }
+        if (in_array($loan['status'], ['closed', 'cancelled'], true)) {
+            throw HttpException::conflict('This chit is already ' . $loan['status']);
+        }
+        $in = Validator::make($req->body, [
+            'close_date'   => 'required|date',
+            'close_amount' => 'required|numeric|min:0',
+            'remarks'      => 'nullable|string|max:500',
+        ])->validated();
+
+        $settlement = $db->transaction(function ($db) use ($loan, $in, $user) {
+            $db->update('loans_or_chits', [
+                'status'     => 'closed',
+                'closed_at'  => BusinessDate::utcNow(),
+                'closed_by'  => $user['id'],
+                'updated_at' => BusinessDate::utcNow(),
+            ], 'id = :id', ['id' => $loan['id']]);
+            $db->run('UPDATE loan_assignments SET is_active = 0 WHERE loan_id = :l', ['l' => $loan['id']]);
+            return CollectionService::createCloseSettlement($user, (int)$loan['id'], $in);
+        });
+
+        $fresh = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id', ['id' => $loan['id']]);
+        Response::ok(['loan' => $fresh, 'settlement' => $settlement],
+            'Chit closed. Paid dues remain paid; unpaid dues remain pending - nothing was auto-marked as paid.');
+    }
+
+    /**
+     * PUT /api/loans/{id}/close  - "Edit Close Settlement": corrects the
+     * amount/date/remarks of the SAME close-settlement collection row (never
+     * creates a second one). Works only while the chit is 'closed' (there
+     * must be a settlement to edit).
+     */
+    public function updateCloseAmount(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'loans.cancel');
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        if ($loan['status'] !== 'closed') {
+            throw HttpException::conflict('This chit is not closed - there is no close settlement to edit');
+        }
+        $in = Validator::make($req->body, [
+            'close_date'   => 'nullable|date',
+            'close_amount' => 'required|numeric|min:0',
+            'remarks'      => 'nullable|string|max:500',
+        ])->validated();
+
+        $settlement = CollectionService::updateCloseSettlement($user, (int)$loan['id'], $in);
+        Response::ok($settlement, 'Close settlement updated');
+    }
+
+    /**
+     * POST /api/loans/{id}/reopen  - back to 'active'. Never touches any
+     * history: collections (including the close settlement), installments,
+     * distributions and audit logs are all left exactly as they are: only
+     * the status flips, so normal collection/distribution actions work
+     * again. To also undo the settlement amount itself, cancel/delete that
+     * collection separately via the existing /api/collections/{id} actions
+     * (it already appears, clearly labelled, in Collection History).
+     */
+    public function reopenChit(Request $req, array $args): void
+    {
+        $user = Guard::authorize($req, 'loans.cancel');
+        $db = Database::instance();
+        $loan = Guard::assertLoanInScope($user, (int)$args['id']);
+        if ($loan['status'] !== 'closed') {
+            throw HttpException::conflict('Only a closed chit can be reopened');
+        }
+
+        $db->update('loans_or_chits', [
+            'status'      => 'active',
+            'reopened_at' => BusinessDate::utcNow(),
+            'reopened_by' => $user['id'],
+            'updated_at'  => BusinessDate::utcNow(),
+        ], 'id = :id', ['id' => $loan['id']]);
+
+        Audit::log('loan.reopen', 'loans', 'loan', $loan['id'], ['status' => 'closed'], ['status' => 'active'], null,
+            ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+        $fresh = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id', ['id' => $loan['id']]);
+        Response::ok($fresh, 'Chit reopened. All history (collections, close settlement, schedule) is preserved.');
+    }
+
+    /**
      * DELETE /api/loans/{id}
-     * Soft delete so it disappears from every list immediately. Any posted
-     * collections stay in the ledger for audit; the chit itself is hidden.
+     * Soft-delete/void the chit AND cascade-cancel its financial footprint in
+     * one transaction, so nothing keeps counting as active after the chit is
+     * gone:
+     *  - the chit itself: deleted_at set, status -> cancelled (hidden from
+     *    every list/report that already filters deleted_at IS NULL).
+     *  - every still-posted collection against it is cancelled via the exact
+     *    same CollectionService::cancel() path a manual "Cancel collection"
+     *    uses - allocations are unwound (installments' paid/balance/status
+     *    revert), the collection row is kept as history (status=cancelled),
+     *    and FinanceService/dashboard/report totals (which all already sum
+     *    only status='posted') stop counting it automatically.
+     *  - installments themselves are left as rows (never deleted) so the
+     *    schedule stays inspectable; PendingController/DashboardController
+     *    already scope their pending/outstanding queries to
+     *    status='active' AND deleted_at IS NULL on the chit, so once the
+     *    chit is voided its installments stop contributing there too.
+     * All-or-nothing: any failure rolls back the whole thing (see
+     * Database::transaction).
      */
     public function destroy(Request $req, array $args): void
     {
@@ -593,28 +712,42 @@ class LoanController
             Response::ok(null, 'Chit already removed');
             return;
         }
-        $hasCollections = (int)$db->scalar(
-            "SELECT COUNT(*) FROM collections WHERE loan_id = :l AND status = 'posted' AND deleted_at IS NULL", ['l' => $loan['id']]
-        );
+        $reason = $req->input('reason') ?: 'Chit deleted';
 
-        $db->transaction(function ($db) use ($loan) {
+        $cancelledCollections = $db->transaction(function ($db) use ($loan, $user, $reason) {
+            $postedIds = $db->fetchAll(
+                "SELECT id FROM collections WHERE loan_id = :l AND status = 'posted' AND deleted_at IS NULL FOR UPDATE",
+                ['l' => $loan['id']]
+            );
+            foreach ($postedIds as $row) {
+                // Same reversal path as a manual "Cancel collection": unwinds
+                // collection_allocations (installment paid/balance/status
+                // revert), marks the collection cancelled, keeps it as history.
+                \App\Services\CollectionService::cancel($user, (int)$row['id'], 'Chit deleted: ' . $reason);
+            }
+
             $db->update('loans_or_chits', [
                 'deleted_at' => BusinessDate::utcNow(),
-                'status'     => $loan['status'] === 'active' ? 'cancelled' : $loan['status'],
+                'status'     => in_array($loan['status'], ['active', 'closed'], true) ? 'cancelled' : $loan['status'],
+                'cancelled_at'  => $loan['cancelled_at'] ?? BusinessDate::utcNow(),
+                'cancelled_by'  => $loan['cancelled_by'] ?? $user['id'],
+                'cancel_reason' => $loan['cancel_reason'] ?? $reason,
                 'updated_at' => BusinessDate::utcNow(),
             ], 'id = :id', ['id' => $loan['id']]);
             $db->run('UPDATE loan_assignments SET is_active = 0 WHERE loan_id = :l', ['l' => $loan['id']]);
+
+            return count($postedIds);
         });
 
         Audit::log('loan.delete', 'loans', 'loan', $loan['id'],
             ['code' => $loan['code'], 'status' => $loan['status']],
-            ['deleted' => true, 'had_collections' => $hasCollections], $req->input('reason'),
+            ['deleted' => true, 'collections_cancelled' => $cancelledCollections], $reason,
             ['id' => $user['id'], 'role_code' => $user['role_code']]);
 
         Response::ok(
-            ['had_collections' => $hasCollections],
-            $hasCollections
-                ? 'Chit removed. Its ' . $hasCollections . ' posted collection(s) remain in the ledger for audit.'
+            ['collections_cancelled' => $cancelledCollections],
+            $cancelledCollections
+                ? 'Chit removed. Its ' . $cancelledCollections . ' posted collection(s) were cancelled (kept in history for audit) and no longer count toward active totals.'
                 : 'Chit removed'
         );
     }

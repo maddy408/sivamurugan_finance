@@ -77,10 +77,10 @@ input, select, textarea { font: inherit; outline: none; }
 }
 
 .top-navbar-container {
-  max-width: 1440px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 0 24px;
-  height: 68px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -284,10 +284,10 @@ input, select, textarea { font: inherit; outline: none; }
 /* Main Content Area */
 .main-layout {
   flex: 1;
-  max-width: 1440px;
+  max-width: 1800px;
   width: 100%;
   margin: 0 auto;
-  padding: 28px 24px 48px;
+  padding: 22px 24px 40px;
 }
 
 @media (max-width: 1024px) {
@@ -319,7 +319,7 @@ h1, h2, h3, h4 {
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 800;
   margin: 0;
   color: var(--ink-primary);
@@ -372,9 +372,9 @@ h1, h2, h3, h4 {
   background: #ffffff;
 }
 
-.card .card-head h2 { 
-  margin: 0; 
-  font-size: 16px; 
+.card .card-head h2 {
+  margin: 0;
+  font-size: 14.5px;
   font-weight: 700;
 }
 
@@ -918,11 +918,17 @@ table.grid tbody tr:last-child td {
 }
 .badge.COMPLETED::before, .badge.active::before, .badge.posted::before { background: #16a34a; }
 
-.badge.OVERDUE, .badge.cancelled, .badge.reversed, .badge.inactive { 
-  background: #ffe4e6; 
-  color: #9f1239; 
+.badge.OVERDUE, .badge.cancelled, .badge.reversed, .badge.inactive {
+  background: #ffe4e6;
+  color: #9f1239;
 }
 .badge.OVERDUE::before, .badge.cancelled::before, .badge.reversed::before, .badge.inactive::before { background: #f43f5e; }
+
+.badge.closed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+.badge.closed::before { background: #4f46e5; }
 
 .amount-credit { color: #166534; font-weight: 600; }
 .amount-debit { color: #9f1239; font-weight: 600; }

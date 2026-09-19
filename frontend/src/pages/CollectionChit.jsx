@@ -9,12 +9,17 @@ import StatementModal from '../components/StatementModal';
 import CustomScheduleModal from '../components/CustomScheduleModal';
 import CollectionEditModal from '../components/CollectionEditModal';
 import InstallmentStatementModal from '../components/InstallmentStatementModal';
+import CloseChitModal from '../components/CloseChitModal';
+import EditCloseAmountModal from '../components/EditCloseAmountModal';
+import EditDueDateModal from '../components/EditDueDateModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import {
   FiArrowLeft, FiPrinter, FiFileText, FiDollarSign, FiCalendar, FiZap,
-  FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList, FiPlusCircle, FiDownload,
+  FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList, FiPlusCircle, FiDownload, FiRefreshCw,
 } from 'react-icons/fi';
+
+const CLOSED_LIKE = ['cancelled', 'closed', 'deactivated'];
 
 const DIST_STATUS_LABEL = {
   not_distributed: 'Not Distributed',
@@ -44,6 +49,10 @@ export default function CollectionChit() {
   const [editCustomInst, setEditCustomInst] = useState(null);  // custom-schedule installment row being edited
   const [deleteCustomInst, setDeleteCustomInst] = useState(null); // custom-schedule installment row pending delete
   const [customDeleteBusy, setCustomDeleteBusy] = useState(false);
+  const [closeChit, setCloseChit] = useState(false);            // Close Chit modal
+  const [editCloseAmount, setEditCloseAmount] = useState(false); // Edit Close Settlement modal
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [editDue, setEditDue] = useState(null);                 // installment row being edited (due date/amount)
 
   const load = () => {
     setError(null);
@@ -58,12 +67,24 @@ export default function CollectionChit() {
   const d = loan.distribution || {};
   const distributions = loan.distributions || [];
   const initial = c.name ? c.name.charAt(0).toUpperCase() : 'C';
+  // The Close Chit amount is a normal collection (collection_type='close_settlement'),
+  // never a field on the loan itself — this is the single source of truth for it.
+  const settlement = (loan.collections || []).find((col) => col.collection_type === 'close_settlement' && col.status === 'posted');
 
   const toggleDue = (instId) => setChecked((prev) => {
     const n = new Set(prev);
     n.has(instId) ? n.delete(instId) : n.add(instId);
     return n;
   });
+
+  const runReopen = async () => {
+    setReopenBusy(true);
+    try {
+      await api.post(`/api/loans/${loan.id}/reopen`, {});
+      toast.success('Chit reopened');
+      load();
+    } catch (e) { toast.error(e.message); } finally { setReopenBusy(false); }
+  };
 
   const runAct = async () => {
     setBusy(true);
@@ -132,9 +153,35 @@ export default function CollectionChit() {
           <button className="btn sm secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <FiPrinter size={14} /> Print Statement
           </button>
+          {loan.status === 'active' && can('loans.cancel') && (
+            <button className="btn sm danger" onClick={() => setCloseChit(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FiXCircle size={14} /> Close Chit
+            </button>
+          )}
+          {loan.status === 'closed' && can('loans.cancel') && (
+            <>
+              {settlement && (
+                <button className="btn sm secondary" onClick={() => setEditCloseAmount(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <FiEdit2 size={14} /> Edit Close Settlement
+                </button>
+              )}
+              <button className="btn sm" onClick={runReopen} disabled={reopenBusy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <FiRefreshCw size={14} /> {reopenBusy ? 'Reopening…' : 'Reopen Chit'}
+              </button>
+            </>
+          )}
           <Badge value={loan.status} />
         </div>
       </div>
+
+      {loan.status === 'closed' && (
+        <div className="muted" style={{ fontSize: 12, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 8, padding: '8px 14px', marginBottom: 16 }}>
+          This chit was closed on {fmtDate(loan.closed_at)}{settlement ? ` (close amount ${money(settlement.amount)})` : ''}
+          {settlement?.remarks ? ` — ${settlement.remarks}` : ''}.
+          Existing paid/unpaid dues are preserved as-is; no further collections or distributions can be recorded until reopened.
+          {loan.reopened_at && <> Previously reopened on {fmtDate(loan.reopened_at)}.</>}
+        </div>
+      )}
 
       {/* Side-by-Side Main Grid — left rail is a compact ~25% details column,
           right side (~75%) is the primary working area: dues + collection. */}
@@ -248,12 +295,19 @@ export default function CollectionChit() {
                           {money(i.balance_amount)}
                         </td>
                         <td data-label="Status"><Badge value={i.status} /></td>
-                        <td data-label="" className="right">
-                          {can('collection.create') && payable && (
-                            <button className="btn sm" onClick={() => setCollectIds([i.id])} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <FiZap size={12} /> Collect
-                            </button>
-                          )}
+                        <td data-label="" className="right nowrap">
+                          <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {(can('loans.edit') || can('loans.create')) && !CLOSED_LIKE.includes(loan.status) && (
+                              <button className="btn-icon" title="Edit Due (date/amount)" onClick={() => setEditDue(i)}>
+                                <FiEdit2 size={13} />
+                              </button>
+                            )}
+                            {can('collection.create') && payable && (
+                              <button className="btn sm" onClick={() => setCollectIds([i.id])} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <FiZap size={12} /> Collect
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -344,12 +398,18 @@ export default function CollectionChit() {
                 <tbody>
                   {loan.collections.map((col) => {
                     const isRev = String(col.receipt_no).endsWith('-REV');
+                    const isSettlement = col.collection_type === 'close_settlement';
                     return (
                       <tr key={col.id} style={col.status !== 'posted' ? { opacity: 0.6 } : undefined}>
-                        <td data-label="Receipt" style={{ fontWeight: 700 }}>{col.receipt_no}</td>
+                        <td data-label="Receipt" style={{ fontWeight: 700 }}>
+                          {col.receipt_no}
+                          {isSettlement && (
+                            <div><span className="badge closed" style={{ marginTop: 3 }}>Close Chit / Final Settlement</span></div>
+                          )}
+                        </td>
                         <td data-label="Bill No">{col.bill_no || '—'}</td>
                         <td data-label="Date">{fmtDate(col.collection_date)}</td>
-                        <td data-label="Mode"><span className="badge PENDING">{col.payment_mode}</span></td>
+                        <td data-label="Mode">{isSettlement ? '—' : <span className="badge PENDING">{col.payment_mode}</span>}</td>
                         <td data-label="Paid (actual)" className="right">
                           <div style={{ fontWeight: 800, color: '#10b981', fontSize: 14 }}>
                             {money(col.total_amount || (Number(col.amount) + Number(col.fine_amount || 0)))}
@@ -363,15 +423,25 @@ export default function CollectionChit() {
                         <td data-label="Status"><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
                         <td data-label="" className="right nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            <button className="btn-icon" title="Print Receipt" onClick={() => openReceipt(col)}>
-                              <FiPrinter size={14} />
-                            </button>
-                            <button className="btn-icon" title="Download Receipt PDF" onClick={() => downloadCollectionPdf(col)}>
-                              <FiDownload size={14} />
-                            </button>
+                            {!isSettlement && (
+                              <>
+                                <button className="btn-icon" title="Print Receipt" onClick={() => openReceipt(col)}>
+                                  <FiPrinter size={14} />
+                                </button>
+                                <button className="btn-icon" title="Download Receipt PDF" onClick={() => downloadCollectionPdf(col)}>
+                                  <FiDownload size={14} />
+                                </button>
+                              </>
+                            )}
                             {col.status === 'posted' && !isRev && (
                               <>
-                                {can('collection.edit') && (
+                                {isSettlement ? (
+                                  can('loans.cancel') && (
+                                    <button className="btn-icon" title="Edit Close Settlement" onClick={() => setEditCloseAmount(true)}>
+                                      <FiEdit2 size={14} />
+                                    </button>
+                                  )
+                                ) : can('collection.edit') && (
                                   <button className="btn-icon" title="Edit Collection" onClick={() => setEditCollection(col)}>
                                     <FiEdit2 size={14} />
                                   </button>
@@ -503,6 +573,21 @@ export default function CollectionChit() {
       {editCustomInst && (
         <CustomScheduleModal loan={loan} editInstallment={editCustomInst} onClose={() => setEditCustomInst(null)}
           onDone={() => { setEditCustomInst(null); load(); }} />
+      )}
+
+      {closeChit && (
+        <CloseChitModal loan={loan} customer={c} onClose={() => setCloseChit(false)}
+          onDone={() => { setCloseChit(false); load(); }} />
+      )}
+
+      {editCloseAmount && settlement && (
+        <EditCloseAmountModal loan={loan} settlement={settlement} onClose={() => setEditCloseAmount(false)}
+          onDone={() => { setEditCloseAmount(false); load(); }} />
+      )}
+
+      {editDue && (
+        <EditDueDateModal installment={editDue} onClose={() => setEditDue(null)}
+          onDone={() => { setEditDue(null); load(); }} />
       )}
 
       {deleteCustomInst && (

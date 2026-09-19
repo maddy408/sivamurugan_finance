@@ -99,8 +99,8 @@ final class DistributionService
             if (!$loan) {
                 throw HttpException::notFound('Chit not found');
             }
-            if (in_array($loan['status'], ['cancelled'], true)) {
-                throw HttpException::conflict('A cancelled chit cannot be distributed');
+            if (in_array($loan['status'], ['cancelled', 'closed'], true)) {
+                throw HttpException::conflict('A ' . $loan['status'] . ' chit cannot be distributed');
             }
 
             $amount  = self::assertAmount($in['amount'] ?? null);

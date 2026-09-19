@@ -85,7 +85,7 @@ final class CollectionService
             if (!$loan) {
                 throw HttpException::notFound('Chit not found');
             }
-            if ($loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'deactivated'], true)) {
+            if ($loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'deactivated', 'closed'], true)) {
                 throw HttpException::conflict('Chit is ' . ($loan['deleted_at'] ? 'deleted' : $loan['status']) . '; collections are not allowed');
             }
 
@@ -302,7 +302,7 @@ final class CollectionService
                 throw HttpException::conflict('This collection has no installment allocations to re-target');
             }
             $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id FOR UPDATE', ['id' => (int)$col['loan_id']]);
-            if (!$loan || $loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'deactivated'], true)) {
+            if (!$loan || $loan['deleted_at'] !== null || in_array($loan['status'], ['cancelled', 'deactivated', 'closed'], true)) {
                 throw HttpException::conflict('This chit is not open for collection edits');
             }
 
@@ -471,7 +471,11 @@ final class CollectionService
     private static function syncLoanStatus(Database $db, int $loanId): void
     {
         $loan = $db->fetch('SELECT status FROM loans_or_chits WHERE id = :id', ['id' => $loanId]);
-        if (!$loan || in_array($loan['status'], ['cancelled', 'deactivated'], true)) {
+        // 'closed' is a deliberate user action (Close Chit) - cancelling/editing
+        // any collection (including the close settlement itself) must never
+        // silently flip it back to active/completed; only the explicit Reopen
+        // Chit action does that.
+        if (!$loan || in_array($loan['status'], ['cancelled', 'deactivated', 'closed'], true)) {
             return;
         }
         $open = (int)$db->scalar("SELECT COUNT(*) FROM installments WHERE loan_id = :l AND status <> 'COMPLETED'", ['l' => $loanId]);
@@ -531,5 +535,108 @@ final class CollectionService
              ORDER BY col.collection_date ASC, col.id ASC",
             ['i' => $installmentId]
         );
+    }
+
+    /* --------------------------------------------- Close Chit settlement --
+     * A "Close Chit" settlement is a normal `collections` row
+     * (collection_type = 'close_settlement') with NO collection_allocations
+     * against any installment - so it never touches installment paid/
+     * balance amounts, but it counts everywhere that already sums
+     * collections.status='posted' (FinanceService, Dashboard, Financial
+     * Ledger, customer payment history) with no extra plumbing. Editing
+     * updates this one row in place (no duplicate row, no double counting);
+     * cancelling/deleting it reuses the EXISTING cancel()/deleteCollection()
+     * above unchanged - unwindAllocations() is a safe no-op when there are
+     * zero allocations to unwind. */
+
+    /** Best-effort default account/mode for a settlement the user doesn't pick one for. */
+    private static function defaultAccountAndMode(Database $db): array
+    {
+        $accountId = (int)($db->scalar("SELECT id FROM accounts WHERE is_active = 1 ORDER BY id LIMIT 1") ?: 0);
+        $modeId = (int)($db->scalar("SELECT id FROM payment_modes WHERE is_active = 1 AND code = 'CASH' ORDER BY id LIMIT 1")
+            ?: $db->scalar("SELECT id FROM payment_modes WHERE is_active = 1 ORDER BY id LIMIT 1") ?: 0);
+        return [$accountId, $modeId];
+    }
+
+    public static function createCloseSettlement(array $user, int $loanId, array $in): array
+    {
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $loanId, $in) {
+            $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id FOR UPDATE', ['id' => $loanId]);
+            if (!$loan) {
+                throw HttpException::notFound('Chit not found');
+            }
+            $amount = Money::of($in['close_amount']);
+            [$accountId, $modeId] = self::defaultAccountAndMode($db);
+
+            $receiptNo = CodeGenerator::receiptNo($in['close_date']);
+            if ($db->scalar('SELECT 1 FROM collections WHERE receipt_no = :r', ['r' => $receiptNo])) {
+                $receiptNo .= '-' . substr(bin2hex(random_bytes(2)), 0, 3);
+            }
+
+            $collectionId = $db->insert('collections', [
+                'receipt_no'      => $receiptNo,
+                'loan_id'         => $loan['id'],
+                'customer_id'     => $loan['customer_id'],
+                'collected_by'    => $user['id'],
+                'employee_id'     => $user['employee_id'] ?? null,
+                'location'        => $loan['location'] ?? null,
+                'collection_date' => $in['close_date'],
+                'amount'          => $amount,
+                'fine_amount'     => '0.00',
+                'other_charges'   => '0.00',
+                'total_amount'    => $amount,
+                'payment_mode_id' => $modeId ?: null,
+                'account_id'      => $accountId ?: null,
+                'remarks'         => $in['remarks'] ?? 'Close Chit / Final Settlement',
+                'status'          => 'posted',
+                'collection_type' => 'close_settlement',
+                'created_at'      => BusinessDate::utcNow(),
+            ]);
+
+            Audit::log('loan.close', 'collection', 'collection', $collectionId, null,
+                ['loan_id' => $loan['id'], 'close_amount' => $amount, 'close_date' => $in['close_date']],
+                $in['remarks'] ?? null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return $db->fetch('SELECT * FROM collections WHERE id = :id', ['id' => $collectionId]);
+        });
+    }
+
+    /**
+     * Edit the amount/date/remarks of an already-posted close settlement -
+     * updates the SAME row in place (never a second/duplicate row), exactly
+     * like updateCollection() does for a normal payment, but deliberately
+     * without that method's "chit must be open" guard: editing the close
+     * amount is the one collection action explicitly allowed while the chit
+     * itself is status='closed'.
+     */
+    public static function updateCloseSettlement(array $user, int $loanId, array $in): array
+    {
+        $db = Database::instance();
+        return $db->transaction(function ($db) use ($user, $loanId, $in) {
+            $col = $db->fetch(
+                "SELECT * FROM collections WHERE loan_id = :l AND collection_type = 'close_settlement'
+                  AND status = 'posted' AND deleted_at IS NULL FOR UPDATE",
+                ['l' => $loanId]
+            );
+            if (!$col) {
+                throw HttpException::notFound('No active close settlement found for this chit');
+            }
+            $amount = Money::of($in['close_amount']);
+            $before = ['amount' => $col['amount'], 'collection_date' => $col['collection_date'], 'remarks' => $col['remarks']];
+
+            $db->update('collections', [
+                'amount'          => $amount,
+                'total_amount'    => $amount,
+                'collection_date' => $in['close_date'] ?? $col['collection_date'],
+                'remarks'         => array_key_exists('remarks', $in) ? ($in['remarks'] ?? null) : $col['remarks'],
+            ], 'id = :id', ['id' => $col['id']]);
+
+            Audit::log('loan.close_amount_update', 'collection', 'collection', $col['id'], $before,
+                ['amount' => $amount, 'collection_date' => $in['close_date'] ?? $col['collection_date']],
+                $in['remarks'] ?? null, ['id' => $user['id'], 'role_code' => $user['role_code']]);
+
+            return $db->fetch('SELECT * FROM collections WHERE id = :id', ['id' => $col['id']]);
+        });
     }
 }

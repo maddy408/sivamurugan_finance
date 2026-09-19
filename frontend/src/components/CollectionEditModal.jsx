@@ -66,59 +66,61 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
   return (
     <Modal title={`Edit Collection — ${collection.receipt_no}`} onClose={onClose}
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="btn" onClick={submit} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="submit" form="edit-collection-form" className="btn" disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiSave size={14} /> {busy ? 'Saving…' : `Save (${money(total)})`}
         </button>
       </>}>
-      <div className="form-grid">
-        <Field label="Collection Date" error={errors.collection_date}>
-          <input type="date" value={form.collection_date} onChange={(e) => set('collection_date', e.target.value)} />
+      <form id="edit-collection-form" onSubmit={(e) => { e.preventDefault(); if (!busy) submit(); }}>
+        <div className="form-grid">
+          <Field label="Collection Date" error={errors.collection_date}>
+            <input type="date" value={form.collection_date} onChange={(e) => set('collection_date', e.target.value)} />
+          </Field>
+          <Field label="Payment Mode" error={errors.payment_mode_id}>
+            <select value={form.payment_mode_id} onChange={(e) => set('payment_mode_id', e.target.value)}>
+              {modes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </Field>
+          {isSplit ? (
+            <>
+              <Field label="Cash Amount" error={errors.cash_amount}>
+                <input type="number" min="0" step="0.01" value={form.cash_amount} onChange={(e) => set('cash_amount', e.target.value)} />
+              </Field>
+              <Field label="UPI Amount" error={errors.upi_amount}>
+                <input type="number" min="0" step="0.01" value={form.upi_amount} onChange={(e) => set('upi_amount', e.target.value)} />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Amount Paid" error={errors.amount}>
+                <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} />
+              </Field>
+              <Field label="Cash / Bank Account" error={errors.account_id}>
+                <select value={form.account_id} onChange={(e) => set('account_id', e.target.value)}>
+                  <option value="">(unchanged)</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+                </select>
+              </Field>
+            </>
+          )}
+          <Field label="Fine / Charges" error={errors.fine_amount}>
+            <input type="number" min="0" step="0.01" value={form.fine_amount} onChange={(e) => set('fine_amount', e.target.value)} />
+          </Field>
+          <Field label="Reference / Receipt No." error={errors.reference_no}>
+            <input value={form.reference_no} onChange={(e) => set('reference_no', e.target.value)} />
+          </Field>
+          <Field label="Bill No" error={errors.bill_no}>
+            <input value={form.bill_no} onChange={(e) => set('bill_no', e.target.value)} placeholder="e.g. BILL-1025" />
+          </Field>
+        </div>
+        <Field label="Remarks" error={errors.remarks}>
+          <textarea rows={2} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} />
         </Field>
-        <Field label="Payment Mode" error={errors.payment_mode_id}>
-          <select value={form.payment_mode_id} onChange={(e) => set('payment_mode_id', e.target.value)}>
-            {modes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </Field>
-        {isSplit ? (
-          <>
-            <Field label="Cash Amount" error={errors.cash_amount}>
-              <input type="number" min="0" step="0.01" value={form.cash_amount} onChange={(e) => set('cash_amount', e.target.value)} />
-            </Field>
-            <Field label="UPI Amount" error={errors.upi_amount}>
-              <input type="number" min="0" step="0.01" value={form.upi_amount} onChange={(e) => set('upi_amount', e.target.value)} />
-            </Field>
-          </>
-        ) : (
-          <>
-            <Field label="Amount Paid" error={errors.amount}>
-              <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} />
-            </Field>
-            <Field label="Cash / Bank Account" error={errors.account_id}>
-              <select value={form.account_id} onChange={(e) => set('account_id', e.target.value)}>
-                <option value="">(unchanged)</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
-              </select>
-            </Field>
-          </>
-        )}
-        <Field label="Fine / Charges" error={errors.fine_amount}>
-          <input type="number" min="0" step="0.01" value={form.fine_amount} onChange={(e) => set('fine_amount', e.target.value)} />
-        </Field>
-        <Field label="Reference / Receipt No." error={errors.reference_no}>
-          <input value={form.reference_no} onChange={(e) => set('reference_no', e.target.value)} />
-        </Field>
-        <Field label="Bill No" error={errors.bill_no}>
-          <input value={form.bill_no} onChange={(e) => set('bill_no', e.target.value)} placeholder="e.g. BILL-1025" />
-        </Field>
-      </div>
-      <Field label="Remarks" error={errors.remarks}>
-        <textarea rows={2} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} />
-      </Field>
-      <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-        The old payment effect is fully reversed and replaced by the new amount — the dues it covers stay the same;
-        nothing is added on top of the previous effect.
-      </p>
+        <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+          The old payment effect is fully reversed and replaced by the new amount — the dues it covers stay the same;
+          nothing is added on top of the previous effect.
+        </p>
+      </form>
     </Modal>
   );
 }

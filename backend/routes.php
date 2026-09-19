@@ -85,6 +85,9 @@ $router->get('/api/loans/{id}',                  [$loans, 'show']);
 $router->put('/api/loans/{id}',                  [$loans, 'update']);
 $router->delete('/api/loans/{id}',               [$loans, 'destroy']);
 $router->post('/api/loans/{id}/cancel',          [$loans, 'cancel']);
+$router->post('/api/loans/{id}/close',           [$loans, 'closeChit']);
+$router->put('/api/loans/{id}/close',            [$loans, 'updateCloseAmount']);
+$router->post('/api/loans/{id}/reopen',          [$loans, 'reopenChit']);
 $router->post('/api/loans/{id}/generate-schedule',[$loans, 'generateSchedule']);
 $router->post('/api/loans/{id}/custom-schedule',       [$loans, 'addCustomSchedule']);
 $router->put('/api/loans/{id}/custom-schedule/{instId}', [$loans, 'updateCustomSchedule']);
@@ -103,6 +106,7 @@ $router->delete('/api/distributions/{id}',        [$distributions, 'destroy']);
 /* ---- collection ---- */
 $router->get('/api/collection/workload',              [$collection, 'workload']);
 $router->get('/api/installments/{id}/payments',       [$collection, 'installmentPayments']);
+$router->put('/api/installments/{id}',                [$collection, 'updateDue']);
 $router->get('/api/installments/{id}/statement.pdf',  [$pdf, 'installmentStatement']);
 $router->get('/api/collections',                      [$collection, 'index']);
 $router->get('/api/collections/{id}',                 [$collection, 'show']);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Field } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
+import { API_BASE } from '../api/client';
 
 export default function Login() {
   const { user, login, terminatedMessage } = useAuth();
@@ -12,6 +13,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   if (user) return <Navigate to={loc.state?.from || '/'} replace />;
 
@@ -33,7 +35,8 @@ export default function Login() {
       <form className="login-card" onSubmit={submit}>
         <div className="login-brand">
           <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
-            <img src="/logo.jpeg" alt="Organization logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src={logoBroken ? '/logo.jpeg' : API_BASE + '/api/settings/organization/logo'} alt="Organization logo"
+              onError={() => setLogoBroken(true)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div>
             <h1>Sign in</h1>

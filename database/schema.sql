@@ -204,13 +204,17 @@ CREATE TABLE loans_or_chits (
   due_date_mode       ENUM('auto','custom') NOT NULL DEFAULT 'auto', -- 'auto' = ScheduleService generates installments; 'custom' = staff add each installment manually, backend never auto-generates
   fine_setting_id     INT UNSIGNED  NULL,                 -- snapshot pointer; NULL = use global active
   allow_advance       TINYINT(1)    NOT NULL DEFAULT 1,   -- overpayment always allowed for chits
-  deleted_at          DATETIME      NULL,                 -- soft delete
-  status              ENUM('active','completed','cancelled','deactivated') NOT NULL DEFAULT 'active',
+  deleted_at          DATETIME      NULL,                 -- soft delete (void); posted collections are cascade-cancelled, see LoanController::destroy
+  status              ENUM('active','completed','cancelled','deactivated','closed') NOT NULL DEFAULT 'active',
   notes               VARCHAR(500)  NULL,
   created_by          INT UNSIGNED  NULL,
   cancelled_at        DATETIME      NULL,
   cancelled_by        INT UNSIGNED  NULL,
   cancel_reason       VARCHAR(255)  NULL,
+  closed_at           DATETIME      NULL,                 -- "Close Chit": ends the chit regardless of unpaid dues; paid/unpaid installments are left exactly as they are
+  closed_by           INT UNSIGNED  NULL,
+  reopened_at         DATETIME      NULL,                 -- "Reopen Chit": back to active; history (collections/settlement) is never touched
+  reopened_by         INT UNSIGNED  NULL,
   created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -222,7 +226,9 @@ CREATE TABLE loans_or_chits (
   KEY idx_loans_type (account_type),
   KEY idx_loans_start (start_date),
   CONSTRAINT fk_loans_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
-  CONSTRAINT fk_loans_creator  FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+  CONSTRAINT fk_loans_creator  FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_loans_closed_by FOREIGN KEY (closed_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_loans_reopened_by FOREIGN KEY (reopened_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------------------------
@@ -268,6 +274,7 @@ CREATE TABLE installments (
   balance_amount    DECIMAL(15,2) NOT NULL,             -- payable_amount - paid_amount
   last_paid_date    DATE          NULL,
   status            ENUM('PENDING','PARTIAL','COMPLETED','OVERDUE') NOT NULL DEFAULT 'PENDING',
+  due_date_locked   TINYINT(1)    NOT NULL DEFAULT 0,   -- 1 = due_date was manually edited (Edit Due); ScheduleService::generate() must not recompute it
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -341,6 +348,7 @@ CREATE TABLE collections (
   -- cancelled = kept as history, contributes to NOTHING (Cancel action)
   -- reversed  = original of a mirror-row reversal (legacy)
   status             ENUM('posted','reversed','cancelled') NOT NULL DEFAULT 'posted',
+  collection_type    ENUM('installment','close_settlement') NOT NULL DEFAULT 'installment', -- 'close_settlement' = Close Chit final-settlement amount; has NO collection_allocations rows (never touches installment paid/balance)
   reversed_at        DATETIME      NULL,
   reversed_by        INT UNSIGNED  NULL,
   reversal_reason    VARCHAR(255)  NULL,
@@ -361,6 +369,7 @@ CREATE TABLE collections (
   KEY idx_coll_mode (payment_mode_id),
   KEY idx_coll_status (status),
   KEY idx_coll_bill_no (bill_no),
+  KEY idx_coll_type (collection_type),
   CONSTRAINT fk_coll_loan     FOREIGN KEY (loan_id)         REFERENCES loans_or_chits (id),
   CONSTRAINT fk_coll_customer FOREIGN KEY (customer_id)     REFERENCES customers (id),
   CONSTRAINT fk_coll_user     FOREIGN KEY (collected_by)    REFERENCES users (id),

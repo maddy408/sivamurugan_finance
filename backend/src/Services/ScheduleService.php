@@ -92,13 +92,17 @@ final class ScheduleService
                     $skippedPaid++;
                     continue;
                 }
-                $changed = $row['due_date'] !== $due
+                // due_date_locked = staff manually corrected this due date (Edit Due);
+                // never let a schedule regenerate silently overwrite that correction.
+                $dueDateLocked = (bool)($row['due_date_locked'] ?? false);
+                $newDue = $dueDateLocked ? $row['due_date'] : $due;
+                $changed = $newDue !== $row['due_date']
                     || Money::cmp($row['emi_amount'], $plan['emi_amount']) !== 0
                     || Money::cmp($row['other_charges'], $plan['other_charges']) !== 0
                     || Money::cmp($row['payable_amount'], $payable) !== 0;
                 if ($changed) {
                     $db->update('installments', [
-                        'due_date'       => $due,
+                        'due_date'       => $newDue,
                         'emi_amount'     => $plan['emi_amount'],
                         'other_charges'  => $plan['other_charges'],
                         'payable_amount' => $payable,
@@ -146,7 +150,10 @@ final class ScheduleService
             throw \App\Core\HttpException::validation(['paid_amount' => ['Amount paid cannot exceed the amount due.']]);
         }
         $balance = Money::max(Money::sub($payable, $paid), 0);
-        $status  = $in['status'] ?? CollectionService::deriveStatus($balance, $paid, $in['due_date']);
+        // Status is ALWAYS derived server-side from amount due/paid/due date -
+        // never trusts a client-supplied value, so a contradictory state
+        // (e.g. fully paid but marked PENDING) can never be saved.
+        $status = CollectionService::deriveStatus($balance, $paid, $in['due_date']);
 
         $id = $db->insert('installments', [
             'loan_id'        => $loanId,
@@ -209,7 +216,8 @@ final class ScheduleService
         }
         $dueDate = $in['due_date'] ?? $row['due_date'];
         $balance = Money::max(Money::sub($payable, $paid), 0);
-        $status  = $in['status'] ?? CollectionService::deriveStatus($balance, $paid, $dueDate);
+        // Always derived - see addCustomInstallment() above.
+        $status = CollectionService::deriveStatus($balance, $paid, $dueDate);
 
         $db->update('installments', [
             'installment_no' => $installmentNo,
@@ -251,6 +259,54 @@ final class ScheduleService
             throw \App\Core\HttpException::conflict('This installment already has a real collection recorded against it - cancel/delete that collection first.');
         }
         $db->run('DELETE FROM installments WHERE id = :id', ['id' => $instId]);
+    }
+
+    /**
+     * Edit ONE installment's due date (and, only while nothing has been paid
+     * against it, its payable amount) - works for BOTH 'auto' and 'custom'
+     * due_date_mode chits, unlike updateCustomInstallment() above which is
+     * custom-mode only. This is the generic "Edit Due" action.
+     *
+     * The due date is completely separate from collection/paid date: editing
+     * it never touches paid_amount, last_paid_date or any collection row.
+     * The installment is marked due_date_locked so a later schedule
+     * regenerate (chit edit / generate-schedule) never silently reverts it.
+     */
+    public static function editDueDate(int $loanId, int $instId, array $in): array
+    {
+        $db = Database::instance();
+        $loan = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id AND deleted_at IS NULL', ['id' => $loanId]);
+        if (!$loan) {
+            throw \App\Core\HttpException::notFound('Chit not found');
+        }
+        $row = $db->fetch('SELECT * FROM installments WHERE id = :id AND loan_id = :l', ['id' => $instId, 'l' => $loanId]);
+        if (!$row) {
+            throw \App\Core\HttpException::notFound('Installment not found');
+        }
+
+        $fields = ['due_date_locked' => 1, 'updated_at' => BusinessDate::utcNow()];
+        if (array_key_exists('due_date', $in) && $in['due_date'] !== null && $in['due_date'] !== '') {
+            $fields['due_date'] = $in['due_date'];
+        }
+        // The due AMOUNT may only be corrected before anything has been collected
+        // against it - once a real payment exists, payable_amount is frozen and
+        // must be adjusted only via editing/cancelling that collection instead.
+        if (array_key_exists('payable_amount', $in) && $in['payable_amount'] !== null && $in['payable_amount'] !== '') {
+            if (Money::gt($row['paid_amount'], 0) || in_array($row['status'], ['PARTIAL', 'COMPLETED'], true)) {
+                throw \App\Core\HttpException::conflict('This due already has a payment recorded against it - its amount can only be changed by editing/cancelling that payment.');
+            }
+            $payable = Money::of($in['payable_amount']);
+            $fields['payable_amount'] = $payable;
+            $fields['emi_amount']     = $payable;
+            $fields['balance_amount'] = $payable;
+        }
+        if (!array_key_exists('due_date', $fields) && !array_key_exists('payable_amount', $fields)) {
+            throw \App\Core\HttpException::validation(['due_date' => ['Nothing to update']]);
+        }
+
+        $db->update('installments', $fields, 'id = :id', ['id' => $instId]);
+        self::refreshOverdue($loanId);
+        return $db->fetch('SELECT * FROM installments WHERE id = :id', ['id' => $instId]);
     }
 
     /**
