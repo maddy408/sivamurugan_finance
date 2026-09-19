@@ -2,14 +2,20 @@
 
 A standalone chit / finance management application — **PHP 8.2 REST API + React 18 (Vite) SPA + MySQL/MariaDB**.
 
-It was cloned from an internal reference "Chit Fund" application (functional
-concepts, database relationships, API design and UI patterns reused) and then
-adapted with the business‑flow changes listed under **What's different** below.
+## Database & Deployment Guidelines
 
-> This project is **fully independent**. It has its own frontend, backend,
-> database (`siva_murugan_chit_fund`), environment files, storage keys and
-> branding. It shares **nothing at runtime** with the reference application and
-> can run while that app is stopped.
+### 1. Database Schema & Migration Protocol
+Whenever any database structure or data change is required (such as `CREATE`, `ALTER`, `INSERT`, `UPDATE`, or `DELETE`):
+- **Create Migration File**: Always create a new SQL file inside the `database/migrations/` directory.
+- **Filename Format**: `YYYYMMDD_HHMMSS_relevant_name.sql` (e.g., `20260919_180000_add_nominee_columns.sql`).
+- **Update Base Schema**: Update `database/schema.sql` and `database/seed.sql` to keep master schemas in sync.
+- **Git Push**: Commit and push the migration file to Git immediately.
+
+### 2. Mandatory Deployment Protocol
+- **Strict Branch & Push Rule**:
+  - To deploy to **DEV**: You MUST be on the `dev` branch and MUST push all commits to Git (`git push origin dev`) BEFORE running `python deploy.py --env dev`.
+  - To deploy to **PRODUCTION**: You MUST be on the `main` branch and MUST push all commits to Git (`git push origin main`) BEFORE running `python deploy.py --env prod`.
+- **Enforced Verification**: The deployment script (`deploy.py`) strictly verifies branch and git status before executing any remote upload.
 
 ---
 

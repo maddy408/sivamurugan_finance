@@ -100,21 +100,30 @@ try {
             echo "OK  " . run_sql_file($pdo, $path) . " statements executed from " . basename($path) . "\n";
             break;
 
+        case 'auto-db':
+            $env = $argv[2] ?? 'dev';
+            $root = connect($db, false);
+            $root->exec("CREATE DATABASE IF NOT EXISTS `{$db['database']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $pdo = connect($db);
+            $tables = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = " . $pdo->quote($db['database']))->fetchColumn();
+            if ($tables === 0) {
+                echo "Database `{$db['database']}` is empty. Running initial schema and seed...\n";
+                echo ".. Running schema.sql\n";
+                echo "OK  " . run_sql_file($pdo, $dbDir . '/schema.sql') . " statements\n";
+                echo ".. Running seed.sql\n";
+                echo "OK  " . run_sql_file($pdo, $dbDir . '/seed.sql') . " statements\n";
+                echo ".. Seeding environment users for {$env}\n";
+                seed_environment_users($pdo, $env);
+            } else {
+                echo "Database `{$db['database']}` exists with {$tables} tables. Preserving existing data.\n";
+            }
+            echo ".. Running database migrations...\n";
+            run_migrations($pdo, $dbDir);
+            break;
+
         case 'migrate-all':
             $pdo = connect($db);
-            $migDir = $dbDir . '/migrations';
-            if (is_dir($migDir)) {
-                $files = glob($migDir . '/*.sql');
-                sort($files);
-                foreach ($files as $f) {
-                    try {
-                        $cnt = run_sql_file($pdo, $f);
-                        echo "OK  Applied " . basename($f) . " ({$cnt} statements)\n";
-                    } catch (Throwable $e) {
-                        echo "SKIP " . basename($f) . ": " . $e->getMessage() . "\n";
-                    }
-                }
-            }
+            run_migrations($pdo, $dbDir);
             break;
 
         case 'set-password':
@@ -250,15 +259,16 @@ function seed_environment_users(PDO $pdo, string $env): void
 
     $users = ($env === 'dev') ? $devUsers : $prodUsers;
 
-    $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-    $pdo->exec('TRUNCATE employees');
-    $pdo->exec('TRUNCATE users');
-    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
-
+    $checkUser = $pdo->prepare('SELECT id FROM users WHERE username = :username');
     $stmtUser = $pdo->prepare('INSERT INTO users (role_id, name, username, email, phone, password_hash, is_active, session_version) VALUES (:role_id, :name, :username, :email, :phone, :password_hash, 1, 1)');
     $stmtEmp = $pdo->prepare('INSERT INTO employees (user_id, emp_code, joined_on, is_active) VALUES (:user_id, :emp_code, CURRENT_DATE(), 1)');
 
+    $inserted = 0;
     foreach ($users as $u) {
+        $checkUser->execute(['username' => $u['username']]);
+        if ($checkUser->fetch()) {
+            continue;
+        }
         $hash = password_hash($u['password'], PASSWORD_BCRYPT);
         $stmtUser->execute([
             'role_id' => $u['role_id'],
@@ -276,6 +286,46 @@ function seed_environment_users(PDO $pdo, string $env): void
                 'emp_code' => $u['emp_code'],
             ]);
         }
+        $inserted++;
     }
-    echo "OK  Seeded 5 " . strtoupper($env) . " users successfully.\n";
+    echo "OK  Seeded {$inserted} " . strtoupper($env) . " users safely (existing users preserved).\n";
+}
+
+function run_migrations(PDO $pdo, string $dbDir): void
+{
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `_schema_migrations` (
+        `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `migration` VARCHAR(255) NOT NULL,
+        `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_migration` (`migration`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM `_schema_migrations` WHERE `migration` = :m");
+    $stmtRecord = $pdo->prepare("INSERT IGNORE INTO `_schema_migrations` (`migration`) VALUES (:m)");
+
+    $migDir = $dbDir . '/migrations';
+    if (is_dir($migDir)) {
+        $files = glob($migDir . '/*.sql');
+        sort($files);
+        foreach ($files as $f) {
+            $baseName = basename($f);
+            $stmtCheck->execute(['m' => $baseName]);
+            if ((int)$stmtCheck->fetchColumn() > 0) {
+                echo "SKIP " . $baseName . " (already applied)\n";
+                continue;
+            }
+            try {
+                $cnt = run_sql_file($pdo, $f);
+                $stmtRecord->execute(['m' => $baseName]);
+                echo "OK  Applied " . $baseName . " ({$cnt} statements)\n";
+            } catch (Throwable $e) {
+                $msg = $e->getMessage();
+                echo "SKIP " . $baseName . ": " . $msg . "\n";
+                if (stripos($msg, 'Duplicate column') !== false || stripos($msg, 'already exists') !== false || stripos($msg, 'Duplicate key') !== false) {
+                    $stmtRecord->execute(['m' => $baseName]);
+                }
+            }
+        }
+    }
 }
