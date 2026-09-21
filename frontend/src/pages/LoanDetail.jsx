@@ -49,6 +49,7 @@ export default function LoanDetail() {
 
   const openEdit = () => setEdit({
     code: loan.code,
+    status: loan.status,
     installment_amount: loan.installment_amount,
     principal_amount: loan.principal_amount,
     tenure: loan.tenure,
@@ -65,6 +66,7 @@ export default function LoanDetail() {
       const wantsWeekday = edit.frequency === 'weekly' || edit.schedule_type === 'MONTHLY_WEEKDAY';
       const body = {
         code: edit.code && edit.code.trim() && edit.code.trim() !== loan.code ? edit.code.trim() : undefined,
+        status: edit.status,
         installment_amount: Number(edit.installment_amount),
         principal_amount: Number(edit.principal_amount),
         tenure: Number(edit.tenure),
@@ -102,6 +104,19 @@ export default function LoanDetail() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
+  const toggleChitStatus = async (targetStatus) => {
+    setBusy(true);
+    try {
+      await api.put(`/api/loans/${id}`, { status: targetStatus });
+      toast.success(targetStatus === 'active' ? 'Chit reopened/reactivated successfully' : 'Chit closed successfully');
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <div className="toolbar">
@@ -114,10 +129,18 @@ export default function LoanDetail() {
         <button className="btn secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiPrinter size={14} /> Print Statement
         </button>
-        {can('loans.edit') && loan.status === 'active' &&
+        {can('loans.edit') &&
           <button className="btn secondary" disabled={busy} onClick={openEdit}>Edit</button>}
-        {can('loans.cancel') && loan.status === 'active' &&
-          <button className="btn secondary" onClick={() => setConfirm({ type: 'cancel', reason: '' })}>Cancel</button>}
+        {can('loans.edit') && (loan.status === 'closed' || loan.status === 'cancelled' || loan.status === 'completed') && (
+          <button className="btn" style={{ background: '#10b981', color: '#fff' }} disabled={busy} onClick={() => toggleChitStatus('active')}>
+            Reopen / Reactivate Chit
+          </button>
+        )}
+        {can('loans.cancel') && loan.status === 'active' && (
+          <button className="btn secondary" disabled={busy} onClick={() => toggleChitStatus('closed')}>
+            Close Chit
+          </button>
+        )}
         {can('loans.delete') &&
           <button className="btn danger" onClick={() => setConfirm({ type: 'delete', reason: '' })}>Delete</button>}
       </div>
@@ -284,6 +307,14 @@ export default function LoanDetail() {
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
                 Leave unchanged to keep <b>{loan.code}</b>. A new value must be unique.
               </p>
+            </Field>
+            <Field label="Chit Status">
+              <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="closed">Closed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
             </Field>
             <Field label="Due / Installment Amount">
               <input type="number" min="0.01" step="0.01" value={edit.installment_amount}

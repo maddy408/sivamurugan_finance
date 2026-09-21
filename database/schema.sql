@@ -148,7 +148,7 @@ CREATE TABLE customers (
   id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   customer_code     VARCHAR(32)  NOT NULL,
   name              VARCHAR(128) NOT NULL,
-  mobile            VARCHAR(20)  NOT NULL,
+  mobile            VARCHAR(20)  NULL DEFAULT NULL,
     aadhar_number     VARCHAR(20)  NULL,
   alt_mobile        VARCHAR(20)  NULL,
   email             VARCHAR(191) NULL,

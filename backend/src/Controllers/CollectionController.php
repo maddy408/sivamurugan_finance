@@ -29,7 +29,11 @@ class CollectionController
         $user = Guard::authorize($req, 'collection.view');
         $db = Database::instance();
 
-        $where = ["l.status = 'active'", 'l.deleted_at IS NULL'];
+        // No status restriction unless the caller explicitly asked for one -
+        // global search must find a chit regardless of status (active/
+        // completed/closed/cancelled). Only 'status' query param narrows it;
+        // "All" on the frontend sends an empty value, which applies none.
+        $where = ['l.deleted_at IS NULL'];
         $params = [];
 
         [$scopeSql, $scopeParams] = Guard::loanScopeSql($user, 'l');
@@ -38,8 +42,18 @@ class CollectionController
 
         $q = ListQuery::search($req);
         if ($q !== '') {
+            // Grouped in its own parens so a status filter ANDs onto the whole
+            // OR-group rather than only the last term.
             $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q)';
             $params['q'] = "%$q%";
+        }
+        $statusFilter = $req->queryParam('status');
+        if ($statusFilter !== null && $statusFilter !== '') {
+            if (!in_array($statusFilter, ['active', 'completed', 'closed', 'cancelled', 'deactivated'], true)) {
+                throw HttpException::validation(['status' => ['Unknown status filter']]);
+            }
+            $where[] = 'l.status = :status_filter';
+            $params['status_filter'] = $statusFilter;
         }
         // No location-based filtering: address is plain customer text, not a
         // filterable/master-backed dimension.
@@ -56,7 +70,7 @@ class CollectionController
 
         $loans = $db->fetchAll(
             "SELECT l.id, l.code, l.account_type, l.installment_amount, l.principal_amount,
-                    l.frequency, l.schedule_type, l.start_date, l.tenure,
+                    l.frequency, l.schedule_type, l.start_date, l.tenure, l.status,
                     c.id AS customer_id, c.name AS customer_name, c.customer_code, c.mobile,
                     COALESCE(NULLIF(c.location,''), l.location) AS location_name
              $base ORDER BY c.name ASC LIMIT $perPage OFFSET $offset",

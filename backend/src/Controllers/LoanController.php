@@ -479,11 +479,12 @@ class LoanController
         if ($loan['deleted_at'] !== null) {
             throw HttpException::notFound('Chit not found');
         }
-        if (in_array($loan['status'], ['cancelled', 'completed'], true)) {
-            throw HttpException::conflict('A ' . $loan['status'] . ' chit cannot be edited');
-        }
 
         $in = Validator::make($req->body, [
+            // Existing statuses only - see loans_or_chits.status enum. 'deactivated'
+            // is a system-only value (no UI path sets it) and is deliberately not
+            // accepted here.
+            'status'              => 'nullable|in:active,completed,closed,cancelled',
             'installment_amount' => 'nullable|numeric|min:0.01',
             'principal_amount'   => 'nullable|numeric|min:0',
             'schedule_type'      => 'nullable|in:DAILY,WEEKLY,MONTHLY_WEEKDAY,MONTHLY_DAILY,MONTHLY_INTERVAL',
@@ -493,6 +494,67 @@ class LoanController
             'notes'              => 'nullable|string|max:500',
             'code'               => 'nullable|string|max:40',
         ])->validated();
+
+        // ---- Status transition: minimal payload, no unrelated fields required.
+        // Handled separately from the field-by-field edit below (which stays
+        // blocked on a cancelled/completed chit) since changing the chit's OWN
+        // status must always be possible - that is precisely how a closed/
+        // cancelled/completed chit becomes active again. Reuses the same
+        // closed_at/closed_by/reopened_at/reopened_by columns the dedicated
+        // /close and /reopen endpoints already use, so a chit closed or
+        // reopened from here looks identical to one closed/reopened there.
+        $statusChanged = false;
+        $statusNoopMessage = null;
+        if ($in['status'] !== null) {
+            $newStatus = $in['status'];
+            if ($newStatus === $loan['status']) {
+                // Graceful no-op (not a 422): only short-circuit here when the
+                // request carries NOTHING else to do - if other fields are
+                // also present (the full Edit form always resends status),
+                // fall through and process those normally.
+                $onlyField = is_array($req->body) && array_keys($req->body) === ['status'];
+                if ($onlyField) {
+                    Response::ok(['loan' => $loan], "Status is already $newStatus");
+                    return;
+                }
+                $statusNoopMessage = "Status is already $newStatus";
+            } else {
+                $statusFields = ['status' => $newStatus, 'updated_at' => BusinessDate::utcNow()];
+                if ($newStatus === 'closed') {
+                    $statusFields['closed_at'] = BusinessDate::utcNow();
+                    $statusFields['closed_by'] = $user['id'];
+                } elseif ($newStatus === 'active') {
+                    $statusFields['reopened_at'] = BusinessDate::utcNow();
+                    $statusFields['reopened_by'] = $user['id'];
+                } elseif ($newStatus === 'cancelled') {
+                    $statusFields['cancelled_at'] = BusinessDate::utcNow();
+                    $statusFields['cancelled_by'] = $user['id'];
+                }
+                $db->update('loans_or_chits', $statusFields, 'id = :id', ['id' => $loan['id']]);
+                if (in_array($newStatus, ['closed', 'cancelled'], true)) {
+                    // Mirrors cancel()/closeChit(): assignments end when the chit
+                    // stops being active. Reopening to 'active' leaves assignment
+                    // state as-is - staff must be re-assigned deliberately.
+                    $db->run('UPDATE loan_assignments SET is_active = 0 WHERE loan_id = :l', ['l' => $loan['id']]);
+                }
+                Audit::log('loan.status_update', 'loans', 'loan', $loan['id'],
+                    ['status' => $loan['status']], ['status' => $newStatus], null,
+                    ['id' => $user['id'], 'role_code' => $user['role_code']]);
+                $loan['status'] = $newStatus; // refresh local snapshot for the guard/response below
+                $statusChanged = true;
+            }
+        }
+
+        if (in_array($loan['status'], ['cancelled', 'completed'], true)) {
+            // Other (non-status) fields still cannot be changed on a cancelled/
+            // completed chit - unchanged from the existing rule. A pure status
+            // change (handled above) already returned before reaching here
+            // unless the SAME request also carries other fields, in which case
+            // those are correctly rejected while the status change already committed.
+            if (!$statusChanged) {
+                throw HttpException::conflict('A ' . $loan['status'] . ' chit cannot be edited');
+            }
+        }
 
         $fields = [];
         foreach (['principal_amount','schedule_type','start_date','tenure','frequency','notes'] as $k) {
@@ -527,6 +589,19 @@ class LoanController
             $fields['code'] = $newCode;
         }
         if (!$fields) {
+            if ($statusChanged) {
+                // Status alone was requested and already committed above -
+                // a bare {"status": "..."} payload is a complete, valid
+                // request on its own; no other field is required.
+                $fresh = $db->fetch('SELECT * FROM loans_or_chits WHERE id = :id', ['id' => $loan['id']]);
+                $fresh['emi_amount'] = $fresh['installment_amount'];
+                Response::ok(['loan' => $fresh], 'Chit status updated');
+                return;
+            }
+            if ($statusNoopMessage !== null) {
+                Response::ok(['loan' => $loan], $statusNoopMessage);
+                return;
+            }
             throw HttpException::validation(['_' => ['Nothing to update']]);
         }
         $fields['updated_at'] = BusinessDate::utcNow();

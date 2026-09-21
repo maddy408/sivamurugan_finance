@@ -87,6 +87,7 @@ export default function DataTable({
               {columns.map((c) => (
                 <th
                   key={c.key}
+                  title={typeof c.header === 'string' ? c.header : undefined}
                   onClick={() => c.sortable && onSort?.(c.key)}
                   style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left' }}
                 >

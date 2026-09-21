@@ -120,7 +120,7 @@ class CustomerController
         $user = Guard::authorize($req, 'customers.create');
         $in = Validator::make($req->body, [
             'name'             => 'required|string|max:128',
-            'mobile'           => 'required|string|max:20',
+            'mobile'           => 'nullable|string|max:20',
             'alt_mobile'       => 'nullable|string|max:20',
             'email'            => 'nullable|email',
             'gender'           => 'nullable|in:male,female,other',

@@ -129,6 +129,7 @@ export default function Loans() {
     try {
       const body = {
         code: edit.code && edit.code.trim() ? edit.code.trim() : undefined,
+        status: edit.status,
         installment_amount: Number(edit.installment_amount),
         principal_amount: Number(edit.principal_amount),
         tenure: Number(edit.tenure),
@@ -138,7 +139,7 @@ export default function Loans() {
         notes: edit.notes || undefined,
       };
       const r = await api.put(`/api/loans/${edit.id}`, body);
-      toast.success(`Updated — ${r.data?.schedule_generation?.updated ?? 0} future installment(s) recalculated`);
+      toast.success(`Updated chit`);
       setEdit(null);
       list.reload();
     } catch (e) {
@@ -234,8 +235,8 @@ export default function Loans() {
           <Link className="btn-icon view" to={`/loans/${r.id}`} title="View Details">
             <IconView />
           </Link>
-          {can('loans.edit') && r.status === 'active' && (
-            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit Chit">
+          {can('loans.edit') && (
+            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit Chit & Status">
               <IconEdit />
             </button>
           )}
@@ -431,6 +432,13 @@ export default function Loans() {
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
                 Leave unchanged to keep existing code.
               </p>
+            </Field>
+            <Field label="Chit Status">
+              <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="closed">Closed / Cancelled</option>
+              </select>
             </Field>
             <Field label="Installment Amount">
               <input type="number" min="0.01" step="0.01" value={edit.installment_amount}

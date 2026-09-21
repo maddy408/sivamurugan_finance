@@ -63,6 +63,12 @@ const colWidthPct = (h, type) => {
 const isExcludedCol = (h) => {
   const lower = String(h || '').trim().toLowerCase();
   return (
+    lower === 'reference' ||
+    lower === 'reference_no' ||
+    lower === 'reference no' ||
+    lower === 'receipt' ||
+    lower === 'receipt_no' ||
+    lower === 'receipt no' ||
     lower === 'employee' ||
     lower === 'employee name' ||
     lower === 'employee_name' ||
@@ -247,7 +253,7 @@ export default function Reports() {
       </div>
 
       {/* ---------- Report Types in clean grid layout (No side scroll) ---------- */}
-      <div className="card no-print" style={{ marginBottom: 16, padding: 14 }}>
+      <div className="card no-print" style={{ marginTop: -22, padding: 2 }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--blue-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
           SELECT REPORT TYPE ({reportList.length})
         </div>
@@ -314,9 +320,9 @@ export default function Reports() {
                 </select>
               </label>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn sm" onClick={() => apply()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiSearch size={13} /> Apply Filters</button>
-              <button className="btn sm secondary" onClick={clearAll} disabled={!hasFilters}>Clear</button>
+            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+              <button className="btn sm" onClick={() => apply()} style={{ padding: '4px 10px', fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 5 }}><FiSearch size={12} /> Apply Filters</button>
+              <button className="btn sm secondary" onClick={clearAll} disabled={!hasFilters} style={{ padding: '4px 10px', fontSize: 11.5 }}>Clear</button>
             </div>
           </div>
 
@@ -330,8 +336,8 @@ export default function Reports() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 20 }}>{REPORT_ICONS[name] || <FiFileText />}</span>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: 16 }}>{data.title || activeMeta?.label}</h2>
-                      <div className="muted" style={{ fontSize: 12 }}>
+                      <h2 style={{ margin: 0, fontSize: 15 }}>{data.title || activeMeta?.label}</h2>
+                      <div className="muted" style={{ fontSize: 11.5 }}>
                         {data.filters?.period} · generated {new Date(data.generated_at).toLocaleString()}
                       </div>
                     </div>
@@ -436,7 +442,7 @@ export default function Reports() {
                         <thead>
                           <tr>
                             {visibleHeaders.map((h) => (
-                              <th key={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
+                              <th key={h} title={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
                                 background: runningCols.has(h) ? '#eef2ff' : undefined,
                               }}>{h}</th>
                             ))}

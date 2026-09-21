@@ -49,8 +49,8 @@ html, body, #root { min-height: 100%; margin: 0; padding: 0; }
 body { 
   background: var(--bg); 
   color: var(--ink-primary); 
-  font-size: 14px; 
-  line-height: 1.5;
+  font-size: 13px; 
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased; 
 }
 a { color: var(--blue-primary); text-decoration: none; transition: color 0.15s ease; }

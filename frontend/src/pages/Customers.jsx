@@ -134,8 +134,8 @@ export default function Customers() {
 
                 {/* Mobile in its own single row */}
                 <div className="floating-group" style={{ marginTop: 8 }}>
-                  <input id="c-mobile" value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} required placeholder=" " />
-                  <label htmlFor="c-mobile">Mobile *</label>
+                  <input id="c-mobile" value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} placeholder=" " />
+                  <label htmlFor="c-mobile">Mobile (Optional)</label>
                   {createErrors.mobile && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.mobile}</span>}
                 </div>
 
@@ -220,7 +220,7 @@ export default function Customers() {
             <Field label="Full name *" error={editErrors.name}>
               <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
             </Field>
-            <Field label="Mobile *" error={editErrors.mobile}>
+            <Field label="Mobile (optional)" error={editErrors.mobile}>
               <input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
             </Field>
             <Field label="Aadhar number (optional)" error={editErrors.aadhar_number}>

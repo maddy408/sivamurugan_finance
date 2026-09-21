@@ -28,6 +28,13 @@ export default function Collection() {
               nav(`/collection/chit/${loans[0].id}`);
             }
           }} />
+        <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="closed">Closed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
         <select value={list.filters.only_due || ''} onChange={(e) => list.setFilter('only_due', e.target.value)}>
           <option value="">All chits</option>
           <option value="1">Only with outstanding</option>
@@ -76,6 +83,13 @@ export default function Collection() {
                 const outstanding = Number(loan.summary?.outstanding_balance || 0);
                 const isDue = outstanding > 0;
                 const fine = nd ? Number((loan.installments || []).find((i) => i.id === nd.id)?.fine_accrued || 0) : 0;
+                const status = (loan.status || '').toLowerCase();
+                const isActive = status === 'active';
+                const statusBadge = status === 'closed' ? { cls: 'closed', label: 'CLOSED' }
+                  : status === 'completed' ? { cls: 'COMPLETED', label: 'COMPLETED' }
+                  : status === 'cancelled' ? { cls: 'cancelled', label: 'CANCELLED' }
+                  : isDue ? { cls: 'OVERDUE', label: 'DUE' }
+                  : { cls: 'active', label: 'ACTIVE' };
                 return (
                   <tr key={loan.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/collection/chit/${loan.id}`)}>
                     <td data-label="Customer">
@@ -92,9 +106,13 @@ export default function Collection() {
                     <td className="right" data-label="Outstanding">
                       <b style={{ color: isDue ? '#f43f5e' : '#10b981' }}>{money(outstanding)}</b>
                     </td>
-                    <td data-label="Status"><span className={`badge ${isDue ? 'OVERDUE' : 'COMPLETED'}`}>{isDue ? 'DUE' : 'CLEAR'}</span></td>
+                    <td data-label="Status">
+                      <span className={`badge ${statusBadge.cls}`}>{statusBadge.label}</span>
+                    </td>
                     <td className="right" data-label="">
-                      <Link className="btn sm" to={`/collection/chit/${loan.id}`} onClick={(e) => e.stopPropagation()}> Collect</Link>
+                      <Link className="btn sm" to={`/collection/chit/${loan.id}`} onClick={(e) => e.stopPropagation()}>
+                        {isActive ? 'Collect' : 'View'}
+                      </Link>
                     </td>
                   </tr>
                 );
