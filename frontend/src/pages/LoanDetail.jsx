@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm, Modal, Field } from '../components/ui';
-import CollectModal from '../components/CollectModal';
-import DistributeModal from '../components/DistributeModal';
 import ReceiptModal from '../components/ReceiptModal';
 import StatementModal from '../components/StatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiArrowLeft, FiPrinter, FiXCircle, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiPrinter, FiXCircle, FiTrash2, FiZap } from 'react-icons/fi';
 
 const DIST_STATUS_LABEL = {
   not_distributed: 'Not Distributed',
@@ -20,12 +18,10 @@ const DIST_STATUS_LABEL = {
 export default function LoanDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { can, meta, refreshMeta } = useAuth();
+  const { can } = useAuth();
   const toast = useToast();
   const [loan, setLoan] = useState(null);
   const [error, setError] = useState(null);
-  const [collect, setCollect] = useState(null);
-  const [distribute, setDistribute] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [statement, setStatement] = useState(false);
@@ -95,20 +91,18 @@ export default function LoanDetail() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
-  const doCancel = async () => {
+  // Reopening needs no financial input (see LoanController::reopenChit) so it
+  // stays a direct action here. Closing DOES need Close Amount/Date/Remarks -
+  // it must never bypass that by going straight to a bare status flip, so
+  // "Close Chit" below navigates to Collection Details instead of calling
+  // this. That is also the single place Close Chit is implemented
+  // (CloseChitModal, via CollectionService::createCloseSettlement) - not
+  // duplicated here.
+  const doReopen = async () => {
     setBusy(true);
     try {
-      await api.post(`/api/loans/${id}/cancel`, { reason: confirm.reason || 'Cancelled by admin' });
-      toast.success('Chit cancelled');
-      setConfirm(null); load();
-    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
-  };
-
-  const toggleChitStatus = async (targetStatus) => {
-    setBusy(true);
-    try {
-      await api.put(`/api/loans/${id}`, { status: targetStatus });
-      toast.success(targetStatus === 'active' ? 'Chit reopened/reactivated successfully' : 'Chit closed successfully');
+      await api.post(`/api/loans/${id}/reopen`, {});
+      toast.success('Chit reopened');
       load();
     } catch (e) {
       toast.error(e.message);
@@ -116,6 +110,14 @@ export default function LoanDetail() {
       setBusy(false);
     }
   };
+
+  // Every collection/payment/close/distribution action lives on ONE page -
+  // Collection Details (CollectionChit.jsx) - so every such button here just
+  // navigates there with the chit already loaded, instead of re-implementing
+  // Collect/Close/Distribute locally with their own (previously out-of-sync)
+  // modals. ?due=<id> pre-selects a specific installment; ?action=close|
+  // distribute pre-opens that modal - see CollectionChit.jsx's deep-link effect.
+  const goToCollection = (extra = '') => nav(`/collection/chit/${id}${extra}`);
 
   return (
     <>
@@ -125,19 +127,19 @@ export default function LoanDetail() {
         <Badge value={loan.status} />
         <div style={{ flex: 1 }} />
         {can('distributions.view') && loan.status === 'active' &&
-          <button className="btn" disabled={busy} onClick={() => setDistribute(true)}>Disburse Chit</button>}
+          <button className="btn" disabled={busy} onClick={() => goToCollection('?action=distribute')}>Disburse Chit</button>}
         <button className="btn secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiPrinter size={14} /> Print Statement
         </button>
         {can('loans.edit') &&
           <button className="btn secondary" disabled={busy} onClick={openEdit}>Edit</button>}
-        {can('loans.edit') && (loan.status === 'closed' || loan.status === 'cancelled' || loan.status === 'completed') && (
-          <button className="btn" style={{ background: '#10b981', color: '#fff' }} disabled={busy} onClick={() => toggleChitStatus('active')}>
+        {can('loans.cancel') && loan.status === 'closed' && (
+          <button className="btn" style={{ background: '#10b981', color: '#fff' }} disabled={busy} onClick={doReopen}>
             Reopen / Reactivate Chit
           </button>
         )}
         {can('loans.cancel') && loan.status === 'active' && (
-          <button className="btn secondary" disabled={busy} onClick={() => toggleChitStatus('closed')}>
+          <button className="btn secondary" disabled={busy} onClick={() => goToCollection('?action=close')}>
             Close Chit
           </button>
         )}
@@ -181,7 +183,7 @@ export default function LoanDetail() {
           <div className="card-head">
             <h2>Distribution</h2>
             {loan.status === 'active' && can('distributions.create') && (
-              <button className="btn sm" onClick={() => setDistribute(true)}>
+              <button className="btn sm" onClick={() => goToCollection('?action=distribute')}>
                 {d.status === 'not_distributed' ? 'Distribute Chit' : 'Edit / Add Distribution'}
               </button>
             )}
@@ -229,7 +231,9 @@ export default function LoanDetail() {
                   <td data-label="Status"><Badge value={i.status} /></td>
                   <td data-label="" className="right">
                     {can('collection.create') && i.status !== 'COMPLETED' && loan.status === 'active' && (
-                      <button className="btn sm" onClick={() => setCollect(i)}>Collect</button>
+                      <button className="btn sm" onClick={() => goToCollection(`?due=${i.id}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <FiZap size={12} /> Collect
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -283,17 +287,6 @@ export default function LoanDetail() {
           </table>
         </div>
       </div>
-
-      {collect && (
-        <CollectModal installment={collect} loan={loan}
-          onClose={() => setCollect(null)} onDone={() => { setCollect(null); load(); }} />
-      )}
-
-      {distribute && (
-        <DistributeModal loan={loan}
-          onClose={() => setDistribute(false)}
-          onDone={() => { load(); refreshMeta?.(); }} />
-      )}
 
       {edit && (
         <Modal title={`Edit ${loan.code}`} onClose={() => setEdit(null)}
@@ -380,15 +373,6 @@ export default function LoanDetail() {
         </Modal>
       )}
 
-      {confirm?.type === 'cancel' && (
-        <Confirm title="Cancel this chit?" danger busy={busy}
-          message={<>
-            <p>Historical collections are preserved. Future unpaid installments become void.</p>
-            <input style={{ width: '100%', padding: 8 }} placeholder="Reason (required)"
-              value={confirm.reason} onChange={(e) => setConfirm({ ...confirm, reason: e.target.value })} />
-          </>}
-          confirmLabel="Cancel chit" onConfirm={doCancel} onClose={() => setConfirm(null)} />
-      )}
       {confirm?.type === 'delete' && (
         <Confirm title="Delete this chit?" danger busy={busy}
           message={<>

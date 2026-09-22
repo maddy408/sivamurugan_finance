@@ -254,7 +254,11 @@ export default function Dashboard() {
 function PerfCard({ label, icon, data }) {
   const d = data || { collected: 0, expected: 0, pending: 0, rate: 0 };
   const hasExpected = Number(d.expected) > 0;
-  const rateStr = hasExpected ? `${d.rate}% (${money(d.collected)} / ${money(d.expected)})` : '0% (No active loans)';
+  // "expected" (the period's actual due amount, from real installment
+  // records) can legitimately be 0 - e.g. no due falls in this window -
+  // which is different from there being no data at all; say so accurately
+  // instead of assuming it means "no active loans".
+  const rateStr = hasExpected ? `${d.rate}% (${money(d.collected)} / ${money(d.expected)})` : '0% (No dues in this period)';
 
   return (
     <div className="card" style={{ padding: 20, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>

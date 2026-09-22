@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm } from '../components/ui';
 import CollectModal from '../components/CollectModal';
@@ -30,6 +30,7 @@ const DIST_STATUS_LABEL = {
 
 export default function CollectionChit() {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can, refreshMeta } = useAuth();
   const toast = useToast();
   const [loan, setLoan] = useState(null);
@@ -59,6 +60,41 @@ export default function CollectionChit() {
     api.get(`/api/loans/${id}`).then((r) => { setLoan(r.data); setChecked(new Set()); }).catch(setError);
   };
   useEffect(load, [id]);
+
+  // Deep-link from anywhere else in the app (chiefly the Chit "View Details"
+  // page): ?due=<installmentId> pre-opens Collect for that exact due, and
+  // ?action=close|distribute pre-opens the matching modal — so "Collect" /
+  // "Close Chit" / "Disburse Chit" clicked elsewhere land here with the
+  // right thing already selected instead of making the user search/pick
+  // again. Consumed (stripped from the URL) once handled, and guarded to
+  // fire only on the FIRST successful load of this chit, not on every
+  // subsequent refresh this page does after an action completes.
+  const autoActionRef = useRef(false);
+  useEffect(() => {
+    if (!loan || autoActionRef.current) return;
+    autoActionRef.current = true;
+    const dueId = searchParams.get('due');
+    const action = searchParams.get('action');
+    if (dueId) {
+      const inst = (loan.installments || []).find((i) => String(i.id) === dueId);
+      if (inst && inst.status !== 'COMPLETED' && loan.status === 'active') {
+        setCollectIds([inst.id]);
+      } else if (inst) {
+        toast.error('That due is not currently collectable (already paid, or the chit is not active).');
+      }
+    } else if (action === 'close' && loan.status === 'active') {
+      setCloseChit(true);
+    } else if (action === 'distribute' && loan.status === 'active') {
+      setDistribute(true);
+    }
+    if (dueId || action) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('due');
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loan]);
 
   if (error) return <ErrorState error={error} onRetry={load} />;
   if (!loan) return <Spinner />;

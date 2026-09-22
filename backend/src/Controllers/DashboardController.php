@@ -48,9 +48,12 @@ class DashboardController
         [$scopeSql, $scopeParams] = Guard::loanScopeSql($user, 'l');
 
         // ---- schedule figures (installments) ----
+        // Kept exactly as before: "today's outstanding workload" figures
+        // (overdue_amount/pending_customers/due_customers/outstanding_total)
+        // are deliberately scoped to ACTIVE chits only - a completed/closed/
+        // cancelled chit has no ongoing collection workload.
         $sched = $db->fetch(
             "SELECT
-                COALESCE(SUM(CASE WHEN i.due_date = :t1 THEN i.balance_amount ELSE 0 END),0) AS expected_today,
                 COALESCE(SUM(CASE WHEN i.status = 'OVERDUE' THEN i.balance_amount ELSE 0 END),0) AS overdue_amount,
                 COUNT(DISTINCT CASE WHEN i.balance_amount > 0 THEN l.customer_id END) AS pending_customers,
                 COUNT(DISTINCT CASE WHEN i.due_date = :t2 AND i.status <> 'COMPLETED' THEN l.customer_id END) AS due_customers,
@@ -58,7 +61,48 @@ class DashboardController
              FROM installments i
              JOIN loans_or_chits l ON l.id = i.loan_id
              WHERE l.status = 'active' AND l.deleted_at IS NULL AND $scopeSql",
-            $scopeParams + ['t1' => $today, 't2' => $today]
+            $scopeParams + ['t2' => $today]
+        );
+
+        // "Chit Performance" cards' due-side figure: payable_amount (the
+        // ORIGINAL scheduled due, frozen once the installment is created) -
+        // NOT balance_amount, which shrinks the moment a collection lands on
+        // it, so using it would make "expected" chase "collected" downward
+        // within the same request and never reconcile (a 3000 due paid 2000
+        // today would wrongly show expected=1000, not the real 3000 target).
+        //
+        // Deliberately NOT restricted to status='active': a due that gets
+        // fully paid today flips its chit to 'completed' (or a chit closed/
+        // reopened later) immediately after - excluding those would make a
+        // just-fully-paid due silently vanish from BOTH sides of the ratio
+        // instead of correctly showing 100%. Only truly voided chits
+        // (cancelled/deleted - see LoanController::destroy's collection
+        // cascade) are excluded, since their dues no longer represent real
+        // collectible amounts.
+        //
+        // CRITICAL: each bucket is scoped to l.frequency (the chit's OWN
+        // existing daily/weekly/monthly field, set at chit creation and used
+        // everywhere else for schedule generation - see LoanController::
+        // syncScheduleType) as well as that bucket's date window. Without the
+        // frequency filter, a single weekly chit's collection would satisfy
+        // "due today" AND "due this week" AND "due this month" simultaneously
+        // and get triple-counted across all three cards; a due/collection now
+        // contributes to exactly one card - the one matching its own chit's
+        // frequency.
+        $perfSched = $db->fetch(
+            "SELECT
+                COALESCE(SUM(CASE WHEN i.due_date = :t1                                                  THEN i.payable_amount ELSE 0 END),0) AS expected_today_any,
+                COALESCE(SUM(CASE WHEN l.frequency = 'daily'   AND i.due_date = :t1                     THEN i.payable_amount ELSE 0 END),0) AS expected_daily,
+                COALESCE(SUM(CASE WHEN l.frequency = 'weekly'  AND i.due_date BETWEEN :wf1 AND :wt1      THEN i.payable_amount ELSE 0 END),0) AS expected_weekly,
+                COALESCE(SUM(CASE WHEN l.frequency = 'monthly' AND i.due_date BETWEEN :mf1 AND :mt1      THEN i.payable_amount ELSE 0 END),0) AS expected_monthly
+             FROM installments i
+             JOIN loans_or_chits l ON l.id = i.loan_id
+             WHERE l.status <> 'cancelled' AND l.deleted_at IS NULL AND $scopeSql",
+            $scopeParams + [
+                't1' => $today,
+                'wf1' => $weekFrom, 'wt1' => $weekTo,
+                'mf1' => $monthFrom, 'mt1' => $monthTo,
+            ]
         );
 
         // ---- collection sums (ACTUAL amounts) ----
@@ -77,12 +121,78 @@ class DashboardController
             "SELECT COALESCE(SUM(col.fine_amount),0) FROM collections col WHERE " . self::POSTED . " AND $collFilter", $cp
         );
 
-        $expectedToday = (float)$sched['expected_today'];
+        // Collected side of the "Chit Performance" cards' frequency+period
+        // buckets - summed via collection_allocations against the EXACT SAME
+        // installment set (frequency + due_date window) that $perfSched used
+        // for "expected", rather than "any collection recorded on a date in
+        // this window". Those are NOT the same set: paying a due before its
+        // own due_date (a common advance payment), or a chit whose next due
+        // falls in a different week/month than the one just paid, would add
+        // to "collected" (by collection_date) without a matching amount ever
+        // entering "expected" (by due_date) - collected could then exceed
+        // expected and push the rate past 100% even though nothing is
+        // actually wrong. Scoping both sides to the identical due rows makes
+        // collected <= expected by construction (a due's allocations can't
+        // exceed its own payable_amount), so the rate is mathematically
+        // capped at the source; min(rate, 100) below is only a final safety
+        // net, e.g. for a single due manually overpaid beyond its own amount.
+        $perfCollected = function (string $freq, string $dateExpr, array $dateParams) use ($db, $collFilter, $cp): float {
+            return (float)$db->scalar(
+                "SELECT COALESCE(SUM(ca.principal_alloc),0)
+                 FROM collection_allocations ca
+                 JOIN collections col ON col.id = ca.collection_id
+                 JOIN installments i ON i.id = ca.installment_id
+                 JOIN loans_or_chits l ON l.id = i.loan_id
+                 WHERE col.status = 'posted' AND col.deleted_at IS NULL AND $collFilter
+                   AND l.frequency = :freq AND $dateExpr",
+                $cp + $dateParams + ['freq' => $freq]
+            );
+        };
+        $collectedDaily   = $perfCollected('daily', 'i.due_date = :pt1', ['pt1' => $today]);
+        $collectedWeekly  = $perfCollected('weekly', 'i.due_date BETWEEN :pf2 AND :pt2', ['pf2' => $weekFrom, 'pt2' => $weekTo]);
+        $collectedMonthly = $perfCollected('monthly', 'i.due_date BETWEEN :pf3 AND :pt3', ['pf3' => $monthFrom, 'pt3' => $monthTo]);
+
+        // NOTE: expectedToday (any frequency) feeds only the older, separate
+        // `today` response sub-object below (kept for API back-compat, no
+        // known frontend consumer) - it is intentionally NOT frequency-
+        // scoped and is distinct from expectedDaily, which feeds the "Daily
+        // Chit Performance" card and only ever counts frequency='daily' chits.
+        $expectedToday   = (float)$perfSched['expected_today_any'];
+        $expectedDaily   = (float)$perfSched['expected_daily'];
+        $expectedWeekly  = (float)$perfSched['expected_weekly'];
+        $expectedMonthly = (float)$perfSched['expected_monthly'];
         $ranges = [
             'today'   => ['from' => $today, 'to' => $today],
             'month'   => ['from' => $monthFrom, 'to' => $monthTo],
             'week'    => ['from' => $weekFrom, 'to' => $weekTo],
             'generic' => ['from' => $from, 'to' => $to],
+        ];
+
+        // "Chit Performance" cards (Daily/Weekly/Monthly): collected vs. the
+        // actual due amount for that period, computed entirely from the
+        // Collection module's own real records - never from loan status or
+        // an "active loans" count, and never leaking across frequencies (a
+        // weekly chit's collection contributes ONLY to the 'weekly' bucket,
+        // even though "today" also falls inside "this week"/"this month").
+        // Role-scoped for free: $expected* already applies
+        // Guard::loanScopeSql, and $collected* already applies the
+        // employee's own collected_by filter (see $collFilter above).
+        $perfBucket = function (float $expected, float $collected): array {
+            $rate = $expected > 0 ? round(($collected / $expected) * 100, 2) : 0;
+            return [
+                // collected/pending are reported EXACTLY as computed, even if
+                // collected > expected (e.g. a single due genuinely overpaid)
+                // - only the displayed rate is capped, never these amounts.
+                'expected'  => number_format($expected, 2, '.', ''),
+                'collected' => number_format($collected, 2, '.', ''),
+                'pending'   => number_format(max($expected - $collected, 0), 2, '.', ''),
+                'rate'      => min($rate, 100),
+            ];
+        };
+        $performance = [
+            'daily'   => $perfBucket($expectedDaily, $collectedDaily),
+            'weekly'  => $perfBucket($expectedWeekly, $collectedWeekly),
+            'monthly' => $perfBucket($expectedMonthly, $collectedMonthly),
         ];
 
         /* =====================  EMPLOYEE  ===================== */
@@ -91,6 +201,7 @@ class DashboardController
                 'is_admin' => false,
                 'as_of'    => $today,
                 'ranges'   => $ranges,
+                'performance' => $performance,
                 'cards' => [
                     'my_collection_today' => number_format($collectedToday, 2, '.', ''),
                     'my_collection_week'  => number_format($collectedWeek, 2, '.', ''),
@@ -172,6 +283,7 @@ class DashboardController
             'is_admin' => true,
             'as_of'    => $today,
             'ranges'   => $ranges,
+            'performance' => $performance,
             'cards' => [
                 'office_cash'       => $finance['office_cash'],
                 'bank_cash'         => $finance['bank_cash'],
