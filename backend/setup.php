@@ -67,6 +67,19 @@ try {
             break;
 
         case 'install':
+            $pdoTest = null;
+            try {
+                $pdoTest = connect($db);
+                $existingTables = (int)$pdoTest->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = " . $pdoTest->quote($db['database']))->fetchColumn();
+            } catch (Throwable $e) {
+                $existingTables = 0;
+            }
+            if ($existingTables > 0 && !in_array('--force-clean-install', $argv, true)) {
+                fwrite(STDERR, "[BLOCKED] Database `{$db['database']}` already contains {$existingTables} tables.\n"
+                    . "Running 'install' will DROP all existing tables and TRUNCATE data!\n"
+                    . "If this is intentional for local fresh setup, re-run with: php setup.php install --force-clean-install\n");
+                exit(1);
+            }
             $root = connect($db, false);
             $root->exec("CREATE DATABASE IF NOT EXISTS `{$db['database']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
             echo "OK  Database `{$db['database']}` ready\n";
@@ -85,6 +98,18 @@ try {
 
         case 'seed':
             $pdo = connect($db);
+            $userCount = 0;
+            try {
+                $userCount = (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+            } catch (Throwable $e) {
+                $userCount = 0;
+            }
+            if ($userCount > 0 && !in_array('--force-seed', $argv, true)) {
+                fwrite(STDERR, "[BLOCKED] Database `{$db['database']}` already contains data ({$userCount} users).\n"
+                    . "Running 'seed' will TRUNCATE tables and destroy existing data!\n"
+                    . "To force seed, re-run with: php setup.php seed --force-seed\n");
+                exit(1);
+            }
             echo "OK  " . run_sql_file($pdo, $dbDir . '/seed.sql') . " statements executed\n";
             break;
 

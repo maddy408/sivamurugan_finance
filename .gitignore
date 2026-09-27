@@ -26,5 +26,8 @@ database/backups/
 
 # Deployment & environment secrets
 deploy.py
+deploy_all.py
+scratch/
+*.sql.gz
 *.pyc
 __pycache__/
