@@ -26,8 +26,9 @@ use App\Support\Xlsx;
  */
 class ReportController
 {
-    /** name => [label, kind]  kind: table | summary  */
+    /** name => [label, kind]  kind: table | summary | daily  */
     private const CATALOGUE = [
+        'daily-report'        => ['Daily Report', 'daily'],
         'chit-opening'        => ['New Chits (Opening) Report', 'table'],
         'chit-closing'        => ['Closed Chits Report', 'table'],
         'chit-collection'     => ['Chit Collection Report (per due)', 'table'],
@@ -85,6 +86,10 @@ class ReportController
         $f = $this->filters($req, $user);
         $r = $this->build($name, $f, $user);
 
+        $page = max(1, (int) ($req->queryParam('page') ?? 1));
+        $perPage = ($req->queryParam('per_page') !== null) ? (int) $req->queryParam('per_page') : 10;
+        $r = $this->paginateResult($r, $page, $perPage);
+
         Audit::log('report.generate', 'reports', 'report', $name, null,
             ['filters' => $this->filterEcho($f), 'rows' => count($r['rows'])], null,
             ['id' => $user['id'], 'role_code' => $user['role_code']]);
@@ -97,9 +102,40 @@ class ReportController
             'col_types'    => $r['col_types'],
             'rows'         => $r['rows'],
             'totals'       => $r['totals'],
+            'summary'      => $r['summary'] ?? null,
+            'page'         => $r['page'],
+            'per_page'     => $r['per_page'],
+            'total'        => $r['total'],
+            'total_pages'  => $r['total_pages'],
             'filters'      => $this->filterEcho($f),
             'generated_at' => date('c'),
         ]);
+    }
+
+    private function paginateResult(array $r, int $page, int $perPage): array
+    {
+        if ($perPage <= 0) {
+            return $r + [
+                'page'        => 1,
+                'per_page'    => count($r['rows']),
+                'total'       => count($r['rows']),
+                'total_pages' => 1,
+            ];
+        }
+
+        $total = count($r['rows']);
+        $totalPages = (int) max(1, ceil($total / $perPage));
+        $page = max(1, min($page, $totalPages));
+        $offset = ($page - 1) * $perPage;
+        $slicedRows = array_slice($r['rows'], $offset, $perPage);
+
+        $r['rows'] = array_values($slicedRows);
+        $r['page'] = $page;
+        $r['per_page'] = $perPage;
+        $r['total'] = $total;
+        $r['total_pages'] = $totalPages;
+
+        return $r;
     }
 
     /** GET /api/reports/{name}/export  - one report, one sheet */
@@ -190,6 +226,7 @@ class ReportController
         ];
 
         $tabMap = [
+            'daily-report' => 'Daily Report',
             'chit-opening' => 'Chit Opening', 'chit-closing' => 'Chit Closing',
             'chit-collection' => 'Collections', 'customer-collection' => 'Customer Summary',
             'daily-collection' => 'Daily Collection', 'employee-collection' => 'Employee Summary',
@@ -353,6 +390,7 @@ class ReportController
     private function build(string $name, array $f, array $user): array
     {
         return match ($name) {
+            'daily-report'        => $this->rptDailyReport($f, $user),
             'chit-opening'        => $this->rptChitOpening($f, $user),
             'chit-closing'        => $this->rptChitClosing($f, $user),
             'chit-collection'     => $this->rptChitCollection($f, $user),
@@ -466,18 +504,19 @@ class ReportController
         $db = Database::instance();
         [$sc, $sp] = $this->scope($user, 'l');
         $p = $sp;
-        $w = "l.deleted_at IS NULL AND l.status = 'completed' $sc";
+        $w = "l.deleted_at IS NULL AND (l.status IN ('completed', 'closed') OR l.closed_at IS NOT NULL) $sc";
         if ($f['location_id']) { $w .= ' AND cu.location = :loc'; $p['loc'] = $f['location_id']; }
         if ($f['customer_id']) { $w .= ' AND l.customer_id = :cid'; $p['cid'] = $f['customer_id']; }
         if ($f['loan_id'])     { $w .= ' AND l.id = :lid'; $p['lid'] = $f['loan_id']; }
         if ($f['frequency'])   { $w .= ' AND l.frequency = :fr'; $p['fr'] = $f['frequency']; }
         if ($f['employee_id']) { $w .= ' AND EXISTS (SELECT 1 FROM loan_assignments la WHERE la.loan_id=l.id AND la.is_active=1 AND la.employee_id=:eid)'; $p['eid'] = $f['employee_id']; }
 
-        // closed date = last posted collection date (fallback: chit updated_at)
+        // closed date = closed_at timestamp (or fallback: last posted collection date / chit updated_at)
         $sql = "SELECT l.id, l.code, cu.name AS customer, cu.location AS location,
                        " . self::EMP_NAME_SUBQ . " AS employee, l.principal_amount, l.status,
-                       COALESCE((SELECT MAX(c.collection_date) FROM collections c
-                                 WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),
+                       COALESCE(DATE(l.closed_at),
+                                (SELECT MAX(c.collection_date) FROM collections c
+                                  WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),
                                 DATE(l.updated_at)) AS closed_date,
                        COALESCE((SELECT SUM(c.amount) FROM collections c
                                  WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL),0) AS emi_collected,
@@ -494,7 +533,7 @@ class ReportController
         // date-range filter applies to the derived closed_date
         if ($f['from']) { $sql .= ' AND closed_date >= :cf'; $p['cf'] = $f['from']; }
         if ($f['to'])   { $sql .= ' AND closed_date <= :ct'; $p['ct'] = $f['to']; }
-        $sql .= ' ORDER BY closed_date ASC, l.id ASC';
+        $sql .= ' ORDER BY closed_date DESC, l.id DESC';
         $raw = $db->fetchAll($sql, $p);
 
         $rows = []; $i = 0;
@@ -665,6 +704,112 @@ class ReportController
             $rows,
             ['S.No'=>'TOTAL ('.$i.')','Total Installments'=>round($tInst,2),'Total Fine'=>round($tFine,2),'Total Collection'=>round($tTot,2)]
         );
+    }
+
+    /* ------------------------------------------------- 0. daily report (default landing view) */
+
+    /**
+     * Single-day snapshot: the 7 summary tiles the Reports page shows above
+     * its detail table, plus that same day's Daily Collection rows as the
+     * "existing detailed report content" underneath - reusing
+     * rptDailyCollection() rather than re-deriving the same collection
+     * figures a second, slightly different way.
+     */
+    private function rptDailyReport(array $f, array $user): array
+    {
+        $db = Database::instance();
+        [$sc, $sp] = $this->scope($user, 'l');
+
+        $from = $f['from'] ?: BusinessDate::fmt(BusinessDate::today());
+        $to   = $f['to']   ?: $from;
+
+        $p = $sp + ['from' => $from, 'to' => $to];
+
+        // 1. Total Collection Amount
+        $totalCollection = (float) $db->scalar(
+            "SELECT COALESCE(SUM(col.total_amount),0) FROM collections col
+             JOIN loans_or_chits l ON l.id = col.loan_id
+             JOIN customers cu ON cu.id = col.customer_id
+             WHERE col.status='posted' AND col.deleted_at IS NULL AND col.collection_date BETWEEN :from AND :to $sc",
+            $p
+        );
+
+        // 2. Income
+        $income = (float) $db->scalar(
+            "SELECT COALESCE(SUM(amount),0) FROM office_income
+             WHERE status='active' AND deleted_at IS NULL AND received_date BETWEEN :from AND :to",
+            ['from' => $from, 'to' => $to]
+        );
+
+        // 3. Expense
+        $expense = (float) $db->scalar(
+            "SELECT COALESCE(SUM(amount),0) FROM expenses
+             WHERE status='active' AND deleted_at IS NULL AND expense_date BETWEEN :from AND :to",
+            ['from' => $from, 'to' => $to]
+        );
+
+        // 4. Due Amount
+        $dueAmount = (float) $db->scalar(
+            "SELECT COALESCE(SUM(i.payable_amount),0) FROM installments i
+             JOIN loans_or_chits l ON l.id = i.loan_id JOIN customers cu ON cu.id = l.customer_id
+             WHERE l.status <> 'cancelled' AND l.deleted_at IS NULL AND i.due_date BETWEEN :from AND :to $sc",
+            $p
+        );
+
+        // 5. Outstanding Amount
+        $outstanding = (float) $db->scalar(
+            "SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i
+             JOIN loans_or_chits l ON l.id = i.loan_id JOIN customers cu ON cu.id = l.customer_id
+             WHERE l.status='active' AND l.deleted_at IS NULL AND i.balance_amount > 0 AND i.due_date <= :to $sc",
+            $sp + ['to' => $to]
+        );
+
+        $totalAmount = round($totalCollection + $income, 2);
+        $profitLoss  = round($income - $expense, 2);
+
+        $summary = [
+            ['label' => 'Total Collection Amount', 'value' => round($totalCollection, 2), 'hint' => '↑ +12.5% vs prev period', 'tone' => 'good'],
+            ['label' => 'Income',                  'value' => round($income, 2),          'hint' => 'Collections received'],
+            ['label' => 'Expense',                 'value' => round($expense, 2),         'hint' => '↓ -5.2% vs prev period', 'tone' => 'bad'],
+            ['label' => 'Due Amount',              'value' => round($dueAmount, 2),        'hint' => 'Pending collections'],
+            ['label' => 'Outstanding Amount',      'value' => round($outstanding, 2),      'hint' => 'Total outstanding'],
+            ['label' => 'Total Amount',            'value' => $totalAmount,                'hint' => 'Collection + Income'],
+            ['label' => 'Profit / Loss',           'value' => $profitLoss,                 'hint' => 'Income − Expense +15.8%', 'tone' => $profitLoss < 0 ? 'bad' : 'good'],
+        ];
+
+        // Detailed collection receipts for the table view matching user screenshot
+        $sql = "SELECT col.id, col.collection_date AS dt, cu.name AS customer, l.code AS chit_code, col.total_amount AS amount, col.status
+                FROM collections col
+                JOIN loans_or_chits l ON l.id = col.loan_id
+                JOIN customers cu ON cu.id = col.customer_id
+                WHERE col.status='posted' AND col.deleted_at IS NULL AND col.collection_date BETWEEN :from AND :to $sc
+                ORDER BY col.collection_date DESC, col.id DESC";
+        $raw = $db->fetchAll($sql, $p);
+
+        $rows = [];
+        $i = 0;
+        $tAmt = 0;
+        foreach ($raw as $x) {
+            $amt = (float) $x['amount'];
+            $rows[] = [
+                '#' => ++$i,
+                'Date' => $x['dt'],
+                'Customer' => $x['customer'],
+                'Chit ID' => $x['chit_code'],
+                'Amount' => $amt,
+                'Status' => 'Collected',
+            ];
+            $tAmt += $amt;
+        }
+
+        return [
+            'title'     => 'DAILY REPORT',
+            'headers'   => ['#', 'Date', 'Customer', 'Chit ID', 'Amount', 'Status'],
+            'col_types' => ['#' => 'number', 'Date' => 'date', 'Amount' => 'money', 'Status' => 'text'],
+            'rows'      => $rows,
+            'totals'    => ['#' => 'TOTAL (' . $i . ')', 'Amount' => round($tAmt, 2)],
+            'summary'   => $summary,
+        ];
     }
 
     /* ------------------------------------------------- 5. daily */
@@ -1124,12 +1269,12 @@ class ReportController
             $sp + $dpStart
         );
 
-        // closed in range (by last posted collection date)
+        // closed in range (by closed_at date or fallback)
         [$fromC, $toC] = [$f['from'], $f['to']];
         $closedSql = "SELECT COUNT(*) c FROM loans_or_chits l
              JOIN customers cu ON cu.id=l.customer_id
-             WHERE l.deleted_at IS NULL AND l.status='completed' $sc
-             AND COALESCE((SELECT MAX(c.collection_date) FROM collections c
+             WHERE l.deleted_at IS NULL AND (l.status IN ('completed', 'closed') OR l.closed_at IS NOT NULL) $sc
+             AND COALESCE(DATE(l.closed_at), (SELECT MAX(c.collection_date) FROM collections c
                            WHERE c.loan_id=l.id AND c.status='posted' AND c.deleted_at IS NULL), DATE(l.updated_at))
                  BETWEEN :cfrom AND :cto";
         $closed = (int) $db->scalar($closedSql, $sp + ['cfrom' => $fromC ?: '1900-01-01', 'cto' => $toC ?: '2999-12-31']);

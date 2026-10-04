@@ -111,7 +111,12 @@ export function ErrorState({ error, onRetry }) {
 
 export function Badge({ value }) {
   const valStr = String(value || '');
-  return <span className={`badge ${valStr}`}>{valStr.replace(/_/g, ' ')}</span>;
+  // Display-only: the raw collection/receipt status stored and matched on
+  // everywhere else in the app is still 'posted' - only the label shown to
+  // the user reads "COMPLETED" (className keeps the raw value so the
+  // existing .badge.posted colour rule still applies unchanged).
+  const label = valStr.toLowerCase() === 'posted' ? 'COMPLETED' : valStr.replace(/_/g, ' ');
+  return <span className={`badge ${valStr}`}>{label}</span>;
 }
 
 export function Modal({ title, onClose, children, footer, size }) {

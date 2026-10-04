@@ -76,6 +76,7 @@ export default function InstallmentStatementModal({ installmentId, loan, custome
             <span>Remaining: <b style={{ color: '#f43f5e' }}>{money(inst.balance_amount)}</b></span>
             <span>Status: <b>{inst.status}</b></span>
           </div>
+          <div className="scroll-x">
           <table className="receipt-table">
             <thead>
               <tr><th>#</th><th>Date</th><th>Bill No</th><th className="right">Amount Paid</th><th>Payment Mode</th></tr>
@@ -98,6 +99,7 @@ export default function InstallmentStatementModal({ installmentId, loan, custome
               <tr><td colSpan={3}><b>Total Paid</b></td><td className="right"><b>{money(inst.paid_amount)}</b></td><td></td></tr>
             </tfoot>
           </table>
+          </div>
         </div>
       )}
     </Modal>

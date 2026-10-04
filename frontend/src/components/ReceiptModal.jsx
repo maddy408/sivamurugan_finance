@@ -77,21 +77,24 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
         </div>
 
         {allocations.length > 0 && (
-          <table className="receipt-table" style={{ marginBottom: 10 }}>
-            <thead>
-              <tr><th>Installment No</th><th>Due Date</th><th className="right">Amount Paid</th></tr>
-            </thead>
-            <tbody>
-              {allocations.map((a) => (
-                <tr key={a.id}>
-                  <td>#{a.installment_no}</td>
-                  <td>{fmtDate(a.due_date)}</td>
-                  <td className="right">{money(a.principal_alloc)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="scroll-x" style={{ marginBottom: 10 }}>
+            <table className="receipt-table">
+              <thead>
+                <tr><th>Installment No</th><th>Due Date</th><th className="right">Amount Paid</th></tr>
+              </thead>
+              <tbody>
+                {allocations.map((a) => (
+                  <tr key={a.id}>
+                    <td>#{a.installment_no}</td>
+                    <td>{fmtDate(a.due_date)}</td>
+                    <td className="right">{money(a.principal_alloc)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
+        <div className="scroll-x">
         <table className="receipt-table">
           <thead>
             <tr><th>Description</th><th className="right">Amount</th></tr>
@@ -113,6 +116,7 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
             <tr><td><b>Total Collected</b></td><td className="right"><b>{money(total)}</b></td></tr>
           </tfoot>
         </table>
+        </div>
 
         {collection.remarks && <div className="receipt-remarks">Remarks: {collection.remarks}</div>}
 

@@ -222,7 +222,7 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
             </button>
           </div>
           {(history[d.id] || []).length > 0 && (
-            <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#fff' }}>
+            <div className="table-wrap" style={{ border: '1px solid var(--line)', borderRadius: 8, marginBottom: 8 }}>
               <table className="grid" style={{ fontSize: 12 }}>
                 <thead><tr><th>Date</th><th>Bill No</th><th className="right">Paid Amount</th></tr></thead>
                 <tbody>

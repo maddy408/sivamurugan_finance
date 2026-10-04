@@ -136,6 +136,7 @@ export default function StatementModal({ loan, onClose }) {
           <div className="receipt-section-label" style={{ marginBottom: 6 }}>
             Installment Schedule <span className="muted" style={{ fontWeight: 400 }}>(fully completed dues only)</span>
           </div>
+          <div className="scroll-x">
           <table className="receipt-table">
             <thead>
               <tr>
@@ -181,11 +182,13 @@ export default function StatementModal({ loan, onClose }) {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Collection History Table */}
         <div style={{ marginBottom: 16 }}>
           <div className="receipt-section-label" style={{ marginBottom: 6 }}>🧾 Collection History</div>
+          <div className="scroll-x">
           <table className="receipt-table">
             <thead>
               <tr>
@@ -219,6 +222,7 @@ export default function StatementModal({ loan, onClose }) {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Statement Footer */}

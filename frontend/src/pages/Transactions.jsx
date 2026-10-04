@@ -27,7 +27,7 @@ export default function Transactions() {
     { key: 'customer_name', header: 'Customer', render: (r) => r.customer_name || '—' },
     { key: 'chit_code', header: 'Chit', render: (r) => r.chit_code || '—' },
     { key: 'remarks', header: 'Remarks', render: (r) => r.remarks || '—' },
-    { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status === 'posted' ? 'active' : 'cancelled'}`}>{r.status}</span> },
+    { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status === 'posted' ? 'active' : 'cancelled'}`}>{r.status === 'posted' ? 'Completed' : r.status}</span> },
     { key: 'created_by_name', header: 'By', render: (r) => r.created_by_name || '—' },
   ];
 
@@ -53,7 +53,7 @@ export default function Transactions() {
           <option value="">Any direction</option><option value="credit">Credit</option><option value="debit">Debit</option>
         </select>
         <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
-          <option value="">Any status</option><option value="posted">Posted</option><option value="cancelled">Cancelled</option>
+          <option value="">Any status</option><option value="posted">Completed</option><option value="cancelled">Cancelled</option>
         </select>
         <input type="date" value={list.filters.date_from || ''} onChange={(e) => list.setFilter('date_from', e.target.value)} />
         <input type="date" value={list.filters.date_to || ''} onChange={(e) => list.setFilter('date_to', e.target.value)} />

@@ -95,8 +95,10 @@ export default function Employees() {
     { key: 'username', header: 'Username' },
     { key: 'role', header: 'Role', render: (r) => <span className={`badge ${r.role === 'ADMIN' ? 'COMPLETED' : 'PENDING'}`}>{r.role_name || r.role}</span> },
     { key: 'phone', header: 'Phone' },
-    { key: 'loan_count', header: 'Assigned chits', align: 'right' },
-    { key: 'last_login_at', header: 'Last login', render: (r) => fmtDate(r.last_login_at) },
+    // "Assigned chits" (loan_count) and "Last login" (last_login_at) are
+    // intentionally not shown as columns on this list - still fetched and
+    // available in the View User modal below, just not on the Add User
+    // screen's tables.
     { key: 'is_active', header: 'Status', render: (r) => <span className={`badge ${r.is_active ? 'active' : 'inactive'}`}>{r.is_active ? 'active' : 'inactive'}</span> },
     {
       key: '_a', header: 'Action', align: 'right', render: (r) => (
