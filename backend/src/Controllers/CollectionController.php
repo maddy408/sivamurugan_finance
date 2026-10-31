@@ -85,7 +85,7 @@ class CollectionController
         foreach ($loans as $loan) {
             ScheduleService::refreshOverdue((int)$loan['id']);
             $summary = CollectionService::loanSummary((int)$loan['id']);
-            if ($onlyDue && Money::lte($summary['outstanding_balance'] ?? 0, 0)) {
+            if ($onlyDue && Money::lte($summary['pending_due_amount'] ?? 0, 0)) {
                 continue;
             }
             $iWhere = ['loan_id = :l']; $iParams = ['l' => $loan['id']];

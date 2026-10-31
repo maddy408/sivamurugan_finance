@@ -249,7 +249,8 @@ export default function CollectionChit() {
               <dt>Installment</dt><dd><b style={{ color: '#2563eb' }}>{money(loan.installment_amount)}</b></dd>
               <dt>Tenure / Freq</dt><dd>{loan.tenure} · {loan.frequency}</dd>
               <dt>Total Paid</dt><dd style={{ color: '#10b981', fontWeight: 700 }}>{money(s.collected_principal)}</dd>
-              <dt>Outstanding</dt><dd><b style={{ color: '#f43f5e' }}>{money(s.outstanding_balance)}</b></dd>
+              <dt>Pending Due</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
+              <dt>Chit Balance</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
             </dl>
 
             {can('distributions.view') && (

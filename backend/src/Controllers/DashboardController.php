@@ -296,6 +296,7 @@ class DashboardController
                 'total_collection'  => number_format($collectedAllTime, 2, '.', ''),
                 'monthly_collection'=> number_format($collectedMonth, 2, '.', ''),
                 'weekly_collection' => number_format($collectedWeek, 2, '.', ''),
+                'today_collection'  => number_format($collectedToday, 2, '.', ''),
                 'fine_collected'    => number_format($fineCollected, 2, '.', ''),
                 'accounts'          => $finance['accounts'],
             ],

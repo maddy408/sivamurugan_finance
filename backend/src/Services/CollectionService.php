@@ -506,6 +506,8 @@ final class CollectionService
                 SUM(paid_amount) AS collected_principal,
                 SUM(fine_paid) AS collected_fine,
                 SUM(balance_amount) AS outstanding_balance,
+                SUM(CASE WHEN due_date <= CURDATE() AND balance_amount > 0 THEN balance_amount ELSE 0 END) AS pending_due_amount,
+                SUM(CASE WHEN status='OVERDUE' THEN balance_amount ELSE 0 END) AS overdue_amount,
                 SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
                 SUM(CASE WHEN status='OVERDUE' THEN 1 ELSE 0 END) AS overdue_count
              FROM installments WHERE loan_id = :l",

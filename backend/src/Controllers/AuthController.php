@@ -23,7 +23,7 @@ class AuthController
 
         $db = Database::instance();
         $user = $db->fetch(
-            'SELECT u.*, r.code AS role_code FROM users u JOIN roles r ON r.id = u.role_id WHERE u.username = :un LIMIT 1',
+            'SELECT u.*, r.code AS role_code FROM users u JOIN roles r ON r.id = u.role_id WHERE (u.username = :un OR u.email = :un) LIMIT 1',
             ['un' => $in['username']]
         );
 

@@ -217,7 +217,7 @@ export default function Loans() {
     },
     { 
       key: 'outstanding_balance', 
-      header: 'Outstanding Balance', 
+      header: 'Remaining Balance', 
       align: 'right', 
       render: (r) => (
         <div>

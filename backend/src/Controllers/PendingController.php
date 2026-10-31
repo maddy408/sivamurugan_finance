@@ -7,24 +7,29 @@ use App\Core\ListQuery;
 use App\Core\Request;
 use App\Core\Response;
 use App\Services\ScheduleService;
+use App\Support\BusinessDate;
 use App\Support\Xlsx;
 
 /**
  * GET /api/pending-dues
  *
- * Customers who still owe money, grouped by customer -> chit. "Owing" is decided
- * purely from ACTUAL saved payments: outstanding = SUM(installments.balance_amount)
- * where balance_amount = payable_amount - paid_amount (floored at 0). A fully paid
- * installment (balance 0) drops out; a chit with every installment paid drops out;
- * a customer with nothing outstanding does not appear.
+ * Shows only customers and chits that have actual MATURED pending dues
+ * (i.e. due_date <= today/asOf with balance_amount > 0).
+ * Future scheduled installments (e.g. months ahead in the chit) are NOT
+ * included in pending dues so customers and agents are never confused by
+ * total future chit values.
  */
 class PendingController
 {
     private function build(Request $req, array $user): array
     {
         $db = Database::instance();
+        $today = BusinessDate::fmt(BusinessDate::today());
+        $asOfDate = $req->queryParam('date_to') ?: $today;
+        $dateFrom = $req->queryParam('date_from');
+
         $where = ["l.status = 'active'", 'l.deleted_at IS NULL'];
-        $params = [];
+        $params = ['as_of' => $asOfDate];
 
         [$scopeSql, $sp] = Guard::loanScopeSql($user, 'l');
         $where[] = $scopeSql;
@@ -34,9 +39,13 @@ class PendingController
             $where[] = '(c.name LIKE :q OR c.customer_code LIKE :q OR c.mobile LIKE :q OR l.code LIKE :q OR c.address_line1 LIKE :q)';
             $params['q'] = "%$q%";
         }
-        // No location-based filtering: address is plain customer text, not a
-        // filterable/master-backed dimension.
         $whereSql = implode(' AND ', $where);
+
+        $dateFromCond = '';
+        if ($dateFrom) {
+            $dateFromCond = ' AND i.due_date >= :df';
+            $params['df'] = $dateFrom;
+        }
 
         $chits = $db->fetchAll(
             "SELECT l.id AS chit_id, l.code AS chit_code, l.principal_amount, l.installment_amount,
@@ -45,27 +54,32 @@ class PendingController
                     c.address_line1, COALESCE(NULLIF(c.location,''), l.location) AS location_name,
                     (SELECT COALESCE(SUM(i.payable_amount),0) FROM installments i WHERE i.loan_id = l.id) AS scheduled_total,
                     (SELECT COALESCE(SUM(i.paid_amount),0)    FROM installments i WHERE i.loan_id = l.id) AS paid_total,
-                    (SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i WHERE i.loan_id = l.id) AS outstanding
+                    (SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i WHERE i.loan_id = l.id) AS total_chit_balance,
+                    (SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i WHERE i.loan_id = l.id AND i.due_date <= :as_of $dateFromCond) AS pending_due_amount,
+                    (SELECT COALESCE(SUM(i.balance_amount),0) FROM installments i WHERE i.loan_id = l.id AND i.status = 'OVERDUE') AS overdue_amount,
+                    (SELECT COUNT(*)                          FROM installments i WHERE i.loan_id = l.id AND i.status = 'OVERDUE') AS overdue_count
              FROM loans_or_chits l
              JOIN customers c ON c.id = l.customer_id
              WHERE $whereSql
-             HAVING outstanding > 0
-             ORDER BY c.name, l.code",
+             HAVING pending_due_amount > 0
+             ORDER BY pending_due_amount DESC, c.name ASC",
             $params
         );
 
         foreach ($chits as &$ch) {
             ScheduleService::refreshOverdue((int)$ch['chit_id']);
             $ch['due_installments'] = $db->fetchAll(
-                "SELECT installment_no, due_date, payable_amount, paid_amount, balance_amount, status, last_paid_date
-                 FROM installments WHERE loan_id = :l AND balance_amount > 0 ORDER BY installment_no",
-                ['l' => $ch['chit_id']]
+                "SELECT id, installment_no, due_date, payable_amount, paid_amount, balance_amount, status, last_paid_date
+                 FROM installments
+                 WHERE loan_id = :l AND balance_amount > 0 AND due_date <= :as_of $dateFromCond
+                 ORDER BY installment_no",
+                $params + ['l' => $ch['chit_id']]
             );
             $ch['next_due'] = $ch['due_installments'][0] ?? null;
-            $ch['overdue_count'] = 0;
-            foreach ($ch['due_installments'] as $d) {
-                if ($d['status'] === 'OVERDUE') $ch['overdue_count']++;
-            }
+            // Map outstanding to the actual pending due amount
+            $ch['outstanding'] = (float)$ch['pending_due_amount'];
+            $ch['overdue_amount'] = (float)$ch['overdue_amount'];
+            $ch['overdue_count'] = (int)$ch['overdue_count'];
         }
         unset($ch);
 
@@ -75,21 +89,34 @@ class PendingController
             $cid = $ch['customer_id'];
             if (!isset($byCust[$cid])) {
                 $byCust[$cid] = [
-                    'customer_id' => $cid, 'customer_name' => $ch['customer_name'],
-                    'customer_code' => $ch['customer_code'], 'mobile' => $ch['mobile'],
-                    'address' => $ch['address_line1'], 'location' => $ch['location_name'],
-                    'total_outstanding' => 0.0, 'chits' => [],
+                    'customer_id' => $cid,
+                    'customer_name' => $ch['customer_name'],
+                    'customer_code' => $ch['customer_code'],
+                    'mobile' => $ch['mobile'],
+                    'address' => $ch['address_line1'],
+                    'location' => $ch['location_name'],
+                    'total_pending_due' => 0.0,
+                    'total_outstanding' => 0.0,
+                    'total_overdue' => 0.0,
+                    'overdue_count' => 0,
+                    'chits' => [],
                 ];
             }
-            $byCust[$cid]['total_outstanding'] += (float)$ch['outstanding'];
+            $dueAmt = (float)$ch['pending_due_amount'];
+            $byCust[$cid]['total_pending_due'] += $dueAmt;
+            $byCust[$cid]['total_outstanding'] += $dueAmt;
+            $byCust[$cid]['total_overdue'] += (float)$ch['overdue_amount'];
+            $byCust[$cid]['overdue_count'] += (int)$ch['overdue_count'];
             $byCust[$cid]['chits'][] = $ch;
         }
         $customers = array_values($byCust);
-        usort($customers, fn($a, $b) => $b['total_outstanding'] <=> $a['total_outstanding']);
+        usort($customers, fn($a, $b) => $b['total_pending_due'] <=> $a['total_pending_due']);
 
-        $grandTotal = array_sum(array_map(fn($c) => $c['total_outstanding'], $customers));
+        $grandTotal = array_sum(array_map(fn($c) => $c['total_pending_due'], $customers));
         foreach ($customers as &$c) {
+            $c['total_pending_due'] = number_format($c['total_pending_due'], 2, '.', '');
             $c['total_outstanding'] = number_format($c['total_outstanding'], 2, '.', '');
+            $c['total_overdue'] = number_format($c['total_overdue'], 2, '.', '');
         }
         unset($c);
 
@@ -113,6 +140,7 @@ class PendingController
             'total_pages' => (int)max(1, ceil($total / $perPage)),
             'summary' => [
                 'pending_customers'  => $total,
+                'total_pending_dues' => number_format($grandTotal, 2, '.', ''),
                 'total_outstanding'  => number_format($grandTotal, 2, '.', ''),
             ],
         ]);
@@ -122,17 +150,30 @@ class PendingController
     public function export(Request $req): void
     {
         $user = Guard::authorize($req, 'pending.view');
-        [, $chits] = $this->build($req, $user);
+        [, $chits, $grandTotal] = $this->build($req, $user);
+        $rows = [];
+        foreach ($chits as $ch) {
+            foreach ($ch['due_installments'] as $d) {
+                $rows[] = [
+                    $ch['customer_name'],
+                    $ch['customer_code'],
+                    $ch['mobile'],
+                    $ch['location_name'],
+                    $ch['chit_code'],
+                    'Due #' . $d['installment_no'],
+                    $d['due_date'],
+                    (float)$d['payable_amount'],
+                    (float)$d['paid_amount'],
+                    (float)$d['balance_amount'],
+                    $d['status'],
+                ];
+            }
+        }
         Xlsx::stream('pending_dues_' . date('Ymd_His') . '.xlsx',
-            ['Customer', 'Customer Code', 'Phone', 'Location', 'Chit Code', 'Chit Amount', 'Installment Amount', 'Scheduled', 'Paid', 'Outstanding', 'Overdue Installments', 'Next Due Date'],
-            array_map(fn($ch) => [
-                $ch['customer_name'], $ch['customer_code'], $ch['mobile'], $ch['location_name'],
-                $ch['chit_code'], (float)$ch['principal_amount'], (float)$ch['installment_amount'],
-                (float)$ch['scheduled_total'], (float)$ch['paid_total'], (float)$ch['outstanding'],
-                (int)$ch['overdue_count'], $ch['next_due']['due_date'] ?? '',
-            ], $chits),
-            [['Pending Dues', 'generated ' . date('Y-m-d H:i')], ['Rows', count($chits)]],
-            [5 => 'number', 6 => 'number', 7 => 'number', 8 => 'number', 9 => 'number', 10 => 'number', 11 => 'date']
+            ['Customer', 'Customer Code', 'Phone', 'Location', 'Chit Code', 'Due Number', 'Due Date', 'Installment (EMI)', 'Paid Amount', 'Due Balance', 'Status'],
+            $rows,
+            [['Pending Dues Itemized Report', 'Total Pending: Rs. ' . number_format($grandTotal, 2)], ['Total Dues Listed', count($rows)]],
+            [6 => 'date', 7 => 'number', 8 => 'number', 9 => 'number']
         );
     }
 }

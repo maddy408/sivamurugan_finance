@@ -172,7 +172,8 @@ export default function LoanDetail() {
               <dt>Installments</dt><dd>{s.installments_total} ({s.completed_count} completed, {s.overdue_count} overdue)</dd>
               <dt>Scheduled total</dt><dd>{money(s.scheduled_total)}</dd>
               <dt>Collected (actual)</dt><dd>{money(s.collected_principal)}</dd>
-              <dt>Outstanding balance</dt><dd><b>{money(s.outstanding_balance)}</b></dd>
+              <dt>Pending due</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
+              <dt>Remaining chit balance</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
             </dl>
           </div>
         </div>

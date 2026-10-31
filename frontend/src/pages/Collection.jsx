@@ -37,7 +37,7 @@ export default function Collection() {
         </select>
         <select value={list.filters.only_due || ''} onChange={(e) => list.setFilter('only_due', e.target.value)}>
           <option value="">All chits</option>
-          <option value="1">Only with outstanding</option>
+          <option value="1">Only with pending dues</option>
         </select>
         <select value={list.filters.schedule_type || ''} onChange={(e) => list.setFilter('schedule_type', e.target.value)}>
           <option value="">Any schedule</option>
@@ -68,11 +68,10 @@ export default function Collection() {
               <tr>
                 <th>Customer</th>
                 <th>Chit</th>
-                <th className="right">Chit Amount</th>
                 <th className="right">Installment</th>
                 <th>Next Due</th>
                 <th className="right">Fine</th>
-                <th className="right">Outstanding</th>
+                <th className="right">Pending Due</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -80,16 +79,18 @@ export default function Collection() {
             <tbody>
               {loans.map((loan) => {
                 const nd = loan.next_due;
-                const outstanding = Number(loan.summary?.outstanding_balance || 0);
-                const isDue = outstanding > 0;
+                const pendingDue = Number(loan.summary?.pending_due_amount || 0);
+                const overdueCount = Number(loan.summary?.overdue_count || 0);
+                const isDue = pendingDue > 0;
                 const fine = nd ? Number((loan.installments || []).find((i) => i.id === nd.id)?.fine_accrued || 0) : 0;
                 const status = (loan.status || '').toLowerCase();
                 const isActive = status === 'active';
                 const statusBadge = status === 'closed' ? { cls: 'closed', label: 'CLOSED' }
                   : status === 'completed' ? { cls: 'COMPLETED', label: 'COMPLETED' }
                   : status === 'cancelled' ? { cls: 'cancelled', label: 'CANCELLED' }
-                  : isDue ? { cls: 'OVERDUE', label: 'DUE' }
-                  : { cls: 'active', label: 'ACTIVE' };
+                  : overdueCount > 0 ? { cls: 'OVERDUE', label: `${overdueCount} OVERDUE` }
+                  : isDue ? { cls: 'pending', label: 'DUE' }
+                  : { cls: 'active', label: 'ALL CLEAR' };
                 return (
                   <tr key={loan.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/collection/chit/${loan.id}`)}>
                     <td data-label="Customer">
@@ -97,14 +98,13 @@ export default function Collection() {
                       <div className="muted" style={{ fontSize: 11 }}>{loan.customer_code} · <FiPhone size={10} style={{ verticalAlign: -1 }} /> {loan.mobile || '—'}</div>
                     </td>
                     <td data-label="Chit"><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></td>
-                    <td className="right" data-label="Chit Amount">{money(loan.principal_amount)}</td>
                     <td className="right" data-label="Installment" style={{ fontWeight: 700 }}>{money(loan.installment_amount)}</td>
                     <td data-label="Next Due">
-                      {nd ? <>{fmtDate(nd.due_date)} <span className="muted">(#{nd.installment_no})</span></> : '—'}
+                      {nd ? <>{fmtDate(nd.due_date)} <span className="muted">(#{nd.installment_no}, {money(nd.balance_amount)})</span></> : '—'}
                     </td>
                     <td className="right" data-label="Fine">{fine > 0 ? money(fine) : '—'}</td>
-                    <td className="right" data-label="Outstanding">
-                      <b style={{ color: isDue ? '#f43f5e' : '#10b981' }}>{money(outstanding)}</b>
+                    <td className="right" data-label="Pending Due">
+                      <b style={{ color: isDue ? '#f43f5e' : '#10b981' }}>{isDue ? money(pendingDue) : '₹0.00'}</b>
                     </td>
                     <td data-label="Status">
                       <span className={`badge ${statusBadge.cls}`}>{statusBadge.label}</span>

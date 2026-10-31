@@ -35,17 +35,19 @@ export default function Dashboard() {
     ? [
         {
           key: 'total_collection',
-          label: 'TOTAL COLLECTION',
-          subtext: 'Cash collected so far',
+          label: 'TOTAL COLLECTION (ALL TIME)',
+          subtext: 'Lifetime collection across all chits',
           icon: <FiCreditCard />,
           value: c.total_collection,
           borderLeft: '4px solid #087f47',
           iconBg: '#e6f4ea',
           iconColor: '#087f47',
+          today: c.today_collection || 0,
+          monthly: c.monthly_collection || 0,
         },
         {
           key: 'total_chit_amount',
-          label: 'TOTAL CHITS',
+          label: 'CHIT PORTFOLIO VALUE',
           subtext: 'Combined face value of every chit',
           icon: <FiFileText />,
           value: c.total_chit_amount,
@@ -55,8 +57,8 @@ export default function Dashboard() {
         },
         {
           key: 'total_amount',
-          label: 'TOTAL AMOUNT',
-          subtext: 'Office Cash + Bank Cash',
+          label: 'CASH & BANK BALANCE',
+          subtext: `Office: ${money(c.office_cash)} · Bank: ${money(c.bank_cash)}`,
           icon: <FiBarChart2 />,
           value: c.total_amount,
           borderLeft: '4px solid #0d3878',
@@ -66,7 +68,7 @@ export default function Dashboard() {
         {
           key: 'total_expense',
           label: 'TOTAL EXPENSE',
-          subtext: 'All office expenses',
+          subtext: `This Month: ${money(c.expense_this_month || 0)}`,
           icon: <FiTrendingDown />,
           value: c.total_expense,
           borderLeft: '4px solid #be123c',
@@ -76,7 +78,7 @@ export default function Dashboard() {
         {
           key: 'total_income',
           label: 'TOTAL INCOME',
-          subtext: 'All office income',
+          subtext: 'All office income recorded',
           icon: <FiCreditCard />,
           value: c.total_income,
           borderLeft: '4px solid #d99b26',
@@ -182,6 +184,21 @@ export default function Dashboard() {
                 {m.icon}
               </div>
             </div>
+
+            {m.today !== undefined && (
+              <div style={{
+                borderTop: '1px solid #f1f5f9',
+                paddingTop: 10,
+                marginTop: 6,
+                display: 'flex',
+                gap: 14,
+                fontSize: 12,
+                color: '#64748b'
+              }}>
+                <span>Today: <b style={{ color: '#087f47' }}>{money(m.today)}</b></span>
+                <span>This Month: <b style={{ color: '#0f172a' }}>{money(m.monthly)}</b></span>
+              </div>
+            )}
 
             {m.weekly !== undefined && (
               <div style={{

@@ -38,7 +38,7 @@ export default function CustomerDetail() {
               <dt>Address</dt><dd>{[c.address_line1, c.address_line2].filter(Boolean).join(', ') || '—'}</dd>
               <dt>Location</dt><dd>{c.location?.name || '—'}</dd>
               <dt>Nominee</dt><dd>{c.nominee_name ? `${c.nominee_name} (${c.nominee_relation || '—'}) ${c.nominee_mobile || ''}` : '—'}</dd>
-              <dt>Outstanding</dt><dd><b>{money(data.outstanding_balance)}</b></dd>
+              <dt>Chit Balance</dt><dd><b>{money(data.outstanding_balance)}</b></dd>
             </dl>
           </div>
         </div>
@@ -47,14 +47,14 @@ export default function CustomerDetail() {
           <div className="card-head"><h2>Active loans / chits</h2></div>
           <div className="table-wrap">
             <table className="grid">
-              <thead><tr><th>Code</th><th className="right">Chit Amount</th><th className="right">Installment Amount</th><th className="right">Outstanding</th><th>Status</th></tr></thead>
+              <thead><tr><th>Code</th><th className="right">Chit Amount</th><th className="right">Installment Amount</th><th className="right">Remaining Balance</th><th>Status</th></tr></thead>
               <tbody>
                 {data.loans.map((l) => (
                   <tr key={l.id}>
                     <td data-label="Code"><Link to={`/loans/${l.id}`}>{l.code}</Link></td>
                     <td data-label="Chit Amount" className="right">{money(l.principal_amount)}</td>
                     <td data-label="Installment Amount" className="right">{money(l.installment_amount ?? l.emi_amount)}</td>
-                    <td data-label="Outstanding" className="right">{money(l.outstanding_balance)}</td>
+                    <td data-label="Remaining Balance" className="right">{money(l.outstanding_balance)}</td>
                     <td data-label="Status"><Badge value={l.status} /></td>
                   </tr>
                 ))}

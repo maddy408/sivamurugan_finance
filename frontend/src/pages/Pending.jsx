@@ -43,7 +43,7 @@ export default function Pending({ hideTitle = false }) {
     <>
       {!hideTitle && (
         <div className="page-header">
-          <h1 className="page-title"> Pending Dues & Outstanding</h1>
+          <h1 className="page-title">Pending Dues &amp; Arrears</h1>
         </div>
       )}
 
@@ -75,12 +75,12 @@ export default function Pending({ hideTitle = false }) {
         <div className="stat emerald">
           <div className="label">Pending Customers</div>
           <div className="value">{s.pending_customers ?? '—'}</div>
-          <div className="sub">Accounts with unpaid balances</div>
+          <div className="sub">Accounts with unpaid dues</div>
         </div>
         <div className="stat rose">
-          <div className="label">Total Outstanding</div>
-          <div className="value">{money(s.total_outstanding)}</div>
-          <div className="sub">Combined pending installments</div>
+          <div className="label">Total Pending Dues</div>
+          <div className="value">{money(s.total_pending_dues || s.total_outstanding)}</div>
+          <div className="sub">Actual dues payable up to today</div>
         </div>
       </div>
 
@@ -109,62 +109,116 @@ export default function Pending({ hideTitle = false }) {
       {list.loading && <Spinner />}
       {list.error && <ErrorState error={list.error} onRetry={list.reload} />}
       {!list.loading && !list.error && customers.length === 0 && (
-        <EmptyState title={activeTab === 'overdue' ? "No overdue installments" : "No pending dues"} hint="Every scheduled installment has been fully paid." />
+        <EmptyState title={activeTab === 'overdue' ? "No overdue installments" : "No pending dues"} hint="Every scheduled installment up to today has been fully paid." />
       )}
 
-      {customers.map((c) => (
-        <div className="card" key={c.customer_id} style={{ marginBottom: 14 }}>
-          <div className="card-head">
-            <div>
-              <h2 style={{ marginBottom: 2 }}>
-                <Link to={`/customers/${c.customer_id}`}>{c.customer_name}</Link>{' '}
-                <span className="muted">· {c.customer_code} · {c.mobile || '—'}</span>
-              </h2>
-              <div className="muted" style={{ fontSize: 12 }}>
-                {c.location || '—'}{c.address ? ` · ${c.address}` : ''}
+      {customers.map((c) => {
+        const dues = (c.chits || []).flatMap((ch) =>
+          (ch.due_installments || []).map((d) => ({
+            ...d,
+            chit_id: ch.chit_id,
+            chit_code: ch.chit_code,
+            chit_installment: ch.installment_amount,
+          }))
+        );
+
+        const displayDues = activeTab === 'overdue'
+          ? dues.filter((d) => d.status === 'OVERDUE')
+          : dues;
+
+        if (displayDues.length === 0) return null;
+
+        const totalCustomerPending = displayDues.reduce((sum, d) => sum + Number(d.balance_amount || 0), 0);
+        const overdueCount = displayDues.filter((d) => d.status === 'OVERDUE').length;
+
+        return (
+          <div className="card" key={c.customer_id} style={{ marginBottom: 16 }}>
+            <div className="card-head">
+              <div>
+                <h2 style={{ marginBottom: 2 }}>
+                  <Link to={`/customers/${c.customer_id}`}>{c.customer_name}</Link>{' '}
+                  <span className="muted">· {c.customer_code} · {c.mobile || '—'}</span>
+                </h2>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {c.location || '—'}{c.address ? ` · ${c.address}` : ''}
+                </div>
+              </div>
+              <div className="right">
+                <div className="muted" style={{ fontSize: 11 }}>Customer Pending Due</div>
+                <b style={{ fontSize: 17, color: 'var(--rose)' }}>{money(totalCustomerPending)}</b>
+                <div style={{ fontSize: 11, color: overdueCount > 0 ? '#e11d48' : '#64748b', marginTop: 2, fontWeight: 600 }}>
+                  {displayDues.length} due{displayDues.length === 1 ? '' : 's'} pending {overdueCount > 0 ? `(${overdueCount} overdue)` : ''}
+                </div>
               </div>
             </div>
-            <div className="right">
-              <div className="muted" style={{ fontSize: 11 }}>Total outstanding</div>
-              <b style={{ fontSize: 16, color: 'var(--rose)' }}>{money(c.total_outstanding)}</b>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead>
+                  <tr>
+                    <th>Chit Code</th>
+                    <th>Due No.</th>
+                    <th>Due Date</th>
+                    <th className="right">Installment Amount</th>
+                    <th className="right">Paid</th>
+                    <th className="right">Due Balance</th>
+                    <th className="center">Status</th>
+                    <th className="right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayDues.map((d, idx) => (
+                    <tr key={`${d.chit_id}-${d.id || idx}`}>
+                      <td>
+                        <Link to={`/loans/${d.chit_id}`} style={{ fontWeight: 700 }}>
+                          {d.chit_code}
+                        </Link>
+                      </td>
+                      <td>
+                        <b style={{ color: '#0f172a' }}>Due #{d.installment_no}</b>
+                      </td>
+                      <td className="nowrap">{fmtDate(d.due_date)}</td>
+                      <td className="right">{money(d.payable_amount || d.chit_installment)}</td>
+                      <td className="right" style={{ color: Number(d.paid_amount) > 0 ? '#10b981' : '#64748b', fontWeight: 600 }}>
+                        {money(d.paid_amount)}
+                      </td>
+                      <td className="right">
+                        <b style={{ fontSize: 14, color: '#e11d48' }}>{money(d.balance_amount)}</b>
+                      </td>
+                      <td className="center">
+                        <span className={`badge ${d.status}`}>
+                          {d.status}
+                        </span>
+                      </td>
+                      <td className="right nowrap">
+                        {can('collection.create') ? (
+                          <Link className="btn sm" to={`/collection/chit/${d.chit_id}`}>
+                            Collect Due #{d.installment_no}
+                          </Link>
+                        ) : (
+                          <Link className="btn sm secondary" to={`/collection/chit/${d.chit_id}`}>
+                            View
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                    <td colSpan={5} style={{ textAlign: 'right', color: '#64748b', fontSize: 12 }}>
+                      Total Pending for Customer ({displayDues.length} dues):
+                    </td>
+                    <td className="right" style={{ fontSize: 15, color: '#e11d48' }}>
+                      {money(totalCustomerPending)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
-          <div className="table-wrap">
-            <table className="grid">
-              <thead>
-                <tr>
-                  <th>Chit Code</th><th className="right">Chit Amount</th><th className="right">Installment Amount</th>
-                  <th className="right">Paid</th><th className="right">Outstanding</th>
-                  <th className="right">Overdue</th><th>Next Due</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {c.chits.map((ch) => (
-                  <tr key={ch.chit_id}>
-                    <td><Link to={`/loans/${ch.chit_id}`}>{ch.chit_code}</Link></td>
-                    <td className="right">{money(ch.principal_amount)}</td>
-                    <td className="right">{money(ch.installment_amount)}</td>
-                    <td className="right">{money(ch.paid_total)}</td>
-                    <td className="right"><b>{money(ch.outstanding)}</b></td>
-                    <td className="right">{ch.overdue_count > 0
-                      ? <span className="badge OVERDUE">{ch.overdue_count}</span> : '—'}</td>
-                    <td className="nowrap">
-                      {ch.next_due
-                        ? <>{fmtDate(ch.next_due.due_date)} <span className="muted">(#{ch.next_due.installment_no}, {money(ch.next_due.balance_amount)})</span></>
-                        : '—'}
-                    </td>
-                    <td className="right nowrap">
-                      {can('collection.create')
-                        ? <Link className="btn sm" to={`/collection/chit/${ch.chit_id}`}> Collect</Link>
-                        : <Link className="btn sm secondary" to={`/collection/chit/${ch.chit_id}`}>View</Link>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       {!list.loading && customers.length > 0 && (
         <div className="pagination">
@@ -174,8 +228,6 @@ export default function Pending({ hideTitle = false }) {
           <button className="btn sm secondary" disabled={list.page >= list.pagination.total_pages} onClick={() => list.setPage(list.page + 1)}>Next</button>
         </div>
       )}
-
     </>
   );
 }
-
