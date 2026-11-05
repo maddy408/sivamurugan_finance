@@ -45,7 +45,7 @@ export default function DataTable({
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
       {isSelectable && selArray.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -92,7 +92,11 @@ export default function DataTable({
                   style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left' }}
                 >
                   {c.header}
-                  {c.sortable && sortBy === c.key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
+                  {c.sortable ? (
+                    <span style={{ fontSize: 11, marginLeft: 4, opacity: sortBy === c.key ? 1 : 0.45 }}>
+                      {sortBy === c.key ? (sortDir === 'desc' ? '∨' : '∧') : '⇅'}
+                    </span>
+                  ) : ''}
                 </th>
               ))}
             </tr>
@@ -137,13 +141,23 @@ export default function DataTable({
 
       {!loading && !error && (
         <div className="pagination">
-          <span>{total} record{total === 1 ? '' : 's'}</span>
-          <select value={perPage} onChange={(e) => onPerPage?.(Number(e.target.value))}>
-            {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} / page</option>)}
-          </select>
-          <button className="btn sm secondary" disabled={page <= 1} onClick={() => onPage?.(page - 1)}>Prev</button>
-          <span>Page {page} of {Math.max(1, totalPages || 1)}</span>
-          <button className="btn sm secondary" disabled={page >= (totalPages || 1)} onClick={() => onPage?.(page + 1)}>Next</button>
+          <div className="pagination-info">
+            <span className="pagination-total">{total} record{total === 1 ? '' : 's'}</span>
+            <select className="pagination-per-page" value={perPage} onChange={(e) => onPerPage?.(Number(e.target.value))}>
+              {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} / page</option>)}
+            </select>
+          </div>
+          <div className="pagination-controls">
+            <button className="btn sm secondary pagination-btn" disabled={page <= 1} onClick={() => onPage?.(page - 1)}>
+              Prev
+            </button>
+            <span className="pagination-page-indicator">
+              Page {page} of {Math.max(1, totalPages || 1)}
+            </span>
+            <button className="btn sm secondary pagination-btn" disabled={page >= (totalPages || 1)} onClick={() => onPage?.(page + 1)}>
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

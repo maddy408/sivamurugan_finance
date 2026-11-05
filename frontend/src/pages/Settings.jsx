@@ -5,28 +5,33 @@ import { useToast } from '../state/ToastContext';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
 import Employees from './Employees';
-import { FiSettings, FiUsers, FiUser, FiLock } from 'react-icons/fi';
+import {
+  FiSettings, FiUsers, FiUser, FiLock, FiBriefcase, FiGrid,
+  FiCalendar, FiAward, FiCreditCard, FiDollarSign, FiGlobe,
+  FiHome, FiMail, FiPhone, FiPhoneCall, FiFileText, FiMapPin,
+  FiUpload, FiSave, FiCheckCircle
+} from 'react-icons/fi';
 
 export default function Settings() {
   const toast = useToast();
   const { user, can, isAdmin, refreshMeta } = useAuth();
-  const [tab, setTab] = useState('Profile');
+  const [tab, setTab] = useState('Organization');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef();
 
   const tabs = [
-    'Profile',
-    'Change Password',
-    'Organization',
-    ...((can('employees.view') || isAdmin) ? ['Users'] : []),
-    'Chit codes',
-    'Schedule',
-    'Fine rules',
-    'Payment modes',
-    'Accounts',
-    'Language',
+    { id: 'Organization', label: 'Organization', icon: FiBriefcase },
+    { id: 'Profile', label: 'Profile', icon: FiUser },
+    { id: 'Change Password', label: 'Change Password', icon: FiLock },
+    ...((can('employees.view') || isAdmin) ? [{ id: 'Users', label: 'Users', icon: FiUsers }] : []),
+    { id: 'Chit codes', label: 'Chit Codes', icon: FiGrid },
+    { id: 'Schedule', label: 'Schedule', icon: FiCalendar },
+    { id: 'Fine rules', label: 'Fine Rules', icon: FiAward },
+    { id: 'Payment modes', label: 'Payment Modes', icon: FiCreditCard },
+    { id: 'Accounts', label: 'Accounts', icon: FiDollarSign },
+    { id: 'Language', label: 'Language', icon: FiGlobe },
   ];
 
   const load = () => { setError(null); api.get('/api/settings').then((r) => setData(r.data)).catch(setError); };
@@ -44,16 +49,33 @@ export default function Settings() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><FiSettings /> Settings</h1>
+      {/* Settings Top Text Header (No Box Card, Comfortable & Clear) */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FiSettings size={20} style={{ color: '#1d4ed8' }} /> Settings
+        </h1>
+        <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+          Manage your application settings and organization details
+        </span>
       </div>
 
-      <div className="sub-tab-bar" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
-        {tabs.map((t) => (
-          <button key={t} className={`sub-tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'Users' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiUsers size={13} /> Users</span> : t}
-          </button>
-        ))}
+      {/* Settings Tab Navigation Pills (Single Row, Well-Spaced & Clear) */}
+      <div className="settings-tab-bar" style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 12, scrollbarWidth: 'none' }}>
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const isActive = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              className={`settings-tab-btn ${isActive ? 'active' : ''}`}
+              onClick={() => setTab(t.id)}
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              <Icon size={13} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {tab === 'Profile' && <ProfileTab user={user} />}
@@ -71,22 +93,260 @@ export default function Settings() {
   );
 }
 
+function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
+  const [f, setF] = useState(data.organization || {});
+  const [selectedFile, setSelectedFile] = useState(null);
+  const logo = data.organization?.logo_path;
+
+  const handleSaveAll = async () => {
+    if (selectedFile) {
+      try {
+        await api.upload('/api/settings/organization/logo', selectedFile);
+        await refreshMeta?.();
+      } catch (e) {
+        toast.error('Logo upload error: ' + e.message);
+        return;
+      }
+    }
+    await save(() => api.put('/api/settings/organization', f), 'Organization information saved');
+    reload();
+  };
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+      {/* Banner Header Matching Reference Screenshot (Attractive & Balanced) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        color: '#ffffff'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, zIndex: 1 }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 9,
+            background: 'rgba(255, 255, 255, 0.15)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#facc15'
+          }}>
+            <FiBriefcase size={16} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.01em' }}>
+              Organization Information
+            </h2>
+            <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)', fontWeight: 500 }}>
+              Manage your chit fund business details
+            </p>
+          </div>
+        </div>
+
+        {/* Ambient Glow Gradient */}
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 220,
+          background: 'radial-gradient(ellipse at right, rgba(251, 191, 36, 0.22) 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+      </div>
+
+      <div style={{ padding: '16px 20px' }}>
+        {/* Form Fields: Single Icon Per Field (Exact 2-column grid, comfortable spacing) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 8 }}>
+          {/* Organization Name */}
+          <div className="form-field-group">
+            <label className="form-field-label">Organization Name</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiHome size={13} /></div>
+              <input
+                value={f.name || ''}
+                onChange={(e) => setF({ ...f, name: e.target.value })}
+                placeholder="Siva Murugan Chit Fund"
+              />
+            </div>
+          </div>
+
+          {/* Email Address */}
+          <div className="form-field-group">
+            <label className="form-field-label">Email Address</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiMail size={13} /></div>
+              <input
+                type="email"
+                value={f.email || ''}
+                onChange={(e) => setF({ ...f, email: e.target.value })}
+                placeholder="info@sivamuruganchitfund.example"
+              />
+            </div>
+          </div>
+
+          {/* Mobile Number */}
+          <div className="form-field-group">
+            <label className="form-field-label">Mobile Number</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiPhone size={13} /></div>
+              <input
+                value={f.mobile || ''}
+                onChange={(e) => setF({ ...f, mobile: e.target.value })}
+                placeholder="9000000000"
+              />
+            </div>
+          </div>
+
+          {/* Telephone */}
+          <div className="form-field-group">
+            <label className="form-field-label">Telephone</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiPhoneCall size={13} /></div>
+              <input
+                value={f.telephone || ''}
+                onChange={(e) => setF({ ...f, telephone: e.target.value })}
+                placeholder="044-20000000"
+              />
+            </div>
+          </div>
+
+          {/* Website */}
+          <div className="form-field-group">
+            <label className="form-field-label">Website</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiGlobe size={13} /></div>
+              <input
+                value={f.website || ''}
+                onChange={(e) => setF({ ...f, website: e.target.value })}
+                placeholder="https://sivamuruganchitfund.example"
+              />
+            </div>
+          </div>
+
+          {/* GST / REG. No. */}
+          <div className="form-field-group">
+            <label className="form-field-label">GST / REG. No.</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiFileText size={13} /></div>
+              <input
+                value={f.gst || ''}
+                onChange={(e) => setF({ ...f, gst: e.target.value })}
+                placeholder="33ABCDE1234F1Z5"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Address spanning full width */}
+        <div className="form-field-group" style={{ marginBottom: 10 }}>
+          <label className="form-field-label">Address</label>
+          <div className="input-with-icon">
+            <div className="input-icon-pill"><FiMapPin size={13} /></div>
+            <input
+              value={f.address || ''}
+              onChange={(e) => setF({ ...f, address: e.target.value })}
+              placeholder="Main Road, Tamil Nadu"
+            />
+          </div>
+        </div>
+
+        {/* Bottom Section: Logo Upload & Save Changes Button */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          paddingTop: 10, borderTop: '1px solid #edf2f7', flexWrap: 'wrap', gap: 12
+        }}>
+          {/* Logo Card & Upload */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{
+              width: 90, height: 42, borderRadius: 10, border: '1.5px solid #cbd5e1',
+              background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 4, overflow: 'hidden'
+            }}>
+              {selectedFile ? (
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', textAlign: 'center' }}>Selected</span>
+              ) : logo ? (
+                <img src={API_BASE + logo} alt="logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ) : (
+                <span className="muted" style={{ fontSize: 10.5 }}>No logo</span>
+              )}
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', lineHeight: 1.2 }}>Organization Logo</div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>PNG, JPG or SVG</div>
+            </div>
+
+            <input
+              type="file"
+              ref={fileRef}
+              style={{ display: 'none' }}
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setSelectedFile(file);
+              }}
+            />
+
+            <button
+              type="button"
+              className="btn secondary sm"
+              onClick={() => fileRef.current?.click()}
+              style={{
+                borderRadius: 16, border: '1.5px solid #cbd5e1', padding: '4px 14px',
+                fontSize: 11.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6,
+                height: 30
+              }}
+            >
+              <FiUpload size={12} /> Choose File
+            </button>
+            <span style={{ fontSize: 11, color: '#64748b' }}>
+              {selectedFile ? selectedFile.name : 'No file chosen'}
+            </span>
+          </div>
+
+          {/* Glowing Save Changes Button */}
+          <button
+            className="btn-save-glow"
+            disabled={busy}
+            onClick={handleSaveAll}
+          >
+            <FiSave size={14} /> {busy ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileTab({ user }) {
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
   return (
-    <div className="card">
-      <div className="card-head">
-        <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiUser size={15} /> User Profile Settings</h2>
+    <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14 }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+        }}>
+          <FiUser size={16} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>User Profile Settings</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>View account details and assigned permissions</p>
+        </div>
       </div>
-      <div className="card-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--line-subtle)' }}>
-          <div className="customer-avatar-box" style={{ width: 56, height: 56, fontSize: 24 }}>{initial}</div>
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+          <div className="customer-avatar-box" style={{ width: 44, height: 44, fontSize: 18, borderRadius: 12 }}>{initial}</div>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>{user?.name}</h3>
-            <span className="badge PENDING" style={{ marginTop: 4 }}>{user?.role_name || user?.role}</span>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>{user?.name}</h3>
+            <span className="badge PENDING" style={{ marginTop: 2, fontSize: 11 }}>{user?.role_name || user?.role}</span>
           </div>
         </div>
-        <dl className="kv" style={{ gridTemplateColumns: '160px 1fr', rowGap: 10 }}>
+        <dl className="kv" style={{ gridTemplateColumns: '140px 1fr', rowGap: 8 }}>
           <dt>Full Name</dt><dd>{user?.name}</dd>
           <dt>Username</dt><dd><code>{user?.username}</code></dd>
           <dt>Email Address</dt><dd>{user?.email || '—'}</dd>
@@ -101,27 +361,38 @@ function ProfileTab({ user }) {
 function PasswordField({ label, value, onChange, autoComplete, error }) {
   const [show, setShow] = useState(false);
   return (
-    <Field label={label} error={error}>
-      <div className="input-icon-wrap">
-        <IconLock />
-        <input type={show ? 'text' : 'password'} value={value} onChange={onChange} autoComplete={autoComplete} />
-        <button type="button" className="password-toggle-btn" onClick={() => setShow((s) => !s)} tabIndex={-1}
-          aria-label={show ? 'Hide password' : 'Show password'}>
+    <div className="form-field-group">
+      <label className="form-field-label">{label}</label>
+      <div className="input-with-icon">
+        <div className="input-icon-pill"><FiLock size={13} /></div>
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          autoComplete={autoComplete}
+          placeholder={label}
+        />
+        <button
+          type="button"
+          className="password-toggle-btn"
+          onClick={() => setShow((s) => !s)}
+          tabIndex={-1}
+          style={{ position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+          aria-label={show ? 'Hide password' : 'Show password'}
+        >
           {show ? <IconEyeOff /> : <IconEye />}
         </button>
       </div>
-    </Field>
+      {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 2 }}>{error}</span>}
+    </div>
   );
 }
 
-function IconLock() {
-  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
-}
 function IconEye() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" /><circle cx="12" cy="12" r="3" /></svg>;
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8Z" /><circle cx="12" cy="12" r="3" /></svg>;
 }
 function IconEyeOff() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-3.06 4.26M6.61 6.61A18.65 18.65 0 0 0 1 12s4 8 11 8a9.16 9.16 0 0 0 5.39-1.61M14.12 14.12a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>;
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-3.06 4.26M6.61 6.61A18.65 18.65 0 0 0 1 12s4 8 11 8a9.16 9.16 0 0 0 5.39-1.61M14.12 14.12a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>;
 }
 
 function ChangePasswordTab({ toast }) {
@@ -163,57 +434,35 @@ function ChangePasswordTab({ toast }) {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 480 }}>
-      <div className="card-head"><h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiLock size={15} /> Change Password</h2></div>
-      <div className="card-body">
+    <div className="card" style={{ maxWidth: 460, padding: 0, overflow: 'hidden', borderRadius: 14 }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+        }}>
+          <FiLock size={16} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Change Password</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Update your account login password</p>
+        </div>
+      </div>
+      <div style={{ padding: '16px 20px' }}>
         <PasswordField label="Current Password *" value={f.current_password} autoComplete="current-password" error={errors.current_password}
           onChange={(e) => setF({ ...f, current_password: e.target.value })} />
         <PasswordField label="New Password *" value={f.new_password} autoComplete="new-password" error={errors.new_password}
           onChange={(e) => setF({ ...f, new_password: e.target.value })} />
         <PasswordField label="Confirm Password *" value={f.confirm_password} autoComplete="new-password" error={errors.confirm_password}
           onChange={(e) => setF({ ...f, confirm_password: e.target.value })} />
-        <button className="btn" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Change Password'}</button>
+        <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} disabled={busy} onClick={submit}>
+          <FiSave size={14} /> {busy ? 'Saving…' : 'Change Password'}
+        </button>
       </div>
     </div>
-  );
-}
-
-function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
-  const [f, setF] = useState(data.organization || {});
-  const logo = data.organization?.logo_path;
-  return (
-    <div className="card"><div className="card-body">
-      <div className="form-grid">
-        {[['name', 'Organization name'], ['email', 'Email'], ['mobile', 'Mobile'], ['telephone', 'Telephone'], ['website', 'Website'], ['gst', 'GST / Reg. no']].map(([k, l]) => (
-          <Field key={k} label={l}><input value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></Field>
-        ))}
-      </div>
-      <Field label="Address"><textarea rows={2} value={f.address || ''} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
-
-      <Field label="Organization logo (also shown in the top navbar)">
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 12, border: '1px solid var(--line)', background: '#f8fafc',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {logo
-              ? <img src={API_BASE + logo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              : <span className="muted" style={{ fontSize: 11 }}>No logo</span>}
-          </div>
-          <input type="file" ref={fileRef} accept="image/png,image/jpeg,image/webp" />
-          <button className="btn secondary" disabled={busy} onClick={async () => {
-            const file = fileRef.current?.files?.[0];
-            if (!file) return toast.error('Choose an image first');
-            try {
-              await api.upload('/api/settings/organization/logo', file);
-              toast.success('Logo updated — navbar refreshed');
-              await refreshMeta?.();   // navbar picks up the new logo without a page reload
-              reload();
-            } catch (e) { toast.error(e.message); }
-          }}>Upload logo</button>
-        </div>
-      </Field>
-
-      <button className="btn" disabled={busy} onClick={() => save(() => api.put('/api/settings/organization', f), 'Organization profile saved')}>Save profile</button>
-    </div></div>
   );
 }
 
@@ -221,26 +470,66 @@ function ScheduleTab({ data, busy, save }) {
   const [f, setF] = useState(data.schedule || {});
   const days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   return (
-    <div className="card"><div className="card-body">
-      <div className="form-grid">
-        <Field label="Weekly collection day">
-          <select value={f.weekly_collection_day || 1} onChange={(e) => setF({ ...f, weekly_collection_day: Number(e.target.value) })}>
-            {[1, 2, 3, 4, 5, 6, 7].map((d) => <option key={d} value={d}>{days[d]}</option>)}
-          </select>
-        </Field>
-        <Field label="Monthly mode">
-          <select value={f.monthly_mode || 'MONTHLY_WEEKDAY'} onChange={(e) => setF({ ...f, monthly_mode: e.target.value })}>
-            <option value="MONTHLY_WEEKDAY">Weekday cycle</option>
-            <option value="MONTHLY_DAILY">Daily display</option>
-            <option value="MONTHLY_INTERVAL">Day interval</option>
-          </select>
-        </Field>
-        <Field label="Cycle weeks (weekday mode)"><input type="number" min="1" max="8" value={f.monthly_cycle_weeks || 4} onChange={(e) => setF({ ...f, monthly_cycle_weeks: Number(e.target.value) })} /></Field>
-        <Field label="Interval days (interval mode)"><input type="number" min="1" max="120" value={f.monthly_interval_days || 30} onChange={(e) => setF({ ...f, monthly_interval_days: Number(e.target.value) })} /></Field>
+    <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14 }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+        }}>
+          <FiCalendar size={16} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Collection Schedule</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Configure weekly &amp; monthly due date cycles</p>
+        </div>
       </div>
-      <p className="muted" style={{ fontSize: 12 }}>Changes apply to newly generated / future unpaid installments only. Historical transactions are never rewritten.</p>
-      <button className="btn" disabled={busy} onClick={() => save(() => api.put('/api/settings/schedule', f), 'Schedule settings saved')}>Save</button>
-    </div></div>
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 12 }}>
+          <div className="form-field-group">
+            <label className="form-field-label">Weekly collection day</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiCalendar size={13} /></div>
+              <select value={f.weekly_collection_day || 1} onChange={(e) => setF({ ...f, weekly_collection_day: Number(e.target.value) })}>
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => <option key={d} value={d}>{days[d]}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="form-field-group">
+            <label className="form-field-label">Monthly mode</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiCalendar size={13} /></div>
+              <select value={f.monthly_mode || 'MONTHLY_WEEKDAY'} onChange={(e) => setF({ ...f, monthly_mode: e.target.value })}>
+                <option value="MONTHLY_WEEKDAY">Weekday cycle</option>
+                <option value="MONTHLY_DAILY">Daily display</option>
+                <option value="MONTHLY_INTERVAL">Day interval</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-field-group">
+            <label className="form-field-label">Cycle weeks (weekday mode)</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiCalendar size={13} /></div>
+              <input type="number" min="1" max="8" value={f.monthly_cycle_weeks || 4} onChange={(e) => setF({ ...f, monthly_cycle_weeks: Number(e.target.value) })} />
+            </div>
+          </div>
+          <div className="form-field-group">
+            <label className="form-field-label">Interval days (interval mode)</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiCalendar size={13} /></div>
+              <input type="number" min="1" max="120" value={f.monthly_interval_days || 30} onChange={(e) => setF({ ...f, monthly_interval_days: Number(e.target.value) })} />
+            </div>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>Changes apply to newly generated / future unpaid installments only. Historical transactions are never rewritten.</p>
+        <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.put('/api/settings/schedule', f), 'Schedule settings saved')}>
+          <FiSave size={14} /> Save Schedule
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -252,8 +541,23 @@ function FineTab({ data, busy, save }) {
   });
   return (
     <>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="card-head"><h2>Effective-dated fine rules</h2></div>
+      <div className="card" style={{ marginBottom: 12, borderRadius: 14, overflow: 'hidden', padding: 0 }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+          padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+          }}>
+            <FiAward size={16} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Effective-dated Fine Rules</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Active late fine calculation rules</p>
+          </div>
+        </div>
         <div className="table-wrap">
           <table className="grid">
             <thead><tr><th>Effective from</th><th>Type</th><th className="right">Rate</th><th className="right">Grace</th><th>Cap</th><th>Active</th></tr></thead>
@@ -270,29 +574,73 @@ function FineTab({ data, busy, save }) {
           </table>
         </div>
       </div>
-      <div className="card"><div className="card-body">
-        <h3 style={{ marginTop: 0 }}>Add a new rule</h3>
-        <div className="form-grid">
-          <Field label="Fine type">
-            <select value={f.fine_type} onChange={(e) => setF({ ...f, fine_type: e.target.value })}>
-              {['NONE', 'FIXED_PER_DAY', 'PERCENT_PER_DAY', 'FIXED_PER_INSTALLMENT'].map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </Field>
-          <Field label="Rate / value"><input type="number" min="0" step="0.01" value={f.rate_value} onChange={(e) => setF({ ...f, rate_value: Number(e.target.value) })} /></Field>
-          <Field label="Grace days"><input type="number" min="0" max="60" value={f.grace_days} onChange={(e) => setF({ ...f, grace_days: Number(e.target.value) })} /></Field>
-          <Field label="Cap type">
-            <select value={f.max_fine_type} onChange={(e) => setF({ ...f, max_fine_type: e.target.value })}>
-              <option value="none">No cap</option>
-              <option value="percent_of_payable">% of payable</option>
-              <option value="flat">Flat amount</option>
-            </select>
-          </Field>
-          <Field label="Cap value"><input type="number" min="0" step="0.01" value={f.max_fine_value} onChange={(e) => setF({ ...f, max_fine_value: Number(e.target.value) })} /></Field>
-          <Field label="Effective from"><input type="date" value={f.effective_from} onChange={(e) => setF({ ...f, effective_from: e.target.value })} /></Field>
+      <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add a New Fine Rule</h3>
         </div>
-        <Field label="Notes"><input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
-        <button className="btn" disabled={busy} onClick={() => save(() => api.post('/api/settings/fine', f), 'New fine rule saved')}>Add fine rule</button>
-      </div></div>
+        <div style={{ padding: '14px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 10 }}>
+            <div className="form-field-group">
+              <label className="form-field-label">Fine type</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiAward size={13} /></div>
+                <select value={f.fine_type} onChange={(e) => setF({ ...f, fine_type: e.target.value })}>
+                  {['NONE', 'FIXED_PER_DAY', 'PERCENT_PER_DAY', 'FIXED_PER_INSTALLMENT'].map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Rate / value</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiAward size={13} /></div>
+                <input type="number" min="0" step="0.01" value={f.rate_value} onChange={(e) => setF({ ...f, rate_value: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Grace days</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                <input type="number" min="0" max="60" value={f.grace_days} onChange={(e) => setF({ ...f, grace_days: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Cap type</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiAward size={13} /></div>
+                <select value={f.max_fine_type} onChange={(e) => setF({ ...f, max_fine_type: e.target.value })}>
+                  <option value="none">No cap</option>
+                  <option value="percent_of_payable">% of payable</option>
+                  <option value="flat">Flat amount</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Cap value</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiAward size={13} /></div>
+                <input type="number" min="0" step="0.01" value={f.max_fine_value} onChange={(e) => setF({ ...f, max_fine_value: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Effective from</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                <input type="date" value={f.effective_from} onChange={(e) => setF({ ...f, effective_from: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <div className="form-field-group" style={{ marginBottom: 12 }}>
+            <label className="form-field-label">Notes</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiFileText size={13} /></div>
+              <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Rule notes" />
+            </div>
+          </div>
+          <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post('/api/settings/fine', f), 'New fine rule saved')}>
+            <FiSave size={14} /> Add Fine Rule
+          </button>
+        </div>
+      </div>
     </>
   );
 }
@@ -301,8 +649,23 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
   const [f, setF] = useState(Object.fromEntries(fields.map(([k]) => [k, ''])));
   return (
     <>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="card-head"><h2>{title}</h2></div>
+      <div className="card" style={{ marginBottom: 12, borderRadius: 14, overflow: 'hidden', padding: 0 }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+          padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+          }}>
+            <FiCreditCard size={16} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{title}</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Manage payment mode definitions</p>
+          </div>
+        </div>
         <div className="table-wrap">
           <table className="grid">
             <thead><tr>{fields.map(([k, l]) => <th key={k}>{l}</th>)}<th>Active</th></tr></thead>
@@ -317,78 +680,127 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
           </table>
         </div>
       </div>
-      <div className="card"><div className="card-body">
-        <h3 style={{ marginTop: 0 }}>Add {title.toLowerCase().replace(/s$/, '')}</h3>
-        <div className="form-grid">
-          {fields.map(([k, l, type, opts]) => (
-            <Field key={k} label={l}>
-              {type === 'select'
-                ? <select value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })}><option value="">—</option>{opts.map((o) => <option key={o}>{o}</option>)}</select>
-                : <input type={type || 'text'} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />}
-            </Field>
-          ))}
+      <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add {title.toLowerCase().replace(/s$/, '')}</h3>
         </div>
-        <button className="btn" disabled={busy} onClick={() => save(() => api.post(createPath, f), `${title} updated`)}>Add</button>
-      </div></div>
+        <div style={{ padding: '14px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 12 }}>
+            {fields.map(([k, l, type, opts]) => (
+              <div key={k} className="form-field-group">
+                <label className="form-field-label">{l}</label>
+                <div className="input-with-icon">
+                  <div className="input-icon-pill"><FiFileText size={13} /></div>
+                  {type === 'select'
+                    ? <select value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })}><option value="">—</option>{opts.map((o) => <option key={o}>{o}</option>)}</select>
+                    : <input type={type || 'text'} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={l} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post(createPath, f), `${title} updated`)}>
+            <FiSave size={14} /> Add
+          </button>
+        </div>
+      </div>
     </>
   );
 }
 
 function AccountsTab({ data, busy, save }) {
-  const [f, setF] = useState({ code: '', name: '', type: 'cash', opening_balance: '' });
-  const bal = Object.fromEntries((data.finance?.accounts || []).map((a) => [a.id, a]));
+  const [f, setF] = useState({ code: '', name: '', type: 'bank', opening_balance: 0 });
   return (
     <>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="card-head"><h2>Accounts / cash boxes</h2>
-          <span className="muted">live balance = opening + income + collections − expenses − distributions</span></div>
+      <div className="card" style={{ marginBottom: 12, borderRadius: 14, overflow: 'hidden', padding: 0 }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+          padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+          }}>
+            <FiDollarSign size={16} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Bank &amp; Cash Accounts</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Office cash, petty cash and bank balance</p>
+          </div>
+        </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Code</th><th>Name</th><th>Type</th><th className="right">Opening</th><th className="right">Income</th><th className="right">Collections</th><th className="right">Expenses</th><th className="right">Live balance</th><th>Active</th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Type</th><th className="right">Opening</th><th className="right">Current balance</th><th>Active</th></tr></thead>
             <tbody>
-              {data.accounts.map((r) => {
-                const b = bal[r.id] || {};
-                return (
-                  <tr key={r.id}>
-                    <td>{r.code}</td><td>{r.name}</td><td>{r.type}</td>
-                    <td className="right">{money(r.opening_balance)}</td>
-                    <td className="right">{money(b.income)}</td>
-                    <td className="right">{money(b.collections)}</td>
-                    <td className="right">{money(b.expenses)}</td>
-                    <td className="right"><b>{money(b.balance)}</b></td>
-                    <td><span className={`badge ${r.is_active ? 'active' : 'inactive'}`}>{r.is_active ? 'active' : 'inactive'}</span></td>
-                  </tr>
-                );
-              })}
+              {data.accounts.map((a) => (
+                <tr key={a.id}>
+                  <td><code>{a.code}</code></td><td>{a.name}</td><td>{a.type}</td>
+                  <td className="right">{money(a.opening_balance)}</td>
+                  <td className="right"><b>{money(a.current_balance)}</b></td>
+                  <td><span className={`badge ${a.is_active ? 'active' : 'inactive'}`}>{a.is_active ? 'active' : 'inactive'}</span></td>
+                </tr>
+              ))}
             </tbody>
             <tfoot>
-              <tr style={{ fontWeight: 700, background: '#f8fafc' }}>
-                <td colSpan={7}>Office Cash {money(data.finance?.office_cash)} + Bank Cash {money(data.finance?.bank_cash)} =</td>
+              <tr style={{ background: 'var(--blue-50)', fontWeight: 800 }}>
+                <td colSpan={4}>Office Cash {money(data.finance?.office_cash)} + Bank Cash {money(data.finance?.bank_cash)} =</td>
                 <td className="right">{money(data.finance?.total_amount)}</td><td />
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
-      <div className="card"><div className="card-body">
-        <h3 style={{ marginTop: 0 }}>Add account</h3>
-        <div className="form-grid">
-          <Field label="Code"><input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></Field>
-          <Field label="Name"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-          <Field label="Type">
-            <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
-              <option value="cash">cash</option><option value="bank">bank</option><option value="other">other</option>
-            </select>
-          </Field>
-          <Field label="Opening balance"><input type="number" step="0.01" value={f.opening_balance} onChange={(e) => setF({ ...f, opening_balance: e.target.value })} /></Field>
+      <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add Account</h3>
         </div>
-        <button className="btn" disabled={busy} onClick={() => save(() => api.post('/api/settings/accounts', { ...f, opening_balance: Number(f.opening_balance || 0) }), 'Account added')}>Add</button>
-      </div></div>
-      <div className="card" style={{ marginTop: 14 }}><div className="card-body">
-        <h3 style={{ marginTop: 0 }}>Set opening balance</h3>
-        <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Use this to enter the real starting cash / bank balance for the business.</p>
-        {data.accounts.map((a) => <OpeningBalanceRow key={a.id} account={a} busy={busy} save={save} />)}
-      </div></div>
+        <div style={{ padding: '14px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 12 }}>
+            <div className="form-field-group">
+              <label className="form-field-label">Code</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiFileText size={13} /></div>
+                <input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} placeholder="e.g. CASH-01" />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Name</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiFileText size={13} /></div>
+                <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Main Office Cash" />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Type</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiDollarSign size={13} /></div>
+                <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
+                  <option value="cash">cash</option><option value="bank">bank</option><option value="other">other</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label className="form-field-label">Opening balance</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiDollarSign size={13} /></div>
+                <input type="number" step="0.01" value={f.opening_balance} onChange={(e) => setF({ ...f, opening_balance: e.target.value })} placeholder="0.00" />
+              </div>
+            </div>
+          </div>
+          <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post('/api/settings/accounts', { ...f, opening_balance: Number(f.opening_balance || 0) }), 'Account added')}>
+            <FiSave size={14} /> Add Account
+          </button>
+        </div>
+      </div>
+      <div className="card" style={{ marginTop: 12, borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Set Opening Balance</h3>
+          <p className="muted" style={{ fontSize: 11, margin: '2px 0 0' }}>Use this to enter the real starting cash / bank balance for the business.</p>
+        </div>
+        <div style={{ padding: '14px 20px' }}>
+          {data.accounts.map((a) => <OpeningBalanceRow key={a.id} account={a} busy={busy} save={save} />)}
+        </div>
+      </div>
     </>
   );
 }
@@ -396,10 +808,13 @@ function AccountsTab({ data, busy, save }) {
 function OpeningBalanceRow({ account, busy, save }) {
   const [v, setV] = useState(account.opening_balance);
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-      <span style={{ width: 180 }}>{account.name} ({account.type})</span>
-      <input type="number" step="0.01" value={v} onChange={(e) => setV(e.target.value)} style={{ width: 160, padding: 8 }} />
-      <button className="btn sm" disabled={busy}
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+      <span style={{ width: 180, fontWeight: 700, fontSize: 12.5 }}>{account.name} ({account.type})</span>
+      <div className="input-with-icon" style={{ width: 160 }}>
+        <div className="input-icon-pill"><FiDollarSign size={13} /></div>
+        <input type="number" step="0.01" value={v} onChange={(e) => setV(e.target.value)} />
+      </div>
+      <button className="btn sm secondary" disabled={busy}
         onClick={() => save(() => api.put(`/api/settings/accounts/${account.id}`, { opening_balance: Number(v || 0) }), 'Opening balance updated')}>Save</button>
     </div>
   );
@@ -410,21 +825,43 @@ function ChitCodeTab({ data, busy, save }) {
   const [prefix, setPrefix] = useState(cf.loan_prefix || 'SM');
   const clean = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return (
-    <div className="card"><div className="card-body">
-      <Field label="Chit Code Prefix">
-        <input value={prefix} onChange={(e) => setPrefix(e.target.value)} maxLength={8} style={{ maxWidth: 220 }} />
-      </Field>
-      <p className="muted" style={{ fontSize: 12 }}>
-        New chits auto-generate as <b>{clean || 'PREFIX'}-1</b>, <b>{clean || 'PREFIX'}-2</b>, <b>{clean || 'PREFIX'}-3</b> …
-        The numeric part increments automatically and is unique (checked on the backend).
-        You can still type a custom code on the New Chit form; leave it blank to auto-generate.
-        <br />Changing the prefix only affects <b>new</b> chits — existing chit codes are never rewritten.
-      </p>
-      <button className="btn" disabled={busy || !clean}
-        onClick={() => save(() => api.put('/api/settings/chit-prefix', { prefix: clean }), `Chit code prefix saved — next chit will be ${clean}-N`)}>
-        Save prefix
-      </button>
-    </div></div>
+    <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+        }}>
+          <FiGrid size={16} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Chit Code Prefix</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Custom prefix for auto-generated chit numbers</p>
+        </div>
+      </div>
+      <div style={{ padding: '14px 20px' }}>
+        <div className="form-field-group" style={{ maxWidth: 260, marginBottom: 10 }}>
+          <label className="form-field-label">Chit Code Prefix</label>
+          <div className="input-with-icon">
+            <div className="input-icon-pill"><FiGrid size={13} /></div>
+            <input value={prefix} onChange={(e) => setPrefix(e.target.value)} maxLength={8} />
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>
+          New chits auto-generate as <b>{clean || 'PREFIX'}-1</b>, <b>{clean || 'PREFIX'}-2</b>, <b>{clean || 'PREFIX'}-3</b> …
+          The numeric part increments automatically and is unique (checked on the backend).
+          You can still type a custom code on the New Chit form; leave it blank to auto-generate.
+          <br />Changing the prefix only affects <b>new</b> chits — existing chit codes are never rewritten.
+        </p>
+        <button className="btn-save-glow" disabled={busy || !clean}
+          onClick={() => save(() => api.put('/api/settings/chit-prefix', { prefix: clean }), `Chit code prefix saved — next chit will be ${clean}-N`)}>
+          <FiSave size={14} /> Save Prefix
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -432,21 +869,43 @@ function LangTab({ data, busy, save }) {
   const { lang, setLang, t } = useI18n();
   const [def, setDef] = useState(data.locale?.default || lang || 'en');
   return (
-    <div className="card"><div className="card-body">
-      <Field label="Language">
-        <select value={lang} onChange={(e) => { setLang(e.target.value); setDef(e.target.value); }}>
-          <option value="en">English</option>
-          <option value="ta">தமிழ் (Tamil)</option>
-        </select>
-      </Field>
-      <p className="muted" style={{ fontSize: 12 }}>
-        The interface switches immediately and your choice is remembered on this device (localStorage).
-        "{t('nav.dashboard')} · {t('nav.collection')} · {t('nav.chits')}" — sample of the current language.
-      </p>
-      <button className="btn" disabled={busy}
-        onClick={() => save(() => api.put('/api/settings/locale', { default: def }), 'Default language saved for all users')}>
-        Also make this the default for everyone
-      </button>
-    </div></div>
+    <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, color: '#ffffff'
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9, background: 'rgba(255, 255, 255, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.25)', color: '#facc15'
+        }}>
+          <FiGlobe size={16} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>System Language</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Configure default application language</p>
+        </div>
+      </div>
+      <div style={{ padding: '14px 20px' }}>
+        <div className="form-field-group" style={{ maxWidth: 260, marginBottom: 10 }}>
+          <label className="form-field-label">Language</label>
+          <div className="input-with-icon">
+            <div className="input-icon-pill"><FiGlobe size={13} /></div>
+            <select value={lang} onChange={(e) => { setLang(e.target.value); setDef(e.target.value); }}>
+              <option value="en">English</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+            </select>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>
+          The interface switches immediately and your choice is remembered on this device (localStorage).
+          "{t('nav.dashboard')} · {t('nav.collection')} · {t('nav.chits')}" — sample of the current language.
+        </p>
+        <button className="btn-save-glow" disabled={busy}
+          onClick={() => save(() => api.put('/api/settings/locale', { default: def }), 'Default language saved for all users')}>
+          <FiSave size={14} /> Make Default for Everyone
+        </button>
+      </div>
+    </div>
   );
 }

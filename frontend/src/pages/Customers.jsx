@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import DataTable from '../components/DataTable';
-import { Field, Modal, Confirm, IconView, IconEdit, IconDelete } from '../components/ui';
-import { FiX } from 'react-icons/fi';
+import { Modal, Confirm, IconView, IconEdit, IconDelete } from '../components/ui';
+import {
+  FiUser, FiPhone, FiFileText, FiUsers, FiMapPin, FiMail,
+  FiSave, FiSearch, FiX, FiDownload, FiCalendar, FiShield
+} from 'react-icons/fi';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
@@ -18,13 +21,13 @@ export default function Customers() {
   const toast = useToast();
   const list = useList('/api/customers', { initialPerPage: 10, initialSort: 'name' });
 
-  // Left-rail create form (always visible — not a modal)
+  // Left-rail create form (always visible — styled like Settings Organization / Users form)
   const [createForm, setCreateForm] = useState(emptyForm);
   const [createErrors, setCreateErrors] = useState({});
   const [createBusy, setCreateBusy] = useState(false);
 
   // Edit modal & delete confirm state
-  const [editModal, setEditModal] = useState(null); // { mode:'edit', row }
+  const [editModal, setEditModal] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [editErrors, setEditErrors] = useState({});
   const [editBusy, setEditBusy] = useState(false);
@@ -83,11 +86,18 @@ export default function Customers() {
 
   const columns = [
     { key: '_sno', header: 'S.No', render: (r, i) => (list.page - 1) * list.perPage + i + 1 },
-    { key: 'name', header: 'Customer Name', sortable: true, render: (r) => <Link to={`/customers/${r.id}`}>{r.name}</Link> },
+    {
+      key: 'name', header: 'Customer Name', sortable: true,
+      render: (r) => (
+        <Link to={`/customers/${r.id}`} style={{ fontWeight: 700, color: '#1d4ed8' }}>
+          {r.name}
+        </Link>
+      )
+    },
     { key: 'mobile', header: 'Mobile Number', render: (r) => r.mobile || '—' },
-    { key: 'customer_code', header: 'Customer Code', sortable: true },
+    { key: 'customer_code', header: 'Customer Code', sortable: true, render: (r) => <code>{r.customer_code}</code> },
     { key: 'address_line1', header: 'Address', render: (r) => r.address_line1 || '—' },
-    { key: 'active_loans', header: 'Active loans', align: 'right' },
+    { key: 'active_loans', header: 'Active Loans', align: 'right' },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
     {
       key: '_a', header: 'Action', align: 'right', render: (r) => (
@@ -110,58 +120,214 @@ export default function Customers() {
     },
   ];
 
+  const totalMembersCount = list.pagination.total || list.rows.length;
+  const activeLoansCount = list.rows.reduce((sum, r) => sum + Number(r.active_loans || 0), 0);
+
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title"> Customers Directory</h1>
+      {/* Page Header (Matching Settings / Expenses / Pending Theme) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: '#e0edfd', color: '#1d4ed8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, fontWeight: 900, flexShrink: 0
+          }}>
+            <FiUsers size={20} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              Customers Directory
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
+              Manage member profiles, nominee details &amp; contact records
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Main 2-column layout: LEFT = permanent Register form, RIGHT = directory */}
-      <div className={can('customers.create') ? 'split-panel' : ''}>
-        {can('customers.create') && (
-          <div className="card form-rail">
-            <div className="card-head">
-              <h2>Register New Customer</h2>
+      {/* 2 Executive Stat Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 280px))',
+        gap: 12,
+        marginBottom: 14,
+        maxWidth: 600
+      }}>
+        {/* TOTAL MEMBERS */}
+        <div className="card" style={{
+          position: 'relative', overflow: 'hidden', padding: '10px 16px',
+          borderLeft: '4px solid #2563eb', background: '#ffffff',
+          borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                TOTAL REGISTERED MEMBERS
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
+                {totalMembersCount}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Member profiles in directory
+              </div>
             </div>
-            <div className="card-body">
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#e0edfd', color: '#1d4ed8',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FiUsers size={16} />
+            </div>
+          </div>
+          <div style={{ position: 'absolute', right: -6, bottom: -8, opacity: 0.05, pointerEvents: 'none' }}>
+            <FiUsers size={56} color="#1d4ed8" />
+          </div>
+        </div>
+
+        {/* ACTIVE LOANS */}
+        <div className="card" style={{
+          position: 'relative', overflow: 'hidden', padding: '10px 16px',
+          borderLeft: '4px solid #10b981', background: '#ffffff',
+          borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#059669', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                ACTIVE RUNNING CHITS
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
+                {activeLoansCount}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Currently active subscriptions
+              </div>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#dcfce7', color: '#059669',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FiCalendar size={16} />
+            </div>
+          </div>
+          <div style={{ position: 'absolute', right: -6, bottom: -8, opacity: 0.05, pointerEvents: 'none' }}>
+            <FiCalendar size={56} color="#059669" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main 2-column layout: LEFT = Register form, RIGHT = Directory */}
+      <div className="users-page-grid">
+        {can('customers.create') && (
+          <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            {/* Header Banner Matching Settings Theme */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+              padding: '12px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 9,
+                background: 'rgba(255, 255, 255, 0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#facc15'
+              }}>
+                <FiUser size={16} />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Register New Customer</h2>
+                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Create member profile &amp; nominee</p>
+              </div>
+            </div>
+
+            <div style={{ padding: '14px 18px' }}>
               <form onSubmit={handleCreateCustomer}>
-                {/* Full Name in its own single row */}
-                <div className="floating-group">
-                  <input id="c-name" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required placeholder=" " />
-                  <label htmlFor="c-name">Full Name *</label>
-                  {createErrors.name && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.name}</span>}
+                {/* Full Name */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Full Name *</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiUser size={13} /></div>
+                    <input
+                      value={createForm.name}
+                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                      required
+                      placeholder="Customer full name"
+                    />
+                  </div>
+                  {createErrors.name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.name}</span>}
                 </div>
 
-                {/* Mobile in its own single row */}
-                <div className="floating-group" style={{ marginTop: 8 }}>
-                  <input id="c-mobile" value={createForm.mobile} onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })} placeholder=" " />
-                  <label htmlFor="c-mobile">Mobile (Optional)</label>
-                  {createErrors.mobile && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.mobile}</span>}
+                {/* Mobile */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Mobile Number</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiPhone size={13} /></div>
+                    <input
+                      value={createForm.mobile}
+                      onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })}
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                  {createErrors.mobile && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.mobile}</span>}
                 </div>
 
-                {/* Aadhar Number in its own single row */}
-                <div className="floating-group" style={{ marginTop: 8 }}>
-                  <input id="c-aadhar" value={createForm.aadhar_number} onChange={(e) => setCreateForm({ ...createForm, aadhar_number: e.target.value })} placeholder=" " />
-                  <label htmlFor="c-aadhar">Aadhar Number (Optional)</label>
-                  {createErrors.aadhar_number && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.aadhar_number}</span>}
+                {/* Aadhar Number */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Aadhar Number</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiFileText size={13} /></div>
+                    <input
+                      value={createForm.aadhar_number}
+                      onChange={(e) => setCreateForm({ ...createForm, aadhar_number: e.target.value })}
+                      placeholder="12-digit Aadhar number"
+                    />
+                  </div>
+                  {createErrors.aadhar_number && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.aadhar_number}</span>}
                 </div>
 
-                {/* Nominee Name in its own single row */}
-                <div className="floating-group" style={{ marginTop: 8 }}>
-                  <input id="c-nominee" value={createForm.nominee_name} onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })} placeholder=" " />
-                  <label htmlFor="c-nominee">Nominee Name</label>
-                  {createErrors.nominee_name && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.nominee_name}</span>}
+                {/* Nominee Name */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Nominee Name</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiUsers size={13} /></div>
+                    <input
+                      value={createForm.nominee_name}
+                      onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })}
+                      placeholder="Nominee / contact person"
+                    />
+                  </div>
+                  {createErrors.nominee_name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.nominee_name}</span>}
                 </div>
 
-                {/* Address in its own single row */}
-                <div className="floating-group" style={{ marginTop: 8 }}>
-                  <input id="c-address" value={createForm.address_line1} onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })} placeholder=" " />
-                  <label htmlFor="c-address">Address</label>
-                  {createErrors.address_line1 && <span className="err" style={{ fontSize: 11, color: '#f43f5e' }}>{createErrors.address_line1}</span>}
+                {/* Address */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Address</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiMapPin size={13} /></div>
+                    <input
+                      value={createForm.address_line1}
+                      onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })}
+                      placeholder="Town / City, Tamil Nadu"
+                    />
+                  </div>
+                  {createErrors.address_line1 && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.address_line1}</span>}
                 </div>
 
-                <button type="submit" className="btn" style={{ width: '100%', marginTop: 10 }} disabled={createBusy}>
-                  {createBusy ? 'Saving…' : ' Register Customer'}
+                <button
+                  type="submit"
+                  className="btn-save-glow"
+                  style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
+                  disabled={createBusy}
+                >
+                  <FiSave size={14} /> {createBusy ? 'Saving…' : 'Register Customer'}
                 </button>
               </form>
             </div>
@@ -169,18 +335,47 @@ export default function Customers() {
         )}
 
         <div>
-          <div className="toolbar">
-            <input type="search" placeholder="Search name, code, mobile, address, loan code…"
-              value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-            <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
+          {/* Toolbar with Single Icon Search */}
+          <div className="toolbar" style={{ marginBottom: 10 }}>
+            <div className="input-with-icon" style={{ flex: 1 }}>
+              <div className="input-icon-pill"><FiSearch size={13} /></div>
+              <input
+                type="search"
+                placeholder="Search name, code, mobile, address, loan code…"
+                value={list.q}
+                onChange={(e) => list.setQ(e.target.value)}
+              />
+            </div>
+            <select
+              value={list.filters.status || ''}
+              onChange={(e) => list.setFilter('status', e.target.value)}
+              style={{ height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1', fontSize: 12.5, padding: '0 12px', background: '#fff' }}
+            >
               <option value="">Any status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="blacklisted">Blacklisted</option>
             </select>
-            {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
+            {list.hasFilters && (
+              <button className="btn secondary sm" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                Clear <FiX size={12} />
+              </button>
+            )}
             <div style={{ flex: 1 }} />
-            {can('customers.export') && <button className="btn secondary" onClick={() => api.download('/api/export/customers', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>}
+            {can('customers.export') && (
+              <button
+                type="button"
+                onClick={() => api.download('/api/export/customers', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}
+                style={{
+                  height: 36, borderRadius: 18, border: '1.5px solid #10b981',
+                  background: '#f0fdf4', color: '#059669', fontSize: 12, fontWeight: 700,
+                  padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+              >
+                <FiDownload size={13} style={{ color: '#059669' }} /> Export Excel
+              </button>
+            )}
           </div>
 
           <DataTable
@@ -199,11 +394,12 @@ export default function Customers() {
             onPage={list.setPage}
             onPerPage={list.setPerPage}
             emptyTitle="No customers match your filters"
+            emptyHint="Register a new member using the form on the left or clear your search criteria."
           />
         </div>
       </div>
 
-      {/* Edit Customer Modal */}
+      {/* Edit Customer Modal with Settings Theme */}
       {editModal && (
         <Modal
           title={`Edit ${editModal.name}`}
@@ -211,56 +407,118 @@ export default function Customers() {
           onClose={() => setEditModal(null)}
           footer={
             <>
-              <button className="btn secondary" onClick={() => setEditModal(null)} disabled={editBusy}>Cancel</button>
-              <button className="btn" onClick={handleSaveEdit} disabled={editBusy}>{editBusy ? 'Saving…' : 'Save Changes'}</button>
+              <button className="btn secondary sm" onClick={() => setEditModal(null)} disabled={editBusy}>Cancel</button>
+              <button className="btn-save-glow" onClick={handleSaveEdit} disabled={editBusy}>
+                <FiSave size={14} /> {editBusy ? 'Saving…' : 'Save Changes'}
+              </button>
             </>
           }
         >
-          <div className="form-grid">
-            <Field label="Full name *" error={editErrors.name}>
-              <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-            </Field>
-            <Field label="Mobile (optional)" error={editErrors.mobile}>
-              <input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
-            </Field>
-            <Field label="Aadhar number (optional)" error={editErrors.aadhar_number}>
-              <input value={editForm.aadhar_number || ''} onChange={(e) => setEditForm({ ...editForm, aadhar_number: e.target.value })} placeholder="12-digit Aadhar" />
-            </Field>
-            <Field label="Alternate mobile" error={editErrors.alt_mobile}>
-              <input value={editForm.alt_mobile} onChange={(e) => setEditForm({ ...editForm, alt_mobile: e.target.value })} />
-            </Field>
-            <Field label="Email" error={editErrors.email}>
-              <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
-            </Field>
-            <Field label="Gender" error={editErrors.gender}>
-              <select value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
-                <option value="">—</option><option value="male">Male</option>
-                <option value="female">Female</option><option value="other">Other</option>
-              </select>
-            </Field>
-            <Field label="Date of birth" error={editErrors.dob}>
-              <input type="date" value={editForm.dob || ''} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} />
-            </Field>
-            <Field label="Address" error={editErrors.address_line1}>
-              <input value={editForm.address_line1 || ''} onChange={(e) => setEditForm({ ...editForm, address_line1: e.target.value })} placeholder="e.g. 12 Main Road, Surandai, Tenkasi" />
-            </Field>
-            <Field label="Nominee name" error={editErrors.nominee_name}>
-              <input value={editForm.nominee_name} onChange={(e) => setEditForm({ ...editForm, nominee_name: e.target.value })} />
-            </Field>
-            <Field label="Nominee relation" error={editErrors.nominee_relation}>
-              <input value={editForm.nominee_relation} onChange={(e) => setEditForm({ ...editForm, nominee_relation: e.target.value })} />
-            </Field>
-            <Field label="Status" error={editErrors.status}>
-              <select value={editForm.status || 'active'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="blacklisted">Blacklisted</option>
-              </select>
-            </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px 16px' }}>
+            <div className="form-field-group">
+              <label className="form-field-label">Full Name *</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiUser size={13} /></div>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              {editErrors.name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{editErrors.name}</span>}
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Mobile Number</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiPhone size={13} /></div>
+                <input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
+              </div>
+              {editErrors.mobile && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{editErrors.mobile}</span>}
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Aadhar Number</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiFileText size={13} /></div>
+                <input value={editForm.aadhar_number || ''} onChange={(e) => setEditForm({ ...editForm, aadhar_number: e.target.value })} placeholder="12-digit Aadhar" />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Alternate Mobile</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiPhone size={13} /></div>
+                <input value={editForm.alt_mobile} onChange={(e) => setEditForm({ ...editForm, alt_mobile: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Email Address</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiMail size={13} /></div>
+                <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Gender</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiUser size={13} /></div>
+                <select value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                  <option value="">—</option><option value="male">Male</option>
+                  <option value="female">Female</option><option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Date of Birth</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                <input type="date" value={editForm.dob || ''} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Address</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiMapPin size={13} /></div>
+                <input value={editForm.address_line1 || ''} onChange={(e) => setEditForm({ ...editForm, address_line1: e.target.value })} placeholder="Town, Tamil Nadu" />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Nominee Name</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiUsers size={13} /></div>
+                <input value={editForm.nominee_name} onChange={(e) => setEditForm({ ...editForm, nominee_name: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Nominee Relation</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiUsers size={13} /></div>
+                <input value={editForm.nominee_relation} onChange={(e) => setEditForm({ ...editForm, nominee_relation: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Status</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiShield size={13} /></div>
+                <select value={editForm.status || 'active'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="blacklisted">Blacklisted</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <Field label="Notes" error={editErrors.notes}>
-            <textarea rows={2} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
-          </Field>
+          <div className="form-field-group" style={{ marginTop: 10 }}>
+            <label className="form-field-label">Notes</label>
+            <div className="input-with-icon">
+              <div className="input-icon-pill"><FiFileText size={13} /></div>
+              <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Customer remarks" />
+            </div>
+          </div>
         </Modal>
       )}
 

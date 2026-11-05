@@ -7,7 +7,10 @@ import CustomScheduleModal from '../components/CustomScheduleModal';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiFileText, FiX, FiPlusCircle } from 'react-icons/fi';
+import {
+  FiFileText, FiX, FiPlusCircle, FiDownload, FiUser, FiCalendar,
+  FiDollarSign, FiClock, FiSearch, FiFilter, FiCheckCircle, FiGrid, FiPieChart
+} from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const initialForm = {
@@ -174,59 +177,59 @@ export default function Loans() {
   };
 
   const columns = [
-    { 
-      key: 'code', 
-      header: 'Chit Code & Start', 
-      sortable: true, 
+    {
+      key: 'code',
+      header: 'Chit Code & Start',
+      sortable: true,
       render: (r) => (
         <div>
           <Link to={`/loans/${r.id}`}>
             <span className="badge PENDING" style={{ textTransform: 'none', fontWeight: 700 }}>{r.code}</span>
           </Link>
-         
+
         </div>
-      ) 
+      )
     },
-    { 
-      key: 'customer_name', 
-      header: 'Customer & Address', 
+    {
+      key: 'customer_name',
+      header: 'Customer & Address',
       render: (r) => (
         <div>
           <Link to={`/customers/${r.customer_id}`} style={{ fontWeight: 700, color: '#0f172a', display: 'block' }}>
             {r.customer_name}
           </Link>
           <div style={{ fontSize: '12px', color: '#64748b' }}>
-         
+
           </div>
         </div>
-      ) 
+      )
     },
-    { 
-      key: 'principal_amount', 
-      header: 'Amount & Installment', 
-      align: 'right', 
-      sortable: true, 
+    {
+      key: 'principal_amount',
+      header: 'Amount & Installment',
+      align: 'right',
+      sortable: true,
       render: (r) => (
         <div>
           <div style={{ fontWeight: 700, color: '#0f172a' }}>{money(r.principal_amount)}</div>
           <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
-          
+
           </div>
         </div>
-      ) 
+      )
     },
-    { 
-      key: 'outstanding_balance', 
-      header: 'Remaining Balance', 
-      align: 'right', 
+    {
+      key: 'outstanding_balance',
+      header: 'Remaining Balance',
+      align: 'right',
       render: (r) => (
         <div>
           <b style={{ color: Number(r.outstanding_balance) > 0 ? '#f43f5e' : '#10b981', fontSize: '14px' }}>
             {money(r.outstanding_balance)}
           </b>
-          
+
         </div>
-      ) 
+      )
     },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
     {
@@ -250,36 +253,191 @@ export default function Loans() {
     },
   ];
 
+  const totalChitsCount = list.pagination.total || list.rows.length;
+  const activeChitsCount = list.rows.filter((r) => String(r.status).toLowerCase() === 'active').length;
+  const totalOutstandingSum = list.rows.reduce((sum, r) => sum + Number(r.outstanding_balance || 0), 0);
+
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title"> Chits Management</h1>
+      {/* Page Header (Matching Settings / Expenses / Pending Theme) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: '#e0edfd', color: '#1d4ed8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, fontWeight: 900, flexShrink: 0
+          }}>
+            <FiPieChart size={20} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              Chits Management
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
+              Create new chits, track active chit schedules &amp; manage repayments
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3 Executive Stat Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 280px))',
+        gap: 12,
+        marginBottom: 14,
+        maxWidth: 880
+      }}>
+        {/* TOTAL CHITS */}
+        <div className="card" style={{
+          position: 'relative', overflow: 'hidden', padding: '10px 16px',
+          borderLeft: '4px solid #2563eb', background: '#ffffff',
+          borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                TOTAL CHITS
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
+                {totalChitsCount}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Total registered chits in portfolio
+              </div>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#e0edfd', color: '#1d4ed8',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FiPieChart size={16} />
+            </div>
+          </div>
+          <div style={{ position: 'absolute', right: -6, bottom: -8, opacity: 0.05, pointerEvents: 'none' }}>
+            <FiPieChart size={56} color="#1d4ed8" />
+          </div>
+        </div>
+
+        {/* ACTIVE CHITS */}
+        <div className="card" style={{
+          position: 'relative', overflow: 'hidden', padding: '10px 16px',
+          borderLeft: '4px solid #10b981', background: '#ffffff',
+          borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#059669', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                ACTIVE CHITS
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
+                {activeChitsCount}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Currently active ongoing chits
+              </div>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#dcfce7', color: '#059669',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FiCheckCircle size={16} />
+            </div>
+          </div>
+          <div style={{ position: 'absolute', right: -6, bottom: -8, opacity: 0.05, pointerEvents: 'none' }}>
+            <FiCheckCircle size={56} color="#059669" />
+          </div>
+        </div>
+
+        {/* OUTSTANDING BALANCE */}
+        <div className="card" style={{
+          position: 'relative', overflow: 'hidden', padding: '10px 16px',
+          borderLeft: '4px solid #f43f5e', background: '#ffffff',
+          borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#e11d48', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                TOTAL OUTSTANDING
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
+                {money(totalOutstandingSum)}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Remaining balance across listed chits
+              </div>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#fee2e2', color: '#e11d48',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FiDollarSign size={16} />
+            </div>
+          </div>
+          <div style={{
+            position: 'absolute', right: 4, bottom: -10, opacity: 0.06,
+            fontSize: 56, fontWeight: 900, color: '#e11d48', pointerEvents: 'none'
+          }}>
+            ₹
+          </div>
+        </div>
       </div>
 
       {/* Main 2-column layout: LEFT = permanent Create form, RIGHT = ledger */}
-      <div className={can('loans.create') ? 'split-panel wide' : ''}>
+      <div className={can('loans.create') ? 'users-page-grid' : ''}>
         {can('loans.create') && (
-          <div className="card form-rail">
-            <div className="card-head">
-              <h2> Create New Chit</h2>
+          <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            {/* Header Banner Matching Settings & Customers Theme */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+              padding: '12px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 9,
+                background: 'rgba(255, 255, 255, 0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#facc15'
+              }}>
+                <FiPlusCircle size={16} />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Create New Chit</h2>
+                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Enter customer, installment terms &amp; schedule</p>
+              </div>
             </div>
-            <div className="card-body">
+
+            <div style={{ padding: '14px 18px' }}>
               <form onSubmit={handleCreateChit}>
-                <Field label="Customer *" error={formErrors.customer_id}>
-                  <input
-                    list="cust-options-inline"
-                    placeholder="Search name, code, phone…"
-                    value={form._customerLabel ?? (selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : '')}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const m = customers.find((c) =>
-                        `${c.name} (${c.customer_code})` === v ||
-                        c.customer_code === v || c.mobile === v ||
-                        c.name.toLowerCase() === v.toLowerCase());
-                      setForm((f) => ({ ...f, _customerLabel: v, customer_id: m ? m.id : '' }));
-                    }}
-                    required
-                  />
+                {/* Customer */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Customer *</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiUser size={13} /></div>
+                    <input
+                      list="cust-options-inline"
+                      placeholder="Search name, code, phone…"
+                      value={form._customerLabel ?? (selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : '')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const m = customers.find((c) =>
+                          `${c.name} (${c.customer_code})` === v ||
+                          c.customer_code === v || c.mobile === v ||
+                          c.name.toLowerCase() === v.toLowerCase());
+                        setForm((f) => ({ ...f, _customerLabel: v, customer_id: m ? m.id : '' }));
+                      }}
+                      required
+                    />
+                  </div>
                   <datalist id="cust-options-inline">
                     {customers.map((c) => (
                       <option key={c.id} value={`${c.name} (${c.customer_code})`}>
@@ -287,56 +445,96 @@ export default function Loans() {
                       </option>
                     ))}
                   </datalist>
-                </Field>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Chit Code" error={formErrors.code}>
-                    <input
-                      value={form.code}
-                      onChange={(e) => setF('code', e.target.value)}
-                      placeholder={nextCode ? `Auto (${nextCode})` : 'Auto'}
-                    />
-                  </Field>
-                  <Field label="Start Date *" error={formErrors.start_date}>
-                    <input type="date" value={form.start_date} onChange={(e) => setF('start_date', e.target.value)} required />
-                  </Field>
+                  {formErrors.customer_id && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.customer_id}</span>}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Chit Amount *" error={formErrors.principal_amount}>
-                    <input type="number" min="1" step="0.01" value={form.principal_amount} onChange={(e) => setF('principal_amount', e.target.value)} required placeholder="e.g. 50000" />
-                  </Field>
+                  {/* Chit Code */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Chit Code</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiGrid size={13} /></div>
+                      <input
+                        value={form.code}
+                        onChange={(e) => setF('code', e.target.value)}
+                        placeholder={nextCode ? `Auto (${nextCode})` : 'Auto'}
+                      />
+                    </div>
+                    {formErrors.code && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.code}</span>}
+                  </div>
 
-                  <Field label="Installment *" error={formErrors.installment_amount}>
-                    <input type="number" min="0.01" step="0.01" value={form.installment_amount} onChange={(e) => setF('installment_amount', e.target.value)} required placeholder="e.g. 2000" />
-                  </Field>
+                  {/* Start Date */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Start Date *</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                      <input type="date" value={form.start_date} onChange={(e) => setF('start_date', e.target.value)} required />
+                    </div>
+                    {formErrors.start_date && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.start_date}</span>}
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Tenure *" error={formErrors.tenure}>
-                    <input type="number" min="1" step="1" value={form.tenure} onChange={(e) => setF('tenure', e.target.value)} required placeholder="Installments count" />
-                  </Field>
+                  {/* Chit Amount */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Chit Amount *</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiDollarSign size={13} /></div>
+                      <input type="number" min="1" step="0.01" value={form.principal_amount} onChange={(e) => setF('principal_amount', e.target.value)} required placeholder="e.g. 50000" />
+                    </div>
+                    {formErrors.principal_amount && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.principal_amount}</span>}
+                  </div>
 
-                  <Field label="Frequency">
-                    <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
+                  {/* Installment */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Installment *</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiDollarSign size={13} /></div>
+                      <input type="number" min="0.01" step="0.01" value={form.installment_amount} onChange={(e) => setF('installment_amount', e.target.value)} required placeholder="e.g. 2000" />
+                    </div>
+                    {formErrors.installment_amount && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.installment_amount}</span>}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {/* Tenure */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Tenure *</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                      <input type="number" min="1" step="1" value={form.tenure} onChange={(e) => setF('tenure', e.target.value)} required placeholder="Installments count" />
+                    </div>
+                    {formErrors.tenure && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.tenure}</span>}
+                  </div>
+
+                  {/* Frequency */}
+                  <div className="form-field-group">
+                    <label className="form-field-label">Frequency</label>
+                    <div className="input-with-icon">
+                      <div className="input-icon-pill"><FiClock size={13} /></div>
+                      <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Due Date Schedule */}
+                <div className="form-field-group">
+                  <label className="form-field-label">Due Date Schedule</label>
+                  <div className="input-with-icon">
+                    <div className="input-icon-pill"><FiCalendar size={13} /></div>
+                    <select value={form.due_date_mode} onChange={(e) => { setF('due_date_mode', e.target.value); setCustomRows([]); }}>
+                      <option value="auto">Auto Due Date</option>
+                      <option value="custom">Custom Due Date</option>
                     </select>
-                  </Field>
+                  </div>
                 </div>
-
-                <Field label="Due Date Schedule">
-                  <select value={form.due_date_mode} onChange={(e) => { setF('due_date_mode', e.target.value); setCustomRows([]); }}>
-                    <option value="auto">Auto Due Date</option>
-                    <option value="custom">Custom Due Date</option>
-                  </select>
-
-                </Field>
 
                 {form.due_date_mode === 'custom' && (
-                  <div className="field">
-                  
+                  <div style={{ marginBottom: 10 }}>
                     {customRows.length > 0 ? (
                       <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
                         {customRows.map((row, idx) => (
@@ -349,14 +547,12 @@ export default function Loans() {
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}></p>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
-                <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={formBusy || !form.customer_id}>
-                  {formBusy ? 'Creating…' : ' Create Chit'}
+                <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} disabled={formBusy || !form.customer_id}>
+                  <FiCheckCircle size={14} /> {formBusy ? 'Creating…' : 'Create Chit'}
                 </button>
               </form>
             </div>
@@ -365,26 +561,61 @@ export default function Loans() {
 
         {/* Right Side: Directory List & Filters */}
         <div>
-          <div className="toolbar">
-            <input type="search" placeholder="Search chit code, customer, mobile…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-            <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
-              <option value="">Any status</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <select value={list.filters.frequency || ''} onChange={(e) => list.setFilter('frequency', e.target.value)}>
-              <option value="">Any frequency</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
-            {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
+          <div className="toolbar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="input-with-icon" style={{ flex: '1 1 200px', minWidth: 160 }}>
+              <div className="input-icon-pill"><FiSearch size={13} /></div>
+              <input type="search" placeholder="Search chit code, customer, mobile…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
+            </div>
+            <div className="input-with-icon" style={{ width: 'auto', minWidth: 120 }}>
+              <div className="input-icon-pill"><FiFilter size={13} /></div>
+              <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
+                <option value="">Any status</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div className="input-with-icon" style={{ width: 'auto', minWidth: 130 }}>
+              <div className="input-icon-pill"><FiClock size={13} /></div>
+              <select value={list.filters.frequency || ''} onChange={(e) => list.setFilter('frequency', e.target.value)}>
+                <option value="">Any frequency</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            {list.hasFilters && (
+              <button className="btn secondary sm" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                Clear <FiX size={12} />
+              </button>
+            )}
             <div style={{ flex: 1 }} />
             {can('loans.export') && (
               <>
-                <button className="btn secondary" onClick={() => api.download('/api/reports/templates/chit').catch((e) => toast.error(e.message))}><FiFileText size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Sample Template</button>
-                <button className="btn secondary" onClick={() => api.download('/api/export/chits', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>
+                <button
+                  type="button"
+                  onClick={() => api.download('/api/reports/templates/chit').catch((e) => toast.error(e.message))}
+                  style={{
+                    height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1',
+                    background: '#ffffff', color: '#0d2856', fontSize: 12, fontWeight: 700,
+                    padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    cursor: 'pointer', transition: 'all 0.15s ease'
+                  }}
+                >
+                  <FiFileText size={13} style={{ color: '#1d4ed8' }} /> Sample Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => api.download('/api/export/chits', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}
+                  style={{
+                    height: 36, borderRadius: 18, border: '1.5px solid #10b981',
+                    background: '#f0fdf4', color: '#059669', fontSize: 12, fontWeight: 700,
+                    padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    cursor: 'pointer', transition: 'all 0.15s ease'
+                  }}
+                >
+                  <FiDownload size={13} style={{ color: '#059669' }} /> Export Excel
+                </button>
               </>
             )}
           </div>
@@ -394,6 +625,7 @@ export default function Loans() {
             page={list.page} perPage={list.perPage} total={list.pagination.total} totalPages={list.pagination.total_pages}
             sortBy={list.sortBy} sortDir={list.sortDir} onSort={list.onSort} onPage={list.setPage} onPerPage={list.setPerPage}
             emptyTitle="No chits match your filters"
+            emptyHint="Create a new chit using the form on the left or clear your search filters."
             selectedIds={selectedIds}
             onSelectChange={setSelectedIds}
             selectable={can('loans.delete')}
@@ -424,7 +656,7 @@ export default function Loans() {
         <Modal title={`Edit ${edit.code}`} onClose={() => setEdit(null)}
           footer={<>
             <button className="btn secondary" onClick={() => setEdit(null)} disabled={editBusy}>Cancel</button>
-            <button className="btn" onClick={saveEdit} disabled={editBusy}>{editBusy ? 'Saving…' : 'Save'}</button>
+            <button className="btn-save-glow" onClick={saveEdit} disabled={editBusy}>{editBusy ? 'Saving…' : 'Save Changes'}</button>
           </>}>
           <div className="form-grid">
             <Field label="Chit Code">
@@ -503,4 +735,3 @@ export default function Loans() {
     </>
   );
 }
-

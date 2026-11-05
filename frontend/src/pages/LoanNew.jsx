@@ -148,9 +148,32 @@ export default function LoanNew() {
         <h1 style={{ margin: 0, fontSize: 18 }}>New chit</h1>
       </div>
 
-      <div className="card chit-form-card">
-        <div className="card-head"><h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiFileText size={15} /> Chit Details</h2></div>
-        <div className="card-body">
+      <div className="card chit-form-card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          color: '#ffffff',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'rgba(255, 255, 255, 0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#facc15'
+          }}>
+            <FiFileText size={18} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#ffffff' }}>New Chit Details</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Enter customer, installment terms, and repayment cycle</p>
+          </div>
+        </div>
+        <div className="card-body" style={{ padding: '16px 20px' }}>
           <div className="form-grid">
             <Field label="Customer *" error={errors.customer_id}>
               <input list="cust-options" placeholder="Search name, code or mobile…"
@@ -260,8 +283,8 @@ export default function LoanNew() {
               <button type="button" className="btn secondary" onClick={runPreview}
                 disabled={!form.installment_amount || !form.tenure}>Preview schedule</button>
             )}
-            <button className="btn" disabled={busy || !form.customer_id}>
-              {busy ? 'Saving…' : (wantDist ? `Create chit + distribute ${money(distAmt)}` : 'Create chit')}
+            <button className="btn-save-glow" disabled={busy || !form.customer_id}>
+              {busy ? 'Saving…' : (wantDist ? `Create chit + distribute ${money(distAmt)}` : 'Create Chit')}
             </button>
           </div>
         </div>

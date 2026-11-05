@@ -6,7 +6,7 @@ import { useToast } from '../state/ToastContext';
 import {
   FiBarChart2, FiFileText, FiCheckCircle, FiCreditCard, FiUsers, FiCalendar,
   FiUser, FiDollarSign, FiTrendingUp, FiClipboard, FiBookOpen, FiSearch, FiDownload, FiPrinter, FiSun,
-  FiChevronLeft, FiChevronRight, FiRefreshCw, FiInfo,
+  FiChevronLeft, FiChevronRight, FiRefreshCw, FiInfo, FiClock, FiFilter
 } from 'react-icons/fi';
 
 /** Downloads the current report+filters as a PDF (works for any/no filter, incl. NIL results). */
@@ -24,10 +24,27 @@ const downloadReportPdf = (name, params, toast, setBusy) => {
 
 const REPORT_ICONS = {
   'daily-report': <FiSun />,
-  'chit-opening': <FiFileText />, 'chit-closing': <FiCheckCircle />, 'chit-collection': <FiCreditCard />,
-  'customer-collection': <FiUsers />, 'daily-collection': <FiCalendar />,
-  'chit-distribution': <FiDollarSign />, 'pending-dues': <FiClipboard />,
-  'chit-profit': <FiTrendingUp />, 'financial-ledger': <FiBookOpen />,
+  'chit-opening': <FiFileText />,
+  'chit-closing': <FiCheckCircle />,
+  'chit-collection': <FiCreditCard />,
+  'customer-collection': <FiUsers />,
+  'daily-collection': <FiCalendar />,
+  'chit-distribution': (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  ),
+  'pending-dues': <FiClock />,
+  'chit-profit': <FiTrendingUp />,
+  'financial-ledger': (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z" />
+    </svg>
+  ),
 };
 
 const fmtCell = (type, val) => {
@@ -113,7 +130,6 @@ const getQuickRangeDates = (type) => {
   }
   return {};
 };
-
 
 /* ------------------------------------------------------------------- page */
 
@@ -270,16 +286,16 @@ export default function Reports() {
   const activeFilterSummary = useMemo(() => {
     const parts = [];
     const p = cleanParams(applied);
-    
+
     if (quickRange === 'today') parts.push('Active filter: Today');
     else if (quickRange === 'yesterday') parts.push('Active filter: Yesterday');
     else if (quickRange === 'last_7_days') parts.push('Active filter: Last 7 Days');
     else if (quickRange === 'this_month') parts.push('Active filter: This Month');
     else if (p.date_from && p.date_to) parts.push(`Active filter: Custom Range (${fmtDate(p.date_from)} — ${fmtDate(p.date_to)})`);
 
-    if (p.date_from && p.date_to) parts.push(`${fmtDate(p.date_from)} — ${fmtDate(p.date_to)}`);
-    else if (p.date_from) parts.push(`From ${fmtDate(p.date_from)}`);
-    else if (p.date_to) parts.push(`To ${fmtDate(p.date_to)}`);
+    if (p.date_from && p.date_to) parts.push(`${p.date_from} - ${p.date_to}`);
+    else if (p.date_from) parts.push(`From ${p.date_from}`);
+    else if (p.date_to) parts.push(`To ${p.date_to}`);
 
     if (p.customer_id) {
       const cust = customers.find((c) => String(c.id) === String(p.customer_id));
@@ -303,32 +319,162 @@ export default function Reports() {
   }, [catalogue]);
 
   return (
-    <>
-      {/* ---------- Page Header Matching Screenshot ---------- */}
-      <div className="page-header" style={{ marginBottom: 16 }}>
-        <div>
-          <h1 className="page-title" style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#0f172a' }}>
-            Reports
-          </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: 14, color: '#64748b' }}>
-            Analyze and export your chit fund reports with custom date filters
-          </p>
+    <div className="reports-page-wrapper" style={{ maxWidth: '100%', margin: '0 auto', paddingBottom: 24 }}>
+      <style>{`
+        .reports-page-wrapper {
+          color: #0f172a;
+        }
+        .rpt-card {
+          background: #ffffff;
+          border-radius: 16px;
+          border: 1px solid #cbd5e1;
+          box-shadow: 0 4px 20px rgba(13, 40, 86, 0.06);
+          margin-bottom: 18px;
+          overflow: hidden;
+        }
+        .rpt-pill-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 18px;
+          border-radius: 24px;
+          border: 1.5px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+        .rpt-pill-btn:hover {
+          border-color: #0d2856;
+          background: #f1f5f9;
+        }
+        .rpt-pill-btn.active {
+          background: linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%);
+          color: #ffffff;
+          border-color: #0d2856;
+          box-shadow: 0 4px 14px rgba(13, 40, 86, 0.4);
+          font-weight: 700;
+        }
+        .rpt-gradient-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 24px;
+          border-radius: 24px;
+          border: none;
+          background: linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%);
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 13.5px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(13, 40, 86, 0.45);
+          transition: all 0.2s ease;
+        }
+        .rpt-gradient-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(13, 40, 86, 0.55);
+        }
+        .rpt-white-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 16px;
+          border-radius: 20px;
+          border: 1.5px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .rpt-white-btn:hover {
+          border-color: #0d2856;
+          background: #f8fafc;
+        }
+        .rpt-kpi-card {
+          position: relative;
+          border-radius: 14px;
+          padding: 18px 20px;
+          box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .rpt-kpi-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.09);
+        }
+        .rpt-table thead th {
+          background: #f1f5f9;
+          color: #1e293b;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          padding: 12px 16px;
+          border-bottom: 2px solid #cbd5e1;
+        }
+        .rpt-table tbody td {
+          padding: 12px 16px;
+          font-size: 13.5px;
+          color: #0f172a;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .rpt-table tbody tr:hover td {
+          background: #f8fafc;
+        }
+        @media (max-width: 1024px) {
+          .rpt-kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .rpt-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
+      {/* ---------- Header Matching Screenshot ---------- */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+            display: 'grid', placeItems: 'center', color: '#ffffff',
+            boxShadow: '0 4px 14px rgba(13, 40, 86, 0.35)'
+          }}>
+            <FiBarChart2 size={24} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>
+              Reports
+            </h1>
+            <p style={{ margin: '3px 0 0 0', fontSize: 13.5, color: '#64748b', fontWeight: 500 }}>
+              Analyze and export your chit fund reports with custom date filters
+            </p>
+          </div>
         </div>
+
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {can('reports.export') && (
             <>
               <button
-                className="btn secondary"
+                className="rpt-white-btn"
                 onClick={() => download('/api/reports/full-export', exportParams)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                  borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff',
-                  fontSize: 14, fontWeight: 600, color: '#334155', cursor: 'pointer'
-                }}
               >
-                <FiDownload size={15} /> Export Full Workbook
+                <FiDownload size={14} style={{ color: '#0d2856' }} />
+                <span>Export Full Workbook</span>
               </button>
-              <div className="dropdown-wrap" style={{ position: 'relative' }}>
+
+              <div style={{ position: 'relative' }}>
                 <TemplatesMenu onPick={(t) => download(`/api/reports/templates/${t}`)} />
               </div>
             </>
@@ -336,29 +482,25 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* ---------- Report Types Pills (SELECT REPORT TYPE) ---------- */}
-      <div className="card no-print" style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: '#ffffff', border: '1px solid #e2e8f0' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10 }}>
-          SELECT REPORT TYPE ({reportList.length})
+      {/* ---------- Card 1: Select Report Type (10) ---------- */}
+      <div className="rpt-card" style={{ padding: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <FiFilter size={16} style={{ color: '#0d2856' }} />
+          <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a', letterSpacing: '0.2px' }}>
+            Select Report Type ({reportList.length})
+          </span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {reportList.map((c) => {
             const isActive = c.name === name;
             return (
               <button
                 key={c.name}
-                className={`report-nav-item ${isActive ? 'active' : ''}`}
+                className={`rpt-pill-btn ${isActive ? 'active' : ''}`}
                 onClick={() => { setName(c.name); setData(null); }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                  borderRadius: 8, border: isActive ? '1.5px solid #1d4ed8' : '1px solid #cbd5e1',
-                  background: isActive ? '#1d4ed8' : '#ffffff',
-                  color: isActive ? '#ffffff' : '#334155',
-                  fontWeight: isActive ? 700 : 600, fontSize: 14, cursor: 'pointer',
-                  transition: 'all 0.15s ease', boxShadow: isActive ? '0 2px 4px rgba(29, 78, 216, 0.2)' : 'none'
-                }}
               >
-                <span style={{ fontSize: 15 }}>{REPORT_ICONS[c.name] || <FiFileText />}</span>
+                <span style={{ fontSize: 14 }}>{REPORT_ICONS[c.name] || <FiFileText />}</span>
                 <span>{c.label}</span>
               </button>
             );
@@ -366,20 +508,36 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* ---------- Date / Range Filter Panel (Matching Screenshot) ---------- */}
-      <div className="card no-print" style={{ marginBottom: 16, padding: 16, borderRadius: 12, background: '#ffffff', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17.5, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiCalendar size={19} style={{ color: '#1d4ed8' }} /> Date / Range Filter
-          </h2>
-          <span style={{ fontSize: 12.5, background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '4px 10px', borderRadius: 6, color: '#475569', fontWeight: 600 }}>
-            UTC+05:30 India
-          </span>
+      {/* ---------- Card 2: Date / Range Filter ---------- */}
+      <div className="rpt-card" style={{ padding: 20 }}>
+        {/* Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: '#0d2856', display: 'grid', placeItems: 'center', color: '#ffffff',
+              boxShadow: '0 2px 6px rgba(13, 40, 86, 0.3)'
+            }}>
+              <FiCalendar size={17} />
+            </div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+              Date / Range Filter
+            </h2>
+          </div>
+
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 20,
+            padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#475569'
+          }}>
+            <FiClock size={13} style={{ color: '#64748b' }} />
+            <span>UTC+05:30 India</span>
+          </div>
         </div>
 
         {/* Quick Select Pill Buttons Row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#475569' }}>Quick Select:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginRight: 4 }}>Quick Select:</span>
           {[
             ['today', 'Today'],
             ['yesterday', 'Yesterday'],
@@ -392,13 +550,8 @@ export default function Reports() {
               <button
                 key={key}
                 onClick={() => handleQuickSelect(key)}
-                style={{
-                  padding: '7px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-                  border: isSelected ? '1.5px solid #1d4ed8' : '1px solid #cbd5e1',
-                  background: isSelected ? '#1d4ed8' : '#ffffff',
-                  color: isSelected ? '#ffffff' : '#334155',
-                  transition: 'all 0.15s ease'
-                }}
+                className={`rpt-pill-btn ${isSelected ? 'active' : ''}`}
+                style={{ padding: '6px 18px', fontSize: 13 }}
               >
                 {label}
               </button>
@@ -406,148 +559,166 @@ export default function Reports() {
           })}
         </div>
 
-        {/* Date Inputs & Action Buttons Row */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>From Date</label>
-            <input
-              type="date"
-              value={filters.date_from || ''}
-              onChange={(e) => setF('date_from', e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 14, minWidth: 160 }}
-            />
+        {/* Inputs & Action Buttons Row */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>From Date</label>
+              <input
+                type="date"
+                value={filters.date_from || ''}
+                onChange={(e) => setF('date_from', e.target.value)}
+                style={{
+                  padding: '8px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
+                  fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', minWidth: 155
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>To Date</label>
+              <input
+                type="date"
+                value={filters.date_to || ''}
+                onChange={(e) => setF('date_to', e.target.value)}
+                style={{
+                  padding: '8px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
+                  fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', minWidth: 155
+                }}
+              />
+            </div>
+
+            {name !== 'daily-report' && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Customer</label>
+                  <select
+                    value={filters.customer_id || ''}
+                    onChange={(e) => setF('customer_id', e.target.value)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
+                      fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', minWidth: 160
+                    }}
+                  >
+                    <option value="">All customers</option>
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Chit Code</label>
+                  <input
+                    value={filters.chit_code || ''}
+                    onChange={(e) => setF('chit_code', e.target.value)}
+                    placeholder="e.g. SM-001"
+                    style={{
+                      padding: '8px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
+                      fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', width: 130
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>To Date</label>
-            <input
-              type="date"
-              value={filters.date_to || ''}
-              onChange={(e) => setF('date_to', e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 14, minWidth: 160 }}
-            />
-          </div>
-
-          {name !== 'daily-report' && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>Customer</label>
-                <select
-                  value={filters.customer_id || ''}
-                  onChange={(e) => setF('customer_id', e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 14, minWidth: 160 }}
-                >
-                  <option value="">All customers</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>Chit Code</label>
-                <input
-                  value={filters.chit_code || ''}
-                  onChange={(e) => setF('chit_code', e.target.value)}
-                  placeholder="e.g. SM-001"
-                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 14, width: 130 }}
-                />
-              </div>
-            </>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          {/* Buttons: Clear Filters & Apply Filters */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button
-              className="btn secondary"
               onClick={clearAll}
               disabled={!hasFilters}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff',
-                fontSize: 13.5, fontWeight: 700, color: '#334155', cursor: 'pointer'
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px',
+                borderRadius: 24, border: '1px solid #bfdbfe', background: '#ffffff',
+                fontSize: 13.5, fontWeight: 700, color: '#1e40af', cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
             >
               <FiRefreshCw size={14} /> Clear Filters
             </button>
 
             <button
-              className="btn primary"
+              className="rpt-gradient-btn"
               onClick={() => apply()}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px',
-                borderRadius: 8, border: 'none', background: '#1d4ed8',
-                fontSize: 13.5, fontWeight: 700, color: '#ffffff', cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(29, 78, 216, 0.25)'
-              }}
             >
               <FiSearch size={15} /> Apply Filters
             </button>
           </div>
         </div>
 
-        {/* Active Filter Info Text Line */}
-        <div style={{ marginTop: 14, fontSize: 13.5, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FiInfo size={15} style={{ color: '#1d4ed8' }} />
+        {/* Info Banner Text */}
+        <div style={{
+          marginTop: 14, fontSize: 13, color: '#0d2856', fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: 7,
+          background: '#f0f7ff', border: '1.5px solid #7dd3fc', borderRadius: 10, padding: '8px 14px'
+        }}>
+          <FiInfo size={16} style={{ color: '#0d2856' }} />
           <span><strong>Active filter:</strong> {activeFilterSummary}</span>
         </div>
       </div>
 
-      {/* ---------- Report Content Card ---------- */}
-      <div className="card rpt-table-card" style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#ffffff' }}>
+      {/* ---------- Card 3: Report Content Card ---------- */}
+      <div className="rpt-card" style={{ padding: 0 }}>
         {loading && <Spinner />}
         {error && <ErrorState error={error} onRetry={() => apply()} />}
         {!loading && !error && data && (
           <>
-            {/* Card Header matching Screenshot */}
+            {/* Header matching Screenshot */}
             <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #e2e8f0',
+              padding: '18px 20px', borderBottom: '1px solid #edf2f7',
               display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 22 }}>{REPORT_ICONS[name] || <FiFileText />}</span>
-                  <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  <span style={{ fontSize: 20, color: '#0d2856' }}>{REPORT_ICONS[name] || <FiBarChart2 />}</span>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     {data.title || activeMeta?.label}
                   </h2>
                 </div>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                  {data.filters?.period} · generated {new Date(data.generated_at).toLocaleString()}
+                <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiCalendar size={13} />
+                  <span>{data.filters?.period || 'Selected Period'} • Generated on {new Date(data.generated_at).toLocaleString()}</span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{
-                    background: '#dcfce7', color: '#15803d', fontWeight: 800, fontSize: 12.5,
-                    padding: '5px 12px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 5
+                    background: '#dcfce7', color: '#15803d', fontWeight: 800, fontSize: 12,
+                    padding: '5px 12px', borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6,
+                    border: '1px solid #bbf7d0'
                   }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }}></span>
-                    {data.total !== undefined ? `${data.total} TOTAL RECORDS` : `${displayRows.length} RECORDS`}
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }}></span>
+                    {data.total !== undefined ? `${data.total} TOTAL RECORDS` : `${displayRows.length} TOTAL RECORDS`}
                   </span>
 
-                  <button className="btn sm secondary" onClick={() => window.print()} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600 }}>
-                    <FiPrinter size={14} style={{ marginRight: 4 }} /> Print
+                  <button className="btn-print" onClick={() => window.print()} style={{ padding: '6px 16px', fontSize: 13 }}>
+                    <FiPrinter size={14} /> Print
                   </button>
 
                   {can('reports.export') && (
                     <>
-                      <button className="btn sm secondary" disabled={pdfBusy}
-                        onClick={() => downloadReportPdf(name, exportParams, toast, setPdfBusy)}
-                        style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600 }}>
-                        <FiDownload size={14} style={{ marginRight: 4 }} /> Download PDF
+                      <button className="btn-pdf" disabled={pdfBusy} style={{ padding: '6px 16px', fontSize: 13 }}
+                        onClick={() => downloadReportPdf(name, exportParams, toast, setPdfBusy)}>
+                        <FiDownload size={14} /> Download PDF
                       </button>
 
-                      <button className="btn sm secondary"
-                        onClick={() => download(`/api/reports/${name}/export`, exportParams)}
-                        style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600 }}>
-                        <FiDownload size={14} style={{ marginRight: 4 }} /> Export Excel
+                      <button className="btn-excel" style={{ padding: '6px 16px', fontSize: 13 }}
+                        onClick={() => download(`/api/reports/${name}/export`, exportParams)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+                        </svg>
+                        <span>Export Excel ▾</span>
                       </button>
                     </>
                   )}
                 </div>
 
-                {/* Applied Filter Banner Pill on right */}
+                {/* Applied Filter Pill */}
                 <div style={{
-                  background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8,
-                  padding: '5px 12px', fontSize: 13, color: '#1e40af', fontWeight: 700
+                  background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+                  borderRadius: 20,
+                  padding: '5px 14px', fontSize: 12, color: '#ffffff', fontWeight: 700,
+                  boxShadow: '0 2px 8px rgba(13, 40, 86, 0.3)'
                 }}>
                   Applied Filters: {activeFilterSummary}
                 </div>
@@ -555,72 +726,88 @@ export default function Reports() {
             </div>
 
             <div className="print-report">
-              {/* Daily Report KPI Cards Grid (7 Cards in 2 Rows matching Screenshot) */}
+              {/* Daily Report KPI Cards Grid (4 Top Cards matching Screenshot with Subtle Colors) */}
               {name === 'daily-report' && Array.isArray(data.summary) && (
-                <div className="no-print" style={{ padding: 18, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  {/* Row 1: 4 Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 14 }}>
-                    {data.summary.slice(0, 4).map((m) => (
-                      <div key={m.label} style={{
-                        background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                      }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                          {m.label}
-                        </div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
-                          {money(m.value)}
-                        </div>
-                        {m.hint && (
+                <div className="no-print" style={{ padding: '18px 20px', background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+                  <div className="rpt-kpi-grid" style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                    gap: 16
+                  }}>
+                    {data.summary.slice(0, 4).map((m, idx) => {
+                      const style = getKpiCardStyle(idx, m.label);
+                      return (
+                        <div key={m.label} className="rpt-kpi-card" style={{
+                          background: style.bg,
+                          border: style.border,
+                        }}>
+                          {/* Corner wave tint accent */}
                           <div style={{
-                            fontSize: 12.5, marginTop: 4, fontWeight: 700,
-                            color: m.tone === 'good' ? '#16a34a' : m.tone === 'bad' ? '#dc2626' : '#64748b'
-                          }}>
-                            {m.hint}
+                            position: 'absolute', right: -15, bottom: -15, width: 80, height: 80,
+                            borderRadius: '50%', background: style.wave, opacity: 0.6, pointerEvents: 'none'
+                          }} />
+
+                          <div>{style.icon}</div>
+                          <div style={{ position: 'relative', zIndex: 2 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                              {m.label === 'Total Collection Amount' ? 'TOTAL COLLECTION' : m.label}
+                            </div>
+                            <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginTop: 2, letterSpacing: '-0.3px' }}>
+                              {money(m.value)}
+                            </div>
+                            <div style={{
+                              fontSize: 12, marginTop: 2, fontWeight: 600,
+                              color: m.tone === 'good' ? '#16a34a' : m.tone === 'bad' ? '#dc2626' : '#64748b'
+                            }}>
+                              {m.hint || '—'}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Row 2: 3 Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-                    {data.summary.slice(4).map((m) => (
-                      <div key={m.label} style={{
-                        background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                      }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                          {m.label}
-                        </div>
-                        <div style={{
-                          fontSize: 24, fontWeight: 800, marginTop: 4,
-                          color: m.label === 'Profit / Loss' ? '#16a34a' : '#0f172a'
-                        }}>
-                          {money(m.value)}
-                        </div>
-                        {m.hint && (
-                          <div style={{
-                            fontSize: 12.5, marginTop: 4, fontWeight: 700,
-                            color: m.label === 'Profit / Loss' ? '#16a34a' : '#64748b'
+                  {/* Row 2: remaining summary cards if available */}
+                  {data.summary.length > 4 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 14 }}>
+                      {data.summary.slice(4).map((m, idx) => {
+                        const style = getKpiCardStyle(idx + 4, m.label);
+                        return (
+                          <div key={m.label} className="rpt-kpi-card" style={{
+                            background: style.bg,
+                            border: style.border,
                           }}>
-                            {m.hint}
+                            <div>{style.icon}</div>
+                            <div style={{ position: 'relative', zIndex: 2 }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                                {m.label}
+                              </div>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 2, letterSpacing: '-0.3px' }}>
+                                {money(m.value)}
+                              </div>
+                              <div style={{
+                                fontSize: 12, marginTop: 2, fontWeight: 600,
+                                color: m.tone === 'good' ? '#16a34a' : m.tone === 'bad' ? '#dc2626' : '#64748b'
+                              }}>
+                                {m.hint || '—'}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Report Data Table */}
               {data.kind === 'summary' ? (
-                <div className="card-body" style={{ padding: 18 }}>
+                <div style={{ padding: 20 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                     {displayRows.map((r) => (
-                      <div key={r.Metric} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px 18px' }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{r.Metric}</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                      <div key={r.Metric} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 18px' }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{r.Metric}</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 4 }}>
                           {/^(Chits|Active)/.test(r.Metric) ? new Intl.NumberFormat('en-IN').format(r.Value) : money(r.Value)}
                         </div>
                       </div>
@@ -628,10 +815,12 @@ export default function Reports() {
                   </div>
                 </div>
               ) : displayRows.length === 0 ? (
-                <EmptyState title="NIL — No Data Available" hint="No records match the selected filters. Adjust the date range or clear the filters." />
+                <div style={{ padding: '40px 20px' }}>
+                  <EmptyState title="NIL — No Data Available" hint="No records match the selected filters. Adjust the date range or clear the filters." />
+                </div>
               ) : (
-                <div className="table-wrap rpt-table-wrap" style={{ borderTop: name === 'daily-report' ? 'none' : '1px solid #e2e8f0' }}>
-                  <table className="grid rpt-table">
+                <div className="table-wrap rpt-table-wrap" style={{ overflowX: 'auto' }}>
+                  <table className="rpt-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <colgroup>
                       {visibleHeaders.map((h, i) => (
                         <col key={h} style={{ width: `${colWidths[i]}%` }} />
@@ -640,9 +829,9 @@ export default function Reports() {
                     <thead>
                       <tr>
                         {visibleHeaders.map((h) => (
-                          <th key={h} title={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
-                            background: runningCols.has(h) ? '#eef2ff' : undefined,
-                            fontSize: 13.5, fontWeight: 800, color: '#334155'
+                          <th key={h} title={h} style={{
+                            textAlign: rightAlign(data.col_types?.[h]) ? 'right' : 'left',
+                            background: runningCols.has(h) ? '#eff6ff' : undefined,
                           }}>{h}</th>
                         ))}
                       </tr>
@@ -654,17 +843,18 @@ export default function Reports() {
                             const val = row[h];
                             const isStatusCol = h.toLowerCase() === 'status';
                             return (
-                              <td key={h} className={[rightAlign(data.col_types?.[h]) ? 'right' : '', isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{
-                                background: runningCols.has(h) ? '#f5f7ff' : undefined,
+                              <td key={h} style={{
+                                textAlign: rightAlign(data.col_types?.[h]) ? 'right' : 'left',
+                                background: runningCols.has(h) ? '#f8faff' : undefined,
                                 fontVariantNumeric: rightAlign(data.col_types?.[h]) ? 'tabular-nums' : undefined,
-                                fontSize: 14
                               }}>
                                 {isStatusCol ? (
                                   <span style={{
-                                    background: '#dcfce7', color: '#166534', fontWeight: 700, fontSize: 12.5,
-                                    padding: '4px 12px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 5
+                                    background: '#dcfce7', color: '#166534', fontWeight: 700, fontSize: 12,
+                                    padding: '3px 10px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    border: '1px solid #bbf7d0'
                                   }}>
-                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }}></span>
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }}></span>
                                     {val}
                                   </span>
                                 ) : (
@@ -678,9 +868,12 @@ export default function Reports() {
                     </tbody>
                     {computedTotals && Object.keys(computedTotals).length > 0 && (
                       <tfoot>
-                        <tr className="rpt-total-row">
+                        <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
                           {visibleHeaders.map((h, i) => (
-                            <td key={h} className={[i === 0 ? '' : (rightAlign(data.col_types?.[h]) ? 'right' : ''), isWrapCol(h) ? 'col-wrap' : ''].filter(Boolean).join(' ')} style={{ fontSize: 14, fontWeight: 800 }}>
+                            <td key={h} style={{
+                              textAlign: i === 0 ? 'left' : (rightAlign(data.col_types?.[h]) ? 'right' : 'left'),
+                              fontSize: 13.5, fontWeight: 900, color: '#0f172a', padding: '12px 16px'
+                            }}>
                               {h in computedTotals
                                 ? (typeof computedTotals[h] === 'number' ? fmtCell(data.col_types?.[h], computedTotals[h]) : computedTotals[h])
                                 : ''}
@@ -699,7 +892,7 @@ export default function Reports() {
               <div className="no-print" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 20px', background: '#ffffff', borderTop: '1px solid #e2e8f0',
-                fontSize: 13.5, flexWrap: 'wrap', gap: 10
+                fontSize: 13, flexWrap: 'wrap', gap: 10
               }}>
                 <div style={{ color: '#64748b', fontWeight: 600 }}>
                   Showing <strong style={{ color: '#0f172a' }}>{data.total === 0 ? 0 : (data.page - 1) * data.per_page + 1}</strong> to{' '}
@@ -713,7 +906,7 @@ export default function Reports() {
                     <select
                       value={perPage}
                       onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                      style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, background: '#fff', cursor: 'pointer' }}
+                      style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, background: '#fff', cursor: 'pointer' }}
                     >
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -724,25 +917,25 @@ export default function Reports() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
-                      className="btn sm secondary"
+                      className="rpt-white-btn"
                       disabled={page <= 1 || loading}
                       onClick={() => handlePageChange(page - 1)}
-                      style={{ padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 13 }}
+                      style={{ padding: '5px 12px' }}
                     >
-                      <FiChevronLeft size={15} /> Prev
+                      <FiChevronLeft size={14} /> Prev
                     </button>
 
-                    <span style={{ padding: '0 10px', fontWeight: 700, color: '#334155', fontSize: 13.5 }}>
+                    <span style={{ padding: '0 8px', fontWeight: 700, color: '#1e293b', fontSize: 13 }}>
                       {data.page} of {data.total_pages || 1}
                     </span>
 
                     <button
-                      className="btn sm secondary"
+                      className="rpt-white-btn"
                       disabled={page >= (data.total_pages || 1) || loading}
                       onClick={() => handlePageChange(page + 1)}
-                      style={{ padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 13 }}
+                      style={{ padding: '5px 12px' }}
                     >
-                      Next <FiChevronRight size={15} />
+                      Next <FiChevronRight size={14} />
                     </button>
                   </div>
                 </div>
@@ -751,8 +944,94 @@ export default function Reports() {
           </>
         )}
       </div>
-    </>
+    </div>
   );
+}
+
+/* ------------------------------------------------------------- KPI Card Style Helper */
+
+function getKpiCardStyle(index, label) {
+  const l = (label || '').toLowerCase();
+  if (l.includes('collection') || index === 0) {
+    return {
+      bg: 'linear-gradient(135deg, #f0f7ff 0%, #e0f2fe 100%)',
+      border: '1.5px solid #38bdf8',
+      labelColor: '#0369a1',
+      icon: (
+        <svg width="42" height="38" viewBox="0 0 44 40" fill="none">
+          <rect x="2" y="6" width="38" height="28" rx="6" fill="#1d4ed8" />
+          <path d="M2 13h38" stroke="#1e40af" strokeWidth="2" opacity="0.4" />
+          <path d="M22 14h18a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H22a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2z" fill="#1e3a8a" />
+          <circle cx="32" cy="22" r="3.5" fill="#ffffff" />
+          <circle cx="32" cy="22" r="1.5" fill="#1d4ed8" />
+        </svg>
+      ),
+      wave: '#bae6fd'
+    };
+  }
+  if (l.includes('income') || index === 1) {
+    return {
+      bg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+      border: '1.5px solid #4ade80',
+      labelColor: '#15803d',
+      icon: (
+        <svg width="42" height="38" viewBox="0 0 44 40" fill="none">
+          <circle cx="21" cy="9" r="6" fill="#facc15" />
+          <circle cx="21" cy="9" r="4.5" stroke="#ca8a04" strokeWidth="1" fill="#fef08a" />
+          <text x="21" y="12.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#a16207" fontFamily="sans-serif">₹</text>
+          <path d="M4 27l10-4 7 2.5c1.8.6 3.6 0 4.8-1.2l8-7c.9-.8 2.3-.6 3 .3.7.9.5 2.3-.4 3.1l-8 7c-1.8 1.5-4.2 2.1-6.5 1.5l-6-1.8-5 3.1H4v-4.5z" fill="#16a34a" />
+          <path d="M2 25h4v11H2z" fill="#15803d" rx="1" />
+        </svg>
+      ),
+      wave: '#bbf7d0'
+    };
+  }
+  if (l.includes('expense') || index === 2) {
+    return {
+      bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)',
+      border: '1.5px solid #fb7185',
+      labelColor: '#be123c',
+      icon: (
+        <svg width="38" height="42" viewBox="0 0 38 42" fill="none">
+          <rect x="4" y="6" width="30" height="34" rx="6" fill="#f43f5e" />
+          <rect x="9.5" y="3" width="3.5" height="7" rx="1.75" fill="#fecdd3" />
+          <rect x="17.25" y="3" width="3.5" height="7" rx="1.75" fill="#fecdd3" />
+          <rect x="25" y="3" width="3.5" height="7" rx="1.75" fill="#fecdd3" />
+          <rect x="9.5" y="17" width="19" height="3" rx="1.5" fill="#ffffff" />
+          <rect x="9.5" y="23" width="19" height="3" rx="1.5" fill="#ffffff" />
+          <rect x="9.5" y="29" width="13" height="3" rx="1.5" fill="#ffffff" />
+        </svg>
+      ),
+      wave: '#fecdd3'
+    };
+  }
+  if (l.includes('due') || index === 3) {
+    return {
+      bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+      border: '1.5px solid #facc15',
+      labelColor: '#b45309',
+      icon: (
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="18" fill="#f97316" />
+          <line x1="20" y1="20" x2="20" y2="10" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" />
+          <line x1="20" y1="20" x2="12" y2="20" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" />
+          <circle cx="20" cy="20" r="2.5" fill="#ffffff" />
+        </svg>
+      ),
+      wave: '#fde68a'
+    };
+  }
+  return {
+    bg: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+    border: '1.5px solid #c084fc',
+    labelColor: '#6b21a8',
+    icon: (
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: '#7c3aed', display: 'grid', placeItems: 'center', color: '#ffffff', boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)' }}>
+        <FiTrendingUp size={20} />
+      </div>
+    ),
+    wave: '#e9d5ff'
+  };
 }
 
 /* ------------------------------------------------------------- templates */
@@ -762,22 +1041,37 @@ function TemplatesMenu({ onPick }) {
   return (
     <>
       <button
-        className="btn secondary"
+        className="rpt-white-btn"
         onClick={() => setOpen((o) => !o)}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-          borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff',
-          fontSize: 14, fontWeight: 600, color: '#334155', cursor: 'pointer'
-        }}
       >
-        <FiFileText size={15} /> Templates ▾
+        <FiFileText size={14} style={{ color: '#0d2856' }} />
+        <span>Templates ▾</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1px solid var(--line)', borderRadius: 8, boxShadow: 'var(--shadow-lg)', zIndex: 20, minWidth: 180 }}
+        <div style={{
+          position: 'absolute', right: 0, top: '115%', background: '#ffffff',
+          border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+          zIndex: 30, minWidth: 200, padding: 6
+        }}
           onMouseLeave={() => setOpen(false)}>
-          {[['chit', 'Chit import template'], ['collection', 'Collection import template'], ['expense', 'Expense import template']].map(([t, lbl]) => (
-            <button key={t} className="menu-item" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
-              onClick={() => { onPick(t); setOpen(false); }}>{lbl}</button>
+          {[
+            ['chit', 'Chit import template'],
+            ['collection', 'Collection import template'],
+            ['expense', 'Expense import template']
+          ].map(([t, lbl]) => (
+            <button
+              key={t}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
+                fontWeight: 600, color: '#334155', borderRadius: 8, transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              onClick={() => { onPick(t); setOpen(false); }}
+            >
+              {lbl}
+            </button>
           ))}
         </div>
       )}

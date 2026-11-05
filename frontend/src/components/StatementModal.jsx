@@ -58,13 +58,13 @@ export default function StatementModal({ loan, onClose }) {
     <Modal title={`Statement of Account — ${loan.code}`} onClose={onClose} size="lg"
       footer={<>
         <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
-        <button className="btn secondary" onClick={downloadExcel} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-excel" onClick={downloadExcel} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiFileText size={13} /> Export Excel
         </button>
-        <button className="btn secondary" onClick={downloadPdf} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-pdf" onClick={downloadPdf} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiDownload size={13} /> Download PDF
         </button>
-        <button className="btn" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-print" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiPrinter size={13} /> Print Statement
         </button>
       </>}>

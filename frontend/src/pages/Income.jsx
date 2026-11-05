@@ -5,7 +5,10 @@ import { Field, Modal, Confirm, IconEdit, IconDelete } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiFileText, FiX } from 'react-icons/fi';
+import {
+  FiFileText, FiX, FiDownload, FiPlusCircle, FiSearch, FiDollarSign,
+  FiCreditCard, FiTrendingUp, FiCalendar, FiFilter
+} from 'react-icons/fi';
 
 const blank = { amount: '', received_date: new Date().toISOString().slice(0, 10), category: '', account_id: '', giver_details: '', remarks: '' };
 
@@ -98,7 +101,7 @@ export default function Income({ embedded }) {
           <h1 className="page-title" style={{ margin: 0, fontSize: 20 }}>Office Income</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {can('income.export') && (
-              <button className="btn secondary" onClick={() => api.download('/api/reports/templates/income').catch((e) => toast.error(e.message))}>
+              <button className="btn btn-template" onClick={() => api.download('/api/reports/templates/income').catch((e) => toast.error(e.message))}>
                 <FiFileText size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Sample Template
               </button>
             )}
@@ -110,28 +113,211 @@ export default function Income({ embedded }) {
           </div>
         </div>
       )}
-      <div className="stat-grid">
-        <div className="stat indigo"><div className="label">Total (filtered)</div><div className="value">{money(s.total_income)}</div></div>
-        <div className="stat emerald"><div className="label">To office cash</div><div className="value">{money(s.cash_income)}</div></div>
-        <div className="stat sky"><div className="label">To bank</div><div className="value">{money(s.bank_income)}</div></div>
+      {/* Dashboard-Style Metric Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: 14,
+        marginBottom: 16
+      }}>
+        {/* Card 1: TOTAL INCOME */}
+        <div className="dash-metric-card" style={{ borderLeft: '4px solid #1d4ed8', borderRadius: 14, padding: '16px 20px', background: '#ffffff', border: '1px solid #edf2f7', borderLeftWidth: 4 }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                TOTAL INCOME (FILTERED)
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0edfd', display: 'grid', placeItems: 'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="7" y1="17" x2="17" y2="7" />
+                  <polyline points="7 7 17 7 17 17" />
+                </svg>
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', marginTop: 4, letterSpacing: '-0.5px' }}>
+              {money(s.total_income)}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+              Combined total for selected filters
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: TO OFFICE CASH */}
+        <div className="dash-metric-card" style={{ borderLeft: '4px solid #10b981', borderRadius: 14, padding: '16px 20px', background: '#ffffff', border: '1px solid #edf2f7', borderLeftWidth: 4 }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#10b981', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                TO OFFICE CASH
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#dcfce7', display: 'grid', placeItems: 'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2" />
+                  <circle cx="12" cy="12" r="2.5" />
+                  <line x1="6" y1="12" x2="6.01" y2="12" strokeWidth="2.5" />
+                  <line x1="18" y1="12" x2="18.01" y2="12" strokeWidth="2.5" />
+                </svg>
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', marginTop: 4, letterSpacing: '-0.5px' }}>
+              {money(s.cash_income)}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+              Received directly as physical cash
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: TO BANK */}
+        <div className="dash-metric-card" style={{ borderLeft: '4px solid #0284c7', borderRadius: 14, padding: '16px 20px', background: '#ffffff', border: '1px solid #edf2f7', borderLeftWidth: 4 }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0284c7', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                TO BANK ACCOUNT
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0f2fe', display: 'grid', placeItems: 'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2L2 7h20L12 2z" />
+                </svg>
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', marginTop: 4, letterSpacing: '-0.5px' }}>
+              {money(s.bank_income)}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+              Received via UPI / bank transfer
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="toolbar">
-        <input type="search" placeholder="Search category, giver, remarks…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
-        <select value={list.filters.category || ''} onChange={(e) => list.setFilter('category', e.target.value)}>
-          <option value="">Any category</option>
-          {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={list.filters.account_id || ''} onChange={(e) => list.setFilter('account_id', e.target.value)}>
-          <option value="">Any destination</option>
-          {(meta?.accounts || []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <input type="date" value={list.filters.date_from || ''} onChange={(e) => list.setFilter('date_from', e.target.value)} />
-        <input type="date" value={list.filters.date_to || ''} onChange={(e) => list.setFilter('date_to', e.target.value)} />
-        {list.hasFilters && <button className="btn secondary" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>Clear filters <FiX size={12} /></button>}
+      {/* Filter Toolbar matching Screenshot */}
+      <div className="toolbar" style={{
+        display: 'flex',
+        gap: 8,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginBottom: 12,
+        background: 'transparent',
+        padding: 0
+      }}>
+        {/* Search */}
+        <div className="input-with-icon" style={{ flex: '1 1 200px', minWidth: 170 }}>
+          <div className="input-icon-pill" style={{ color: '#64748b' }}><FiSearch size={14} /></div>
+          <input
+            type="search"
+            placeholder="Search category, giver, remarks…"
+            value={list.q}
+            onChange={(e) => list.setQ(e.target.value)}
+            style={{ borderRadius: 20, height: 36, paddingLeft: 34, background: '#ffffff', borderColor: '#e2e8f0' }}
+          />
+        </div>
+
+        {/* Any Category */}
+        <div className="input-with-icon" style={{ width: 'auto', minWidth: 135 }}>
+          <div className="input-icon-pill" style={{ color: '#3b82f6' }}><FiFilter size={13} /></div>
+          <select
+            value={list.filters.category || ''}
+            onChange={(e) => list.setFilter('category', e.target.value)}
+            style={{ borderRadius: 20, height: 36, paddingLeft: 32, background: '#ffffff', borderColor: '#e2e8f0' }}
+          >
+            <option value="">Any category</option>
+            {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        {/* Any Destination */}
+        <div className="input-with-icon" style={{ width: 'auto', minWidth: 130 }}>
+          <div className="input-icon-pill" style={{ color: '#3b82f6' }}><FiCreditCard size={13} /></div>
+          <select
+            value={list.filters.account_id || ''}
+            onChange={(e) => list.setFilter('account_id', e.target.value)}
+            style={{ borderRadius: 20, height: 36, paddingLeft: 32, background: '#ffffff', borderColor: '#e2e8f0' }}
+          >
+            <option value="">Any destination</option>
+            {(meta?.accounts || []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+
+        {/* Date From */}
+        <div className="input-with-icon" style={{ width: 'auto', minWidth: 140 }}>
+          <div className="input-icon-pill" style={{ color: '#3b82f6' }}><FiCalendar size={13} /></div>
+          <input
+            type="date"
+            value={list.filters.date_from || ''}
+            onChange={(e) => list.setFilter('date_from', e.target.value)}
+            style={{ borderRadius: 20, height: 36, paddingLeft: 32, background: '#ffffff', borderColor: '#e2e8f0' }}
+          />
+        </div>
+
+        {/* Date To */}
+        <div className="input-with-icon" style={{ width: 'auto', minWidth: 140 }}>
+          <div className="input-icon-pill" style={{ color: '#3b82f6' }}><FiCalendar size={13} /></div>
+          <input
+            type="date"
+            value={list.filters.date_to || ''}
+            onChange={(e) => list.setFilter('date_to', e.target.value)}
+            style={{ borderRadius: 20, height: 36, paddingLeft: 32, background: '#ffffff', borderColor: '#e2e8f0' }}
+          />
+        </div>
+
+        {list.hasFilters && (
+          <button className="btn secondary sm" onClick={list.clear} style={{ borderRadius: 18, height: 36, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            Clear filters <FiX size={12} />
+          </button>
+        )}
+
         <div style={{ flex: 1 }} />
-        {can('income.export') && <button className="btn secondary" onClick={() => api.download('/api/income/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}>Export Excel</button>}
-        {can('income.create') && <button className="btn" onClick={() => { setForm(blank); setErrors({}); setModal({ mode: 'create' }); }}>+ New income</button>}
+
+        {/* Export Excel */}
+        {can('income.export') && (
+          <button
+            className="btn btn-excel"
+            onClick={() => api.download('/api/income/export', { q: list.q, ...list.filters }).catch((e) => toast.error(e.message))}
+            style={{
+              borderRadius: 20,
+              height: 36,
+              padding: '0 18px',
+              fontSize: 12.5,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#f0fdf4',
+              color: '#16a34a',
+              border: '1.5px solid #86efac',
+              boxShadow: 'none'
+            }}
+          >
+            <FiDownload size={14} style={{ color: '#16a34a' }} /> Export Excel
+          </button>
+        )}
+      </div>
+
+      {/* Row 2: + New Income Button on its own row */}
+      <div style={{ marginBottom: 16 }}>
+        {can('income.create') && (
+          <button
+            className="btn-save-glow"
+            onClick={() => { setForm(blank); setErrors({}); setModal({ mode: 'create' }); }}
+            style={{
+              borderRadius: 22,
+              padding: '8px 22px',
+              fontSize: 13.5,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+              color: '#ffffff',
+              boxShadow: '0 4px 14px rgba(13, 40, 86, 0.35)',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <FiPlusCircle size={16} /> New Income
+          </button>
+        )}
       </div>
 
       <DataTable
@@ -155,7 +341,7 @@ export default function Income({ embedded }) {
         <Modal title={modal.mode === 'create' ? 'New income' : 'Edit income'} onClose={() => setModal(null)}
           footer={<>
             <button className="btn secondary" onClick={() => setModal(null)} disabled={busy}>Cancel</button>
-            <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+            <button className="btn-save-glow" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save Income'}</button>
           </>}>
           <div className="form-grid">
             <Field label="Amount *" error={errors.amount}><input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>

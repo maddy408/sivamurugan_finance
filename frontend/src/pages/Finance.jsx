@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Expenses from './Expenses';
 import Income from './Income';
 import { useAuth } from '../state/AuthContext';
-import { FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
+import { FiTrendingDown, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 
 export default function Finance() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,25 +21,77 @@ export default function Finance() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Expenses & Income</h1>
+      {/* Clean Header matching screenshot */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: '50%',
+          background: '#e0edfd',
+          display: 'grid', placeItems: 'center',
+          color: '#1d4ed8', fontSize: 22, fontWeight: 900
+        }}>
+          ₹
+        </div>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.3px' }}>
+            Expenses &amp; Income
+          </h1>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
+            Track daily office expenses, revenue income &amp; account transactions
+          </div>
+        </div>
       </div>
 
-      <div className="sub-tab-bar">
+      <div className="sub-tab-bar" style={{ display: 'inline-flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 24, marginBottom: 16 }}>
         {canExpenses && (
-          <button 
+          <button
             className={`sub-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
             onClick={() => handleTabChange('expenses')}
+            style={{
+              borderRadius: 20,
+              padding: '7px 18px',
+              fontWeight: 700,
+              fontSize: 13,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'expenses' ? 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)' : 'transparent',
+              color: activeTab === 'expenses' ? '#ffffff' : '#64748b',
+              boxShadow: activeTab === 'expenses' ? '0 4px 12px rgba(13, 40, 86, 0.25)' : 'none'
+            }}
           >
-            <FiTrendingDown size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Office Expense
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7" />
+              <polyline points="7 7 17 7 17 17" />
+            </svg>
+            Office Expense
           </button>
         )}
         {canIncome && (
-          <button 
+          <button
             className={`sub-tab-btn ${activeTab === 'income' ? 'active' : ''}`}
             onClick={() => handleTabChange('income')}
+            style={{
+              borderRadius: 20,
+              padding: '7px 18px',
+              fontWeight: 700,
+              fontSize: 13,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'income' ? 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)' : 'transparent',
+              color: activeTab === 'income' ? '#ffffff' : '#64748b',
+              boxShadow: activeTab === 'income' ? '0 4px 12px rgba(13, 40, 86, 0.25)' : 'none'
+            }}
           >
-            <FiTrendingUp size={13} style={{ marginRight: 5, verticalAlign: -2 }} />Office Income
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7" />
+              <polyline points="7 7 17 7 17 17" />
+            </svg>
+            Office Income
           </button>
         )}
       </div>

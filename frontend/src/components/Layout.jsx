@@ -3,17 +3,20 @@ import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-do
 import { API_BASE } from '../api/client';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
-import { FiX, FiMenu, FiUser, FiLogOut, FiCheck } from 'react-icons/fi';
+import {
+  FiX, FiMenu, FiUser, FiLogOut, FiCheck, FiHome, FiCheckSquare,
+  FiPieChart, FiDollarSign, FiBarChart2, FiSettings, FiGlobe, FiChevronDown
+} from 'react-icons/fi';
 
 const NAV = [
-  { to: '/', key: 'nav.dashboard', defaultLabel: 'Dashboard', end: true, perm: 'dashboard.view' },
-  { to: '/collection', key: 'nav.collection', defaultLabel: 'Collection', perm: 'collection.view' },
-  { to: '/pending', key: 'nav.pending', defaultLabel: 'Pending Dues', perm: 'pending.view' },
-  { to: '/customers', key: 'nav.customers', defaultLabel: 'Customers', perm: 'customers.view' },
-  { to: '/loans', key: 'nav.chits', defaultLabel: 'Chits / Loans', perm: 'loans.view' },
-  { to: '/finance', key: 'nav.finance', defaultLabel: 'Expenses & Income', perm: 'expenses.view' },
-  { to: '/reports', key: 'nav.reports', defaultLabel: 'Reports', perm: 'reports.view' },
-  { to: '/settings', key: 'nav.settings', defaultLabel: 'Settings', perm: 'settings.view' },
+  { to: '/', key: 'nav.dashboard', defaultLabel: 'Dashboard', end: true, perm: 'dashboard.view', icon: FiHome },
+  { to: '/collection', key: 'nav.collection', defaultLabel: 'Collection', perm: 'collection.view', icon: FiCheckSquare },
+  { to: '/pending', key: 'nav.pending', defaultLabel: 'Pending Dues', perm: 'pending.view', icon: FiCheckSquare },
+  { to: '/customers', key: 'nav.customers', defaultLabel: 'Customers', perm: 'customers.view', icon: FiUser },
+  { to: '/loans', key: 'nav.chits', defaultLabel: 'Chits', perm: 'loans.view', icon: FiPieChart },
+  { to: '/finance', key: 'nav.finance', defaultLabel: 'Expenses & Income', perm: 'expenses.view', icon: FiDollarSign },
+  { to: '/reports', key: 'nav.reports', defaultLabel: 'Reports', perm: 'reports.view', icon: FiBarChart2 },
+  { to: '/settings', key: 'nav.settings', defaultLabel: 'Settings', perm: 'settings.view', icon: FiSettings },
 ];
 
 const LANGS = [
@@ -42,15 +45,26 @@ export default function Layout() {
     return () => document.body.classList.remove('drawer-open');
   }, [mobileOpen]);
 
+  // Support triggering mobile drawer from external buttons (e.g. 3 lines icon on Dashboard)
+  useEffect(() => {
+    const handler = () => setMobileOpen((o) => !o);
+    window.addEventListener('toggle-mobile-drawer', handler);
+    return () => window.removeEventListener('toggle-mobile-drawer', handler);
+  }, []);
+
   return (
     <div className="app">
       <header className="top-navbar">
         <div className="top-navbar-container">
+          {/* Brand Container with Capsule Pill Border */}
           <Link to="/" className="brand-container" onClick={closeDrawer}>
-            <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
-              <img src={orgLogo && !logoBroken ? API_BASE + orgLogo : '/logo.jpeg'} alt="logo"
+            <div className="brand-logo-pill">
+              <img
+                src={orgLogo && !logoBroken ? API_BASE + orgLogo : '/logo.jpeg'}
+                alt="logo"
                 onError={() => setLogoBroken(true)}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </div>
             <div className="brand-text-wrap">
               <span className="brand-title">{t('app.title', 'Siva Murugan Chit Fund')}</span>
@@ -58,49 +72,106 @@ export default function Layout() {
             </div>
           </Link>
 
+          {/* Navigation Links with Icons (Desktop) */}
           <nav className="top-nav">
-            {items.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end}
-                className={({ isActive }) => (isActive ? 'active' : '')}>
-                {t(n.key, n.defaultLabel)}
-              </NavLink>
-            ))}
+            {items.map((n) => {
+              const Icon = n.icon;
+              return (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.end}
+                  className={({ isActive }) => (isActive ? 'active' : '')}
+                >
+                  {Icon && <Icon size={15} style={{ flexShrink: 0 }} />}
+                  <span>{t(n.key, n.defaultLabel)}</span>
+                </NavLink>
+              );
+            })}
           </nav>
 
+          {/* Right Tools: Royal Blue English Pill + Logout Button + Hamburger */}
           <div className="user-tools">
             <LangSwitcher lang={lang} setLang={setLang} open={langOpen} setOpen={setLangOpen} />
-            <button className="btn-icon logout-icon-btn" onClick={doLogout} title={t('nav.logout', 'Logout')} aria-label={t('nav.logout', 'Logout')}>
-              <IconLogout />
+            <button
+              className="btn-icon logout-icon-btn"
+              onClick={doLogout}
+              title={t('nav.logout', 'Logout')}
+              aria-label={t('nav.logout', 'Logout')}
+            >
+              <FiLogOut size={16} />
             </button>
-            <button className="mobile-nav-btn" onClick={() => setMobileOpen((o) => !o)}
-              aria-label="Toggle navigation" aria-expanded={mobileOpen}>
+            <button
+              className="mobile-nav-btn"
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileOpen}
+            >
               {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile slide-over drawer (scrim + panel). Tapping anywhere closes it.
-          Rendered OUTSIDE <header> so its position:fixed resolves against the
-          viewport — the header's backdrop-filter would otherwise become the
-          containing block and clamp the drawer to the header's height. */}
-      <div className={`mobile-drawer ${mobileOpen ? 'open' : ''}`} onClick={closeDrawer} role="dialog" aria-modal="true">
-        <div className="drawer-user">
-          <div className="drawer-avatar">{(user?.name || 'U').charAt(0).toUpperCase()}</div>
-          <div>
-            <div className="drawer-name">{user?.name}</div>
-            <div className="drawer-role">{user?.role}</div>
+      {/* Mobile Drawer Backdrop Overlay */}
+      <div
+        className={`mobile-drawer-overlay ${mobileOpen ? 'open' : ''}`}
+        onClick={closeDrawer}
+        aria-hidden={!mobileOpen}
+      />
+
+      {/* Mobile Slide-Over Drawer (Clean White & Royal Blue Theme) */}
+      <aside
+        className={`mobile-drawer ${mobileOpen ? 'open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation drawer"
+      >
+        <div className="drawer-header">
+          <div className="drawer-user">
+            <div className="drawer-avatar">{(user?.name || 'U').charAt(0).toUpperCase()}</div>
+            <div className="drawer-user-info">
+              <div className="drawer-name">{user?.name}</div>
+              <div className="drawer-role">{user?.role_name || user?.role}</div>
+            </div>
           </div>
+          <button
+            className="drawer-close-btn"
+            onClick={closeDrawer}
+            aria-label="Close menu"
+          >
+            <FiX size={18} />
+          </button>
         </div>
-        {items.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end}
-            className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t(n.key, n.defaultLabel)}
-          </NavLink>
-        ))}
-        <NavLink to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FiUser size={15} /> {t('nav.profile', 'Profile')}</NavLink>
-        <button className="drawer-logout" onClick={doLogout} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FiLogOut size={15} /> {t('nav.logout', 'Logout')}</button>
-      </div>
+
+        <nav className="drawer-nav">
+          {items.map((n) => {
+            const Icon = n.icon;
+            return (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                className={({ isActive }) => `drawer-nav-item ${isActive ? 'active' : ''}`}
+                onClick={closeDrawer}
+              >
+                {Icon && <Icon size={16} style={{ flexShrink: 0 }} />}
+                <span>{t(n.key, n.defaultLabel)}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="drawer-footer">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Language:</span>
+            <LangSwitcher lang={lang} setLang={setLang} open={langOpen} setOpen={setLangOpen} />
+          </div>
+          <button className="drawer-logout-btn" onClick={doLogout}>
+            <FiLogOut size={16} /> {t('nav.logout', 'Logout')}
+          </button>
+        </div>
+      </aside>
 
       <main className="main-layout">
         <Outlet />
@@ -113,10 +184,31 @@ function LangSwitcher({ lang, setLang, open, setOpen }) {
   const current = LANGS.find((l) => l.code === lang) || LANGS[0];
   return (
     <div className="lang-switcher" onMouseLeave={() => setOpen(false)}>
-      <button className="lang-switcher-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
-        <span>{current.flag}</span>
-        <span className="lang-switcher-label">{current.label}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+      <button
+        className="lang-switcher-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
+          color: '#ffffff',
+          border: 'none',
+          borderRadius: 20,
+          padding: '5px 14px',
+          fontWeight: 700,
+          fontSize: 12.5,
+          boxShadow: '0 2px 8px rgba(13, 40, 86, 0.3)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }}
+      >
+        <FiGlobe size={14} style={{ color: '#ffffff' }} />
+        <span className="lang-switcher-label" style={{ color: '#ffffff', fontWeight: 700, display: 'inline', fontSize: 12.5 }}>
+          {current.label}
+        </span>
+        <FiChevronDown size={13} style={{ color: '#ffffff' }} />
       </button>
       {open && (
         <div className="lang-switcher-menu" role="listbox">
@@ -131,15 +223,5 @@ function LangSwitcher({ lang, setLang, open, setOpen }) {
         </div>
       )}
     </div>
-  );
-}
-
-function IconLogout() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
   );
 }

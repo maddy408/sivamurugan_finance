@@ -37,10 +37,10 @@ export default function InstallmentStatementModal({ installmentId, loan, custome
     <Modal title="Installment Payment Statement" onClose={onClose} size="lg"
       footer={<>
         <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
-        <button className="btn secondary" onClick={downloadPdf} disabled={busy || !inst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-pdf" onClick={downloadPdf} disabled={busy || !inst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiDownload size={13} /> Download PDF
         </button>
-        <button className="btn" onClick={() => window.print()} disabled={busy || !inst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-print" onClick={() => window.print()} disabled={busy || !inst} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <FiPrinter size={13} /> Print
         </button>
       </>}>

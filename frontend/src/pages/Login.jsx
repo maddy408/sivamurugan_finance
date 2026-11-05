@@ -49,15 +49,17 @@ export default function Login() {
         )}
         {err && <div className="toast error" style={{ position: 'static', marginBottom: 16 }}>{err}</div>}
 
-        <Field label="Username">
-          <div className="input-icon-wrap">
-            <IconUser />
+        <div className="form-field-group" style={{ marginBottom: 12 }}>
+          <label className="form-field-label">Username</label>
+          <div className="input-with-icon">
+            <div className="input-icon-pill"><IconUser /></div>
             <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required placeholder="Your username" />
           </div>
-        </Field>
-        <Field label="Password">
-          <div className="input-icon-wrap">
-            <IconLock />
+        </div>
+        <div className="form-field-group" style={{ marginBottom: 14 }}>
+          <label className="form-field-label">Password</label>
+          <div className="input-with-icon">
+            <div className="input-icon-pill"><IconLock /></div>
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
@@ -72,12 +74,13 @@ export default function Login() {
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               title={showPassword ? 'Hide password' : 'Show password'}
+              style={{ position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
             >
               {showPassword ? <IconEyeOff /> : <IconEye />}
             </button>
           </div>
-        </Field>
-        <button className="btn" style={{ width: '100%', marginTop: 8 }} disabled={busy}>
+        </div>
+        <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, height: 42, justifyContent: 'center', fontSize: 14 }} disabled={busy}>
           {busy ? 'Signing in…' : 'Login'}
         </button>
       </form>

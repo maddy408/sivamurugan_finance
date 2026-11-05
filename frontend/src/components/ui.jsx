@@ -6,6 +6,7 @@ import {
   FiFileText, FiDollarSign, FiCreditCard, FiUsers, FiUser, FiCalendar,
   FiBarChart2, FiSettings, FiHome, FiDownload, FiUpload, FiAlertTriangle,
   FiInfo, FiChevronLeft, FiChevronRight, FiChevronDown, FiFilter, FiShield,
+  FiMapPin, FiPhone, FiMail
 } from 'react-icons/fi';
 
 // One place that maps the app's icon vocabulary to react-icons/fi — every
@@ -92,8 +93,21 @@ export function Spinner({ label = 'Loading…' }) {
 
 export function EmptyState({ title = 'Nothing here yet', hint }) {
   return (
-    <div className="center-state">
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{title}</div>
+    <div className="center-state" style={{ padding: '36px 20px', textAlign: 'center' }}>
+      <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 14px' }}>
+        <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', background: '#f0f7ff', zIndex: 0 }} />
+        <svg width="56" height="56" viewBox="0 0 48 48" fill="none" style={{ position: 'relative', zIndex: 1 }}>
+          <path d="M12 6C10.8954 6 10 6.89543 10 8V40C10 41.1046 10.8954 42 12 42H36C37.1046 42 38 41.1046 38 40V16L28 6H12Z" fill="#FFFFFF" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M28 6V16H38" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" fill="#eff6ff" />
+          <line x1="16" y1="22" x2="32" y2="22" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" />
+          <line x1="16" y1="28" x2="28" y2="28" stroke="#93c5fd" strokeWidth="2" strokeLinecap="round" />
+          <line x1="16" y1="34" x2="24" y2="34" stroke="#93c5fd" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="34" cy="34" r="7" fill="#1d4ed8" stroke="#FFFFFF" strokeWidth="2" />
+          <line x1="34" y1="31" x2="34" y2="34.5" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="34" cy="37" r="0.9" fill="#FFFFFF" />
+        </svg>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{title}</div>
       {hint && <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>{hint}</div>}
     </div>
   );
@@ -150,12 +164,70 @@ export function Modal({ title, onClose, children, footer, size }) {
   );
 }
 
-export function Field({ label, error, children }) {
+export function Field({ label, error, icon: PropIcon, children, className }) {
+  let Icon = PropIcon;
+  if (!Icon && label) {
+    const lbl = String(label).toLowerCase();
+    if (lbl.includes('password')) Icon = FiLock;
+    else if (lbl.includes('phone') || lbl.includes('mobile')) Icon = FiPhone;
+    else if (lbl.includes('email') || lbl.includes('mail')) Icon = FiMail;
+    else if (lbl.includes('amount') || lbl.includes('cash') || lbl.includes('upi') || lbl.includes('balance') || lbl.includes('rate') || lbl.includes('cap') || lbl.includes('price') || lbl.includes('due') || lbl.includes('emi') || lbl.includes('principal') || lbl.includes('fine') || lbl.includes('charges') || lbl.includes('paid')) Icon = FiDollarSign;
+    else if (lbl.includes('date') || lbl.includes('grace') || lbl.includes('tenure') || lbl.includes('schedule') || lbl.includes('frequency') || lbl.includes('day') || lbl.includes('start') || lbl.includes('close') || lbl.includes('month') || lbl.includes('year')) Icon = FiCalendar;
+    else if (lbl.includes('cust') || lbl.includes('user') || lbl.includes('emp') || lbl.includes('giver') || lbl.includes('name') || lbl.includes('assign')) Icon = FiUser;
+    else if (lbl.includes('account') || lbl.includes('payment') || lbl.includes('method') || lbl.includes('mode') || lbl.includes('source') || lbl.includes('destination') || lbl.includes('disburs')) Icon = FiCreditCard;
+    else if (lbl.includes('address') || lbl.includes('city') || lbl.includes('state') || lbl.includes('street')) Icon = FiMapPin;
+    else if (lbl.includes('code') || lbl.includes('bill') || lbl.includes('ref') || lbl.includes('category') || lbl.includes('notes') || lbl.includes('remark') || lbl.includes('type') || lbl.includes('sort')) Icon = FiFileText;
+    else Icon = FiFileText;
+  }
+
+  const childArray = Array.isArray(children) ? children : [children];
+  const isAlreadyWrapped = childArray.some(
+    (c) => c && typeof c === 'object' && c.props && (
+      (typeof c.props.className === 'string' && (
+        c.props.className.includes('input-with-icon') ||
+        c.props.className.includes('input-icon-wrap') ||
+        c.props.className.includes('segmented')
+      ))
+    )
+  );
+
+  if (isAlreadyWrapped || !Icon) {
+    return (
+      <div className={`form-field-group ${className || ''}`}>
+        {label && <label className="form-field-label">{label}</label>}
+        {children}
+        {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
+      </div>
+    );
+  }
+
+  // Find the primary input-like element (input, select, textarea)
+  const inputIdx = childArray.findIndex(
+    (c) => c && typeof c === 'object' && (c.type === 'input' || c.type === 'select' || c.type === 'textarea')
+  );
+
+  if (inputIdx === -1) {
+    return (
+      <div className={`form-field-group ${className || ''}`}>
+        {label && <label className="form-field-label">{label}</label>}
+        {children}
+        {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
+      </div>
+    );
+  }
+
+  const primaryInput = childArray[inputIdx];
+  const otherChildren = childArray.filter((_, idx) => idx !== inputIdx);
+
   return (
-    <div className="field">
-      {label && <label>{label}</label>}
-      {children}
-      {error && <span className="err">{error}</span>}
+    <div className={`form-field-group ${className || ''}`}>
+      {label && <label className="form-field-label">{label}</label>}
+      <div className="input-with-icon">
+        <div className="input-icon-pill"><Icon size={13} /></div>
+        {primaryInput}
+      </div>
+      {otherChildren}
+      {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
     </div>
   );
 }
@@ -190,4 +262,3 @@ export function IconEdit(props) {
 export function IconDelete(props) {
   return <FiTrash2 size={15} {...props} />;
 }
-
