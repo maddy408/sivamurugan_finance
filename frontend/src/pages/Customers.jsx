@@ -10,6 +10,7 @@ import {
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 
 const emptyForm = {
   name: '', mobile: '', aadhar_number: '', alt_mobile: '', email: '', gender: '', dob: '',
@@ -18,6 +19,7 @@ const emptyForm = {
 
 export default function Customers() {
   const { can } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const list = useList('/api/customers', { initialPerPage: 10, initialSort: 'name' });
 
@@ -146,10 +148,10 @@ export default function Customers() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              Customers Directory
+              {t('Customers Directory', 'Customers Directory')}
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
-              Manage member profiles, nominee details &amp; contact records
+              {t('Manage member profiles, nominee details & contact records', 'Manage member profiles, nominee details & contact records')}
             </p>
           </div>
         </div>
@@ -172,13 +174,13 @@ export default function Customers() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                TOTAL REGISTERED MEMBERS
+                {t('TOTAL REGISTERED MEMBERS', 'TOTAL REGISTERED MEMBERS')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {totalMembersCount}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Member profiles in directory
+                {t('Member profiles in directory', 'Member profiles in directory')}
               </div>
             </div>
             <div style={{
@@ -203,13 +205,13 @@ export default function Customers() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#059669', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                ACTIVE RUNNING CHITS
+                {t('ACTIVE RUNNING CHITS', 'ACTIVE RUNNING CHITS')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {activeLoansCount}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Currently active subscriptions
+                {t('Currently active subscriptions', 'Currently active subscriptions')}
               </div>
             </div>
             <div style={{
@@ -251,8 +253,8 @@ export default function Customers() {
                 <FiUser size={16} />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Register New Customer</h2>
-                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Create member profile &amp; nominee</p>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Register New Customer', 'Register New Customer')}</h2>
+                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Create member profile & nominee', 'Create member profile & nominee')}</p>
               </div>
             </div>
 
@@ -260,14 +262,14 @@ export default function Customers() {
               <form onSubmit={handleCreateCustomer}>
                 {/* Full Name */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Full Name *</label>
+                  <label className="form-field-label">{t('Full Name *', 'Full Name *')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiUser size={13} /></div>
                     <input
                       value={createForm.name}
                       onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                       required
-                      placeholder="Customer full name"
+                      placeholder={t('Customer full name', 'Customer full name')}
                     />
                   </div>
                   {createErrors.name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.name}</span>}
@@ -275,13 +277,13 @@ export default function Customers() {
 
                 {/* Mobile */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Mobile Number</label>
+                  <label className="form-field-label">{t('Mobile Number', 'Mobile Number')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiPhone size={13} /></div>
                     <input
                       value={createForm.mobile}
                       onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })}
-                      placeholder="10-digit mobile number"
+                      placeholder={t('10-digit mobile number', '10-digit mobile number')}
                     />
                   </div>
                   {createErrors.mobile && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.mobile}</span>}
@@ -289,13 +291,13 @@ export default function Customers() {
 
                 {/* Aadhar Number */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Aadhar Number</label>
+                  <label className="form-field-label">{t('Aadhar Number', 'Aadhar Number')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiFileText size={13} /></div>
                     <input
                       value={createForm.aadhar_number}
                       onChange={(e) => setCreateForm({ ...createForm, aadhar_number: e.target.value })}
-                      placeholder="12-digit Aadhar number"
+                      placeholder={t('12-digit Aadhar number', '12-digit Aadhar number')}
                     />
                   </div>
                   {createErrors.aadhar_number && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.aadhar_number}</span>}
@@ -303,13 +305,13 @@ export default function Customers() {
 
                 {/* Nominee Name */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Nominee Name</label>
+                  <label className="form-field-label">{t('Nominee Name', 'Nominee Name')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiUsers size={13} /></div>
                     <input
                       value={createForm.nominee_name}
                       onChange={(e) => setCreateForm({ ...createForm, nominee_name: e.target.value })}
-                      placeholder="Nominee / contact person"
+                      placeholder={t('Nominee / contact person', 'Nominee / contact person')}
                     />
                   </div>
                   {createErrors.nominee_name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.nominee_name}</span>}
@@ -317,13 +319,13 @@ export default function Customers() {
 
                 {/* Address */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Address</label>
+                  <label className="form-field-label">{t('Address', 'Address')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiMapPin size={13} /></div>
                     <input
                       value={createForm.address_line1}
                       onChange={(e) => setCreateForm({ ...createForm, address_line1: e.target.value })}
-                      placeholder="Town / City, Tamil Nadu"
+                      placeholder={t('Town / City, Tamil Nadu', 'Town / City, Tamil Nadu')}
                     />
                   </div>
                   {createErrors.address_line1 && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.address_line1}</span>}
@@ -335,7 +337,7 @@ export default function Customers() {
                   style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
                   disabled={createBusy}
                 >
-                  <FiSave size={14} /> {createBusy ? 'Saving…' : 'Register Customer'}
+                  <FiSave size={14} /> {createBusy ? t('Saving…', 'Saving…') : t('Save Customer', 'Register Customer')}
                 </button>
               </form>
             </div>
@@ -349,7 +351,7 @@ export default function Customers() {
               <div className="input-icon-pill"><FiSearch size={13} /></div>
               <input
                 type="search"
-                placeholder="Search name, code, mobile, address, loan code…"
+                placeholder={t('Search name, code, mobile, address, loan code…', 'Search name, code, mobile, address, loan code…')}
                 value={list.q}
                 onChange={(e) => list.setQ(e.target.value)}
               />
@@ -359,14 +361,14 @@ export default function Customers() {
               onChange={(e) => list.setFilter('status', e.target.value)}
               style={{ height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1', fontSize: 12.5, padding: '0 12px', background: '#fff' }}
             >
-              <option value="">Any status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="blacklisted">Blacklisted</option>
+              <option value="">{t('Any status', 'Any status')}</option>
+              <option value="active">{t('Active', 'Active')}</option>
+              <option value="inactive">{t('Inactive', 'Inactive')}</option>
+              <option value="blacklisted">{t('Blacklisted', 'Blacklisted')}</option>
             </select>
             {list.hasFilters && (
               <button className="btn secondary sm" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                Clear <FiX size={12} />
+                {t('Clear', 'Clear')} <FiX size={12} />
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -381,7 +383,7 @@ export default function Customers() {
                   cursor: 'pointer', transition: 'all 0.15s ease'
                 }}
               >
-                <FiDownload size={13} style={{ color: '#059669' }} /> Export Excel
+                <FiDownload size={13} style={{ color: '#059669' }} /> {t('Export Excel', 'Export Excel')}
               </button>
             )}
           </div>

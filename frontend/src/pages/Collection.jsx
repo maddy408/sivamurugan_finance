@@ -4,9 +4,11 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiCheckSquare, FiX, FiFileText, FiPhone, FiArrowRight, FiSearch } from 'react-icons/fi';
 
 export default function Collection() {
+  const { t, lang } = useI18n();
   const nav = useNavigate();
   const toast = useToast();
   const list = useList('/api/collection/workload', { initialPerPage: 25 });
@@ -31,10 +33,10 @@ export default function Collection() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              Collection Workload
+              {t('Collection Workload', 'Collection Workload')}
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
-              Assigned chit collection schedule &amp; due follow-ups
+              {t('Assigned chit collection schedule & due follow-ups', 'Assigned chit collection schedule & due follow-ups')}
             </p>
           </div>
         </div>
@@ -57,7 +59,7 @@ export default function Collection() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                ASSIGNED CHITS
+                {t('ASSIGNED CHITS', 'ASSIGNED CHITS')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {totalAssignedChits}

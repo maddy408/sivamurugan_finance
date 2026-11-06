@@ -1,13 +1,32 @@
 const getApiBaseUrl = (appPath) => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
-  const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  let url = envUrl || ('http://' + currentHost + '/' + appPath + '/backend/public');
-
-  if (typeof window !== 'undefined' && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-    url = url.replace(/:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/, '://' + currentHost + '$2');
+  // 1. In Vite development mode, use relative URL ("") so the Vite dev server proxy handles all API & storage calls.
+  // This allows connecting via localhost, 127.0.0.1, or mobile/network IP without CORS errors, firewall blocks, or latency issues.
+  if (import.meta.env.DEV) {
+    return '';
   }
 
-  return url.replace(/\/$/, '');
+  // 2. In production builds:
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  // If an explicit production URL is provided (and not a local dev port like :8000), use it.
+  if (envUrl && !envUrl.includes('localhost:8000') && !envUrl.includes('127.0.0.1:8000')) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // 3. Deployed on web server (Apache, Nginx, or cPanel):
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+
+    // If deployed inside a subfolder ending or containing /web (e.g. /siva-murugan-chit-fund/web/)
+    if (pathname.includes('/web')) {
+      const basePath = pathname.substring(0, pathname.indexOf('/web'));
+      return origin + basePath + '/backend/public';
+    }
+
+    return origin + '/' + appPath + '/backend/public';
+  }
+
+  return 'http://localhost/' + appPath + '/backend/public';
 };
 
 const BASE = getApiBaseUrl('siva-murugan-chit-fund');
@@ -36,8 +55,14 @@ export class ApiError extends Error {
   }
 }
 
+function resolveUrl(path) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  const fullPath = BASE ? (BASE + path) : path;
+  return new URL(fullPath, origin);
+}
+
 async function request(method, path, { body, params, signal } = {}) {
-  const url = new URL(BASE + path);
+  const url = resolveUrl(path);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
@@ -79,7 +104,7 @@ async function request(method, path, { body, params, signal } = {}) {
 }
 
 async function download(path, params, fallbackName = 'export.xlsx') {
-  const url = new URL(BASE + path);
+  const url = resolveUrl(path);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
@@ -109,7 +134,7 @@ async function download(path, params, fallbackName = 'export.xlsx') {
 }
 
 async function upload(path, file, field = 'file') {
-  const url = new URL(BASE + path);
+  const url = resolveUrl(path);
   const fd = new FormData();
   fd.append(field, file);
   const headers = {};

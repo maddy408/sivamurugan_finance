@@ -301,16 +301,16 @@ export default function Dashboard() {
       {/* Top Header Bar */}
       <div className="dash-top-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>Dashboard</h1>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: 500 }}>Welcome to Siva Murugan Chit Fund</div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>{t('nav.dashboard', 'Dashboard')}</h1>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: 500 }}>{t('dash.welcome', 'Welcome to Siva Murugan Chit Fund')}</div>
         </div>
 
         <div className="dash-top-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button className="btn sm secondary" onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FiRefreshCw size={13} /> Refresh
+            <FiRefreshCw size={13} /> {t('action.refresh', 'Refresh')}
           </button>
           <Link className="btn sm" to="/collection" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <FiZap size={13} /> Collect Dues
+            <FiZap size={13} /> {t('dash.collect_dues', 'Collect Dues')}
           </Link>
 
           {/* Date Badge */}
@@ -395,7 +395,7 @@ export default function Dashboard() {
                   lineHeight: '1.3',
                   whiteSpace: 'pre-line'
                 }}>
-                  {m.label}
+                  {t(m.label, m.label)}
                 </div>
                 <div>{m.icon}</div>
               </div>
@@ -409,7 +409,7 @@ export default function Dashboard() {
                 {money(m.value)}
               </div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: '1.4' }}>
-                {m.subtext}
+                {t(m.subtext, m.subtext)}
               </div>
             </div>
 
@@ -423,8 +423,8 @@ export default function Dashboard() {
                 fontSize: 12,
                 color: '#64748b'
               }}>
-                <span>Today: <strong style={{ color: '#059669', fontWeight: 800 }}>{money(m.today)}</strong></span>
-                <span>This Month: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.monthly)}</strong></span>
+                <span>{t('Today', 'Today')}: <strong style={{ color: '#059669', fontWeight: 800 }}>{money(m.today)}</strong></span>
+                <span>{t('This Month', 'This Month')}: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.monthly)}</strong></span>
               </div>
             )}
 
@@ -438,8 +438,8 @@ export default function Dashboard() {
                 fontSize: 12,
                 color: '#64748b'
               }}>
-                <span>Weekly: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.weekly)}</strong></span>
-                <span>Monthly: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.monthly)}</strong></span>
+                <span>{t('Weekly', 'Weekly')}: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.weekly)}</strong></span>
+                <span>{t('Monthly', 'Monthly')}: <strong style={{ color: '#0f172a', fontWeight: 800 }}>{money(m.monthly)}</strong></span>
               </div>
             )}
           </div>
@@ -468,7 +468,7 @@ export default function Dashboard() {
                 <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
               </svg>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.2px' }}>
-                Staff Collection Leaderboard
+                {t('Staff Collection Leaderboard', 'Staff Collection Leaderboard')}
               </h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#93c5fd', fontSize: 12.5 }}>
@@ -478,7 +478,7 @@ export default function Dashboard() {
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              <span>Actual collections logged per employee</span>
+              <span>{t('Actual collections logged per employee', 'Actual collections logged per employee')}</span>
             </div>
           </div>
 
@@ -486,13 +486,13 @@ export default function Dashboard() {
             <table className="dash-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr>
-                  <th>EMPLOYEE</th>
-                  <th>CODE</th>
-                  <th style={{ textAlign: 'right' }}>TODAY</th>
-                  <th style={{ textAlign: 'right' }}>THIS WEEK</th>
-                  <th style={{ textAlign: 'right' }}>THIS MONTH</th>
-                  <th style={{ textAlign: 'right' }}>TOTAL COLLECTIONS</th>
-                  <th style={{ textAlign: 'right' }}>RECEIPTS</th>
+                  <th>{t('EMPLOYEE', 'EMPLOYEE')}</th>
+                  <th>{t('CODE', 'CODE')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('TODAY', 'TODAY')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('THIS WEEK', 'THIS WEEK')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('THIS MONTH', 'THIS MONTH')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('TOTAL COLLECTIONS', 'TOTAL COLLECTIONS')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('RECEIPTS', 'RECEIPTS')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -562,11 +562,13 @@ export default function Dashboard() {
 }
 
 function PerfCard({ label, iconType, data }) {
+  const { t, lang } = useI18n();
   const d = data || { collected: 0, expected: 0, pending: 0, rate: 0 };
   const hasExpected = Number(d.expected) > 0;
+  const noDuesMsg = lang === 'ta' ? '0% (இக்காலத்தில் நிலுவை இல்லை)' : '0% (No dues in this period)';
   const rateStr = hasExpected
     ? `${d.rate}% (${money(d.collected)} / ${money(d.expected)})`
-    : '0% (No dues in this period)';
+    : noDuesMsg;
 
   const renderIcon = () => {
     if (iconType === 'sun') {
@@ -614,15 +616,15 @@ function PerfCard({ label, iconType, data }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {renderIcon()}
-          <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>{label}</h3>
+          <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>{t(label, label)}</h3>
         </div>
         <Link to="/loans" style={{ fontSize: 12.5, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>
-          View Details →
+          {t('View Details →', 'View Details →')}
         </Link>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, fontSize: 13 }}>
-        <span style={{ color: '#64748b', fontWeight: 500 }}>Collection Rate</span>
+        <span style={{ color: '#64748b', fontWeight: 500 }}>{t('Collection Rate', 'Collection Rate')}</span>
         <span style={{ fontWeight: 800, color: '#0f172a' }}>{rateStr}</span>
       </div>
 
@@ -635,7 +637,7 @@ function PerfCard({ label, iconType, data }) {
           padding: '12px 14px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a' }}>Collected</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a' }}>{t('Collected', 'Collected')}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
               <polyline points="22 4 12 14.01 9 11.01" />
@@ -654,7 +656,7 @@ function PerfCard({ label, iconType, data }) {
           padding: '12px 14px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#d97706' }}>Pending</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#d97706' }}>{t('Pending', 'Pending')}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />

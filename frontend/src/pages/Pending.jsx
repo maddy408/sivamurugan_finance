@@ -5,6 +5,7 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import {
   FiCheckSquare, FiBarChart2, FiExternalLink, FiX, FiDownload,
   FiSearch, FiCalendar, FiUsers, FiCreditCard, FiArrowRight
@@ -12,6 +13,7 @@ import {
 
 export default function Pending({ hideTitle = false }) {
   const { can } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const list = useList('/api/pending-dues', { initialPerPage: 25 });
   const [activeTab, setActiveTab] = useState('all');
@@ -58,10 +60,10 @@ export default function Pending({ hideTitle = false }) {
             </div>
             <div>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.3px' }}>
-                Pending Dues &amp; Arrears
+                {t('Pending Dues & Arrears', 'Pending Dues & Arrears')}
               </h1>
               <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
-                Track overdue chit installments and customer balances
+                {t('Track overdue chit installments and customer balances', 'Track overdue chit installments and customer balances')}
               </div>
             </div>
           </div>
@@ -82,7 +84,7 @@ export default function Pending({ hideTitle = false }) {
               boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
             }}
           >
-            <FiBarChart2 size={14} /> Detailed Dues Report <FiExternalLink size={12} />
+            <FiBarChart2 size={14} /> {t('Detailed Dues Report', 'Detailed Dues Report')} <FiExternalLink size={12} />
           </Link>
         </div>
       )}
@@ -103,7 +105,7 @@ export default function Pending({ hideTitle = false }) {
             cursor: 'pointer'
           }}
         >
-          All Pending Dues ({rawCustomers.length})
+          {t('All Pending Dues', 'All Pending Dues')} ({rawCustomers.length})
         </button>
         <button
           onClick={() => setActiveTab('overdue')}
@@ -119,7 +121,7 @@ export default function Pending({ hideTitle = false }) {
             cursor: 'pointer'
           }}
         >
-          Overdue Only ({totalOverdueCustomers})
+          {t('Overdue Only', 'Overdue Only')} ({totalOverdueCustomers})
         </button>
       </div>
 
@@ -160,13 +162,13 @@ export default function Pending({ hideTitle = false }) {
           </div>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              PENDING CUSTOMERS
+              {t('PENDING CUSTOMERS', 'PENDING CUSTOMERS')}
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 1, letterSpacing: '-0.3px' }}>
               {s.pending_customers ?? 0}
             </div>
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-              Accounts with unpaid dues
+              {t('Accounts with unpaid dues', 'Accounts with unpaid dues')}
             </div>
           </div>
           {/* Faint right watermark */}
@@ -212,13 +214,13 @@ export default function Pending({ hideTitle = false }) {
           </div>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 800, color: '#ef4444', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              TOTAL PENDING DUES
+              {t('TOTAL PENDING DUES', 'TOTAL PENDING DUES')}
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 1, letterSpacing: '-0.3px' }}>
               {money(s.total_pending_dues || s.total_outstanding || 0)}
             </div>
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-              Actual dues payable up to today
+              {t('Actual dues payable up to today', 'Actual dues payable up to today')}
             </div>
           </div>
           {/* Faint right watermark */}
@@ -234,7 +236,7 @@ export default function Pending({ hideTitle = false }) {
           <div className="input-icon-pill" style={{ color: '#64748b' }}><FiSearch size={15} /></div>
           <input
             type="search"
-            placeholder="Search customer, code, phone, chit, address…"
+            placeholder={t('Search customer, code, phone, chit, address…', 'Search customer, code, phone, chit, address…')}
             value={list.q}
             onChange={(e) => list.setQ(e.target.value)}
             style={{ borderRadius: 24, height: 40, paddingLeft: 38, background: '#ffffff', borderColor: '#e2e8f0' }}
@@ -242,7 +244,7 @@ export default function Pending({ hideTitle = false }) {
         </div>
         {list.hasFilters && (
           <button className="btn secondary sm" onClick={list.clear} style={{ borderRadius: 20, height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            Clear <FiX size={12} />
+            {t('Clear', 'Clear')} <FiX size={12} />
           </button>
         )}
         {can('loans.export') && (
@@ -264,7 +266,7 @@ export default function Pending({ hideTitle = false }) {
               boxShadow: 'none'
             }}
           >
-            <FiDownload size={14} style={{ color: '#16a34a' }} /> Export Excel
+            <FiDownload size={14} style={{ color: '#16a34a' }} /> {t('Export Excel', 'Export Excel')}
           </button>
         )}
       </div>
@@ -272,16 +274,15 @@ export default function Pending({ hideTitle = false }) {
       {/* Date Range Filter Bar matching Screenshot */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FiCalendar size={14} /> Filter Date:
+          <FiCalendar size={14} /> {t('Filter Date: From', 'Filter Date: From')}
         </span>
-        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>From</span>
         <input
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
           style={{ height: 34, borderRadius: 20, border: '1.5px solid #e2e8f0', padding: '0 12px', fontSize: 12, background: '#ffffff' }}
         />
-        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>To</span>
+        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{t('To', 'To')}</span>
         <input
           type="date"
           value={dateTo}
@@ -304,11 +305,11 @@ export default function Pending({ hideTitle = false }) {
             boxShadow: '0 4px 12px rgba(13, 40, 86, 0.25)'
           }}
         >
-          Apply
+          {t('Apply', 'Apply')}
         </button>
         {(list.filters.date_from || list.filters.date_to) && (
           <button className="btn sm secondary" onClick={clearDateFilter} style={{ height: 34, borderRadius: 20, padding: '0 14px', fontSize: 12 }}>
-            Clear <FiX size={12} />
+            {t('Clear', 'Clear')} <FiX size={12} />
           </button>
         )}
         {dateError && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginLeft: 8 }}>{dateError}</span>}
@@ -345,10 +346,10 @@ export default function Pending({ hideTitle = false }) {
             </svg>
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
-            {activeTab === 'overdue' ? 'No overdue installments' : 'No pending dues'}
+            {activeTab === 'overdue' ? t('No overdue installments', 'No overdue installments') : t('No pending dues', 'No pending dues')}
           </div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
-            Every scheduled installment up to today has been fully paid.
+            {t('Every scheduled installment up to today has been fully paid.', 'Every scheduled installment up to today has been fully paid.')}
           </div>
         </div>
       )}
@@ -401,52 +402,52 @@ export default function Pending({ hideTitle = false }) {
               <table className="grid">
                 <thead>
                   <tr>
-                    <th>Chit Code</th>
-                    <th>Due No.</th>
-                    <th>Due Date</th>
-                    <th className="right">Installment Amount</th>
-                    <th className="right">Paid</th>
-                    <th className="right">Due Balance</th>
-                    <th className="center">Status</th>
+                    <th>{t('Chit Code', 'Chit Code')}</th>
+                    <th>{t('Due No.', 'Due No.')}</th>
+                    <th>{t('Due Date', 'Due Date')}</th>
+                    <th className="right">{t('Installment Amount', 'Installment Amount')}</th>
+                    <th className="right">{t('Paid', 'Paid')}</th>
+                    <th className="right">{t('Due Balance', 'Due Balance')}</th>
+                    <th className="center">{t('Status', 'Status')}</th>
                     <th className="right"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayDues.map((d, idx) => (
                     <tr key={`${d.chit_id}-${d.id || idx}`}>
-                      <td>
+                      <td data-label={t('Chit Code', 'Chit Code')}>
                         <Link to={`/loans/${d.chit_id}`} style={{ fontWeight: 700, color: '#1d4ed8' }}>
                           {d.chit_code}
                         </Link>
                       </td>
-                      <td>
-                        <b style={{ color: '#0f172a' }}>Due #{d.installment_no}</b>
+                      <td data-label={t('Due No.', 'Due No.')}>
+                        <b style={{ color: '#0f172a' }}>{lang === 'ta' ? `தவணை #${d.installment_no}` : `Due #${d.installment_no}`}</b>
                       </td>
-                      <td className="nowrap">{fmtDate(d.due_date)}</td>
-                      <td className="right">{money(d.payable_amount || d.chit_installment)}</td>
-                      <td className="right" style={{ color: Number(d.paid_amount) > 0 ? '#10b981' : '#64748b', fontWeight: 600 }}>
+                      <td className="nowrap" data-label={t('Due Date', 'Due Date')}>{fmtDate(d.due_date)}</td>
+                      <td className="right" data-label={t('Installment Amount', 'Installment Amount')}>{money(d.payable_amount || d.chit_installment)}</td>
+                      <td className="right" data-label={t('Paid', 'Paid')} style={{ color: Number(d.paid_amount) > 0 ? '#10b981' : '#64748b', fontWeight: 600 }}>
                         {money(d.paid_amount)}
                       </td>
-                      <td className="right">
+                      <td className="right" data-label={t('Due Balance', 'Due Balance')}>
                         <b style={{ fontSize: 12, color: '#e11d48' }}>{money(d.balance_amount)}</b>
                       </td>
-                      <td className="center">
+                      <td className="center" data-label={t('Status', 'Status')}>
                         <span className={`badge ${d.status}`}>
-                          {d.status}
+                          {t(d.status, d.status)}
                         </span>
                       </td>
-                      <td className="right nowrap">
+                      <td className="right nowrap" data-label="">
                         {can('collection.create') ? (
                           <Link
                             className="btn-save-glow"
                             to={`/collection/chit/${d.chit_id}`}
                             style={{ height: 26, padding: '2px 10px', fontSize: 11, textDecoration: 'none' }}
                           >
-                            Collect Due #{d.installment_no}
+                            {lang === 'ta' ? `தவணை #${d.installment_no} வசூலி` : `Collect Due #${d.installment_no}`}
                           </Link>
                         ) : (
                           <Link className="btn sm secondary" to={`/collection/chit/${d.chit_id}`}>
-                            View
+                            {t('View', 'View')}
                           </Link>
                         )}
                       </td>

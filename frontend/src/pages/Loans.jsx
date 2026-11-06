@@ -7,6 +7,7 @@ import CustomScheduleModal from '../components/CustomScheduleModal';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import {
   FiFileText, FiX, FiPlusCircle, FiDownload, FiUser, FiCalendar,
   FiDollarSign, FiClock, FiSearch, FiFilter, FiCheckCircle, FiGrid, FiPieChart
@@ -21,6 +22,7 @@ const initialForm = {
 
 export default function Loans() {
   const { can } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const list = useList('/api/loans', { initialPerPage: 10, initialSort: 'created_at', initialDir: 'desc' });
   const [del, setDel] = useState(null);
@@ -272,10 +274,10 @@ export default function Loans() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              Chits Management
+              {t('Chits Management', 'Chits Management')}
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
-              Create new chits, track active chit schedules &amp; manage repayments
+              {t('Create new chits, track active chit schedules & manage repayments', 'Create new chits, track active chit schedules & manage repayments')}
             </p>
           </div>
         </div>
@@ -298,13 +300,13 @@ export default function Loans() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                TOTAL CHITS
+                {t('TOTAL CHITS', 'TOTAL CHITS')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {totalChitsCount}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Total registered chits in portfolio
+                {t('Total registered chits in portfolio', 'Total registered chits in portfolio')}
               </div>
             </div>
             <div style={{
@@ -329,13 +331,13 @@ export default function Loans() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#059669', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                ACTIVE CHITS
+                {t('ACTIVE CHITS', 'ACTIVE CHITS')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {activeChitsCount}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Currently active ongoing chits
+                {t('Currently active ongoing chits', 'Currently active ongoing chits')}
               </div>
             </div>
             <div style={{
@@ -360,13 +362,13 @@ export default function Loans() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#e11d48', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                TOTAL OUTSTANDING
+                {t('TOTAL OUTSTANDING', 'TOTAL OUTSTANDING')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {money(totalOutstandingSum)}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Remaining balance across listed chits
+                {t('Remaining balance across listed chits', 'Remaining balance across listed chits')}
               </div>
             </div>
             <div style={{
@@ -411,8 +413,8 @@ export default function Loans() {
                 <FiPlusCircle size={16} />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Create New Chit</h2>
-                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Enter customer, installment terms &amp; schedule</p>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Create New Chit', 'Create New Chit')}</h2>
+                <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Enter customer, installment terms & schedule', 'Enter customer, installment terms & schedule')}</p>
               </div>
             </div>
 
@@ -420,7 +422,7 @@ export default function Loans() {
               <form onSubmit={handleCreateChit}>
                 {/* Customer */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Customer *</label>
+                  <label className="form-field-label">{t('Customer *', 'Customer *')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiUser size={13} /></div>
                     <input
@@ -552,7 +554,7 @@ export default function Loans() {
                 )}
 
                 <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} disabled={formBusy || !form.customer_id}>
-                  <FiCheckCircle size={14} /> {formBusy ? 'Creating…' : 'Create Chit'}
+                  <FiCheckCircle size={14} /> {formBusy ? t('Saving…', 'Creating…') : t('Create Chit', 'Create Chit')}
                 </button>
               </form>
             </div>
@@ -564,29 +566,29 @@ export default function Loans() {
           <div className="toolbar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <div className="input-with-icon" style={{ flex: '1 1 200px', minWidth: 160 }}>
               <div className="input-icon-pill"><FiSearch size={13} /></div>
-              <input type="search" placeholder="Search chit code, customer, mobile…" value={list.q} onChange={(e) => list.setQ(e.target.value)} />
+              <input type="search" placeholder={t('Search chit code, customer, mobile…', 'Search chit code, customer, mobile…')} value={list.q} onChange={(e) => list.setQ(e.target.value)} />
             </div>
             <div className="input-with-icon" style={{ width: 'auto', minWidth: 120 }}>
               <div className="input-icon-pill"><FiFilter size={13} /></div>
               <select value={list.filters.status || ''} onChange={(e) => list.setFilter('status', e.target.value)}>
-                <option value="">Any status</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="closed">Closed</option>
+                <option value="">{t('Any status', 'Any status')}</option>
+                <option value="active">{t('Active', 'Active')}</option>
+                <option value="completed">{t('Completed', 'Completed')}</option>
+                <option value="closed">{t('Closed', 'Closed')}</option>
               </select>
             </div>
             <div className="input-with-icon" style={{ width: 'auto', minWidth: 130 }}>
               <div className="input-icon-pill"><FiClock size={13} /></div>
               <select value={list.filters.frequency || ''} onChange={(e) => list.setFilter('frequency', e.target.value)}>
-                <option value="">Any frequency</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="">{t('Any frequency', 'Any frequency')}</option>
+                <option value="daily">{t('Daily', 'Daily')}</option>
+                <option value="weekly">{t('Weekly', 'Weekly')}</option>
+                <option value="monthly">{t('Monthly', 'Monthly')}</option>
               </select>
             </div>
             {list.hasFilters && (
               <button className="btn secondary sm" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                Clear <FiX size={12} />
+                {t('Clear', 'Clear')} <FiX size={12} />
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -602,7 +604,7 @@ export default function Loans() {
                     cursor: 'pointer', transition: 'all 0.15s ease'
                   }}
                 >
-                  <FiFileText size={13} style={{ color: '#1d4ed8' }} /> Sample Template
+                  <FiFileText size={13} style={{ color: '#1d4ed8' }} /> {t('Sample Template', 'Sample Template')}
                 </button>
                 <button
                   type="button"
@@ -614,7 +616,7 @@ export default function Loans() {
                     cursor: 'pointer', transition: 'all 0.15s ease'
                   }}
                 >
-                  <FiDownload size={13} style={{ color: '#059669' }} /> Export Excel
+                  <FiDownload size={13} style={{ color: '#059669' }} /> {t('Export Excel', 'Export Excel')}
                 </button>
               </>
             )}

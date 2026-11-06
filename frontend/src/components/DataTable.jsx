@@ -1,4 +1,5 @@
 import { Spinner, EmptyState, ErrorState } from './ui';
+import { useI18n } from '../state/I18nContext';
 
 const PAGE_SIZES = [10, 25, 50, 100, 200];
 
@@ -16,6 +17,7 @@ export default function DataTable({
   selectable = false,
   bulkActions,
 }) {
+  const { t, lang } = useI18n();
   const isSelectable = selectable || typeof onSelectChange === 'function';
   const selArray = Array.isArray(selectedIds) ? selectedIds : [];
   const selSet = new Set(selArray.map(String));
@@ -59,12 +61,12 @@ export default function DataTable({
             }}>
               {selArray.length}
             </span>
-            <span>item{selArray.length > 1 ? 's' : ''} selected</span>
+            <span>{lang === 'ta' ? 'தேர்வு செய்யப்பட்டது' : `item${selArray.length > 1 ? 's' : ''} selected`}</span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {bulkActions}
             <button className="btn sm secondary" style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => onSelectChange([])}>
-              Clear
+              {t('Clear', 'Clear')}
             </button>
           </div>
         </div>
@@ -84,21 +86,24 @@ export default function DataTable({
                   />
                 </th>
               )}
-              {columns.map((c) => (
-                <th
-                  key={c.key}
-                  title={typeof c.header === 'string' ? c.header : undefined}
-                  onClick={() => c.sortable && onSort?.(c.key)}
-                  style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left', width: c.width || undefined }}
-                >
-                  {c.header}
-                  {c.sortable ? (
-                    <span style={{ fontSize: 11, marginLeft: 4, opacity: sortBy === c.key ? 1 : 0.45 }}>
-                      {sortBy === c.key ? (sortDir === 'desc' ? '∨' : '∧') : '⇅'}
-                    </span>
-                  ) : ''}
-                </th>
-              ))}
+              {columns.map((c) => {
+                const headerText = typeof c.header === 'string' ? t(c.header, c.header) : c.header;
+                return (
+                  <th
+                    key={c.key}
+                    title={typeof c.header === 'string' ? headerText : undefined}
+                    onClick={() => c.sortable && onSort?.(c.key)}
+                    style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left', width: c.width || undefined }}
+                  >
+                    {headerText}
+                    {c.sortable ? (
+                      <span style={{ fontSize: 11, marginLeft: 4, opacity: sortBy === c.key ? 1 : 0.45 }}>
+                        {sortBy === c.key ? (sortDir === 'desc' ? '∨' : '∧') : '⇅'}
+                      </span>
+                    ) : ''}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -117,15 +122,18 @@ export default function DataTable({
                       />
                     </td>
                   )}
-                  {columns.map((c) => (
-                    <td
-                      key={c.key}
-                      data-label={/^(_a|action|actions)$/i.test(c.key) ? '' : (typeof c.header === 'string' ? c.header : '')}
-                      style={{ textAlign: c.align || 'left', width: c.width || undefined }}
-                    >
-                      {c.render ? c.render(row, i) : (row[c.key] ?? '—')}
-                    </td>
-                  ))}
+                  {columns.map((c) => {
+                    const mobileLabel = /^(_a|action|actions)$/i.test(c.key) ? '' : (typeof c.header === 'string' ? t(c.header, c.header) : '');
+                    return (
+                      <td
+                        key={c.key}
+                        data-label={mobileLabel}
+                        style={{ textAlign: c.align || 'left', width: c.width || undefined }}
+                      >
+                        {c.render ? c.render(row, i) : (row[c.key] ?? '—')}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
@@ -136,26 +144,26 @@ export default function DataTable({
       {loading && <Spinner />}
       {error && <ErrorState error={error} onRetry={onRetry} />}
       {!loading && !error && validRows.length === 0 && (
-        <EmptyState title={emptyTitle || 'No records found'} hint={emptyHint} />
+        <EmptyState title={emptyTitle ? t(emptyTitle, emptyTitle) : t('No records found', 'No records found')} hint={emptyHint ? t(emptyHint, emptyHint) : undefined} />
       )}
 
       {!loading && !error && (
         <div className="pagination">
           <div className="pagination-info">
-            <span className="pagination-total">{total} record{total === 1 ? '' : 's'}</span>
+            <span className="pagination-total">{total} {lang === 'ta' ? 'பதிவுகள்' : (total === 1 ? 'record' : 'records')}</span>
             <select className="pagination-per-page" value={perPage} onChange={(e) => onPerPage?.(Number(e.target.value))}>
-              {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} / page</option>)}
+              {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} / {lang === 'ta' ? 'பக்கம்' : 'page'}</option>)}
             </select>
           </div>
           <div className="pagination-controls">
             <button className="btn sm secondary pagination-btn" disabled={page <= 1} onClick={() => onPage?.(page - 1)}>
-              Prev
+              {t('Prev', 'Prev')}
             </button>
             <span className="pagination-page-indicator">
-              Page {page} of {Math.max(1, totalPages || 1)}
+              {lang === 'ta' ? `பக்கம் ${page} / ${Math.max(1, totalPages || 1)}` : `Page ${page} of ${Math.max(1, totalPages || 1)}`}
             </span>
             <button className="btn sm secondary pagination-btn" disabled={page >= (totalPages || 1)} onClick={() => onPage?.(page + 1)}>
-              Next
+              {t('Next', 'Next')}
             </button>
           </div>
         </div>
