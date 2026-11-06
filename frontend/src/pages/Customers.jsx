@@ -96,12 +96,20 @@ export default function Customers() {
     },
     { key: 'mobile', header: 'Mobile Number', render: (r) => r.mobile || '—' },
     { key: 'customer_code', header: 'Customer Code', sortable: true, render: (r) => <code>{r.customer_code}</code> },
-    { key: 'address_line1', header: 'Address', render: (r) => r.address_line1 || '—' },
+    {
+      key: 'address_line1',
+      header: 'Address',
+      render: (r) => (
+        <span style={{ display: 'inline-block', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }} title={r.address_line1}>
+          {r.address_line1 || '—'}
+        </span>
+      )
+    },
     { key: 'active_loans', header: 'Active Loans', align: 'right' },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
     {
-      key: '_a', header: 'Action', align: 'right', render: (r) => (
-        <div className="action-buttons">
+      key: '_a', header: 'Action', align: 'right', width: 96, render: (r) => (
+        <div className="action-buttons" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
           <Link className="btn-icon view" to={`/customers/${r.id}`} title="View Profile">
             <IconView />
           </Link>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm } from '../components/ui';
@@ -448,7 +448,7 @@ export default function CollectionChit() {
                         <td data-label="Date">{fmtDate(col.collection_date)}</td>
                         <td data-label="Mode">{isSettlement ? '—' : <span className="badge PENDING">{col.payment_mode}</span>}</td>
                         <td data-label="Paid (actual)" className="right">
-                          <div style={{ fontWeight: 800, color: '#10b981', fontSize: 14 }}>
+                          <div style={{ fontWeight: 800, color: '#10b981', fontSize: 12 }}>
                             {money(col.total_amount || (Number(col.amount) + Number(col.fine_amount || 0)))}
                           </div>
                           {Number(col.fine_amount) > 0 && (
@@ -534,7 +534,7 @@ export default function CollectionChit() {
                         <tr key={row.id} style={!isActive ? { opacity: 0.6 } : undefined}>
                           <td>{fmtDate(row.distributed_date)}</td>
                           <td>{row.account_name}</td>
-                          <td className="right" style={{ fontWeight: 800, color: '#15803d', fontSize: 14 }}>{money(row.amount)}</td>
+                          <td className="right" style={{ fontWeight: 800, color: '#15803d', fontSize: 12 }}>{money(row.amount)}</td>
                           <td>{row.remarks || '—'}</td>
                           <td><Badge value={isActive ? 'active' : 'cancelled'} /></td>
                           <td className="right nowrap">

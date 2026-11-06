@@ -89,7 +89,7 @@ export default function DataTable({
                   key={c.key}
                   title={typeof c.header === 'string' ? c.header : undefined}
                   onClick={() => c.sortable && onSort?.(c.key)}
-                  style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left' }}
+                  style={{ cursor: c.sortable ? 'pointer' : 'default', textAlign: c.align || 'left', width: c.width || undefined }}
                 >
                   {c.header}
                   {c.sortable ? (
@@ -121,7 +121,7 @@ export default function DataTable({
                     <td
                       key={c.key}
                       data-label={/^(_a|action|actions)$/i.test(c.key) ? '' : (typeof c.header === 'string' ? c.header : '')}
-                      style={{ textAlign: c.align || 'left' }}
+                      style={{ textAlign: c.align || 'left', width: c.width || undefined }}
                     >
                       {c.render ? c.render(row, i) : (row[c.key] ?? '—')}
                     </td>

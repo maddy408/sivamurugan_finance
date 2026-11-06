@@ -872,7 +872,7 @@ export default function Reports() {
                           {visibleHeaders.map((h, i) => (
                             <td key={h} style={{
                               textAlign: i === 0 ? 'left' : (rightAlign(data.col_types?.[h]) ? 'right' : 'left'),
-                              fontSize: 13.5, fontWeight: 900, color: '#0f172a', padding: '12px 16px'
+                              fontSize: 12, fontWeight: 900, color: '#0f172a', padding: '12px 16px'
                             }}>
                               {h in computedTotals
                                 ? (typeof computedTotals[h] === 'number' ? fmtCell(data.col_types?.[h], computedTotals[h]) : computedTotals[h])

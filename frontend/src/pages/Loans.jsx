@@ -224,7 +224,7 @@ export default function Loans() {
       align: 'right',
       render: (r) => (
         <div>
-          <b style={{ color: Number(r.outstanding_balance) > 0 ? '#f43f5e' : '#10b981', fontSize: '14px' }}>
+          <b style={{ color: Number(r.outstanding_balance) > 0 ? '#f43f5e' : '#10b981', fontSize: '12px' }}>
             {money(r.outstanding_balance)}
           </b>
 
@@ -233,8 +233,8 @@ export default function Loans() {
     },
     { key: 'status', header: 'Status', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> },
     {
-      key: '_a', header: 'Action', align: 'right', render: (r) => (
-        <div className="action-buttons">
+      key: '_a', header: 'Action', align: 'right', width: 96, render: (r) => (
+        <div className="action-buttons" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
           <Link className="btn-icon view" to={`/loans/${r.id}`} title="View Details">
             <IconView />
           </Link>

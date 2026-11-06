@@ -428,7 +428,7 @@ export default function Pending({ hideTitle = false }) {
                         {money(d.paid_amount)}
                       </td>
                       <td className="right">
-                        <b style={{ fontSize: 13.5, color: '#e11d48' }}>{money(d.balance_amount)}</b>
+                        <b style={{ fontSize: 12, color: '#e11d48' }}>{money(d.balance_amount)}</b>
                       </td>
                       <td className="center">
                         <span className={`badge ${d.status}`}>
@@ -455,10 +455,10 @@ export default function Pending({ hideTitle = false }) {
                 </tbody>
                 <tfoot>
                   <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                    <td colSpan={5} style={{ textAlign: 'right', color: '#64748b', fontSize: 11.5 }}>
+                    <td colSpan={5} style={{ textAlign: 'right', color: '#64748b', fontSize: 12 }}>
                       Total Pending for Customer ({displayDues.length} dues):
                     </td>
-                    <td className="right" style={{ fontSize: 14, color: '#e11d48' }}>
+                    <td className="right" style={{ fontSize: 12, color: '#e11d48' }}>
                       {money(totalCustomerPending)}
                     </td>
                     <td colSpan={2}></td>

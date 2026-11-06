@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, Badge, Confirm, Modal, Field } from '../components/ui';
@@ -258,7 +258,7 @@ export default function LoanDetail() {
                   <td data-label="Mode">{c.payment_mode}</td>
                   <td data-label="Fine" className="right">{money(c.fine_amount)}</td>
                   <td data-label="Paid (actual)" className="right">{money(c.amount)}</td>
-                  <td data-label="Total" className="right"><b style={{ color: '#10b981', fontSize: 14 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
+                  <td data-label="Total" className="right"><b style={{ color: '#10b981', fontSize: 12 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
                   <td data-label="Status"><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
                   <td data-label="" className="right nowrap">
                     <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>

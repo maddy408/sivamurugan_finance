@@ -825,11 +825,12 @@ table.grid {
 
 table.grid th, table.grid td {
   text-align: left;
-  padding: 10px 14px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--line-subtle);
   white-space: nowrap;
   vertical-align: middle;
   min-width: 0;
+  font-size: 12px !important;
 }
 
 table.grid th {
@@ -837,12 +838,26 @@ table.grid th {
   color: #0d2856;
   font-weight: 800;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 12px !important;
   letter-spacing: 0.04em;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
   border-bottom: 1.5px solid #dbeafe;
+}
+
+/* Ensure all table contents are strictly 12px across all pages */
+table.grid td,
+table.grid th,
+.table-wrap table td,
+.table-wrap table th,
+.table-wrap table td *,
+.dash-table th,
+.dash-table td,
+.rpt-table th,
+.rpt-table td,
+.rpt-table td * {
+  font-size: 12px !important;
 }
 
 table.grid th:hover {
@@ -2445,7 +2460,7 @@ img, svg, video, canvas, table { max-width: 100%; }
     flex: 0 0 auto;
     max-width: 44%;
     text-align: left;
-    font-size: 11px;
+    font-size: 12px !important;
     font-weight: 700;
     letter-spacing: 0.03em;
     text-transform: uppercase;
@@ -2843,15 +2858,15 @@ body.drawer-open { overflow: hidden; }
   box-shadow: 0 6px 18px rgba(13, 40, 86, 0.45) !important;
 }
 
-/* Responsive grid for Users page */
+/* Responsive grid for Users / Customers / Chits page */
 .users-page-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
   .users-page-grid {
     grid-template-columns: 1fr;
   }

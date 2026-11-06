@@ -251,7 +251,7 @@ export default function Dashboard() {
         .dash-table th {
           background: #ffffff;
           color: #64748b;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -260,7 +260,7 @@ export default function Dashboard() {
         }
         .dash-table td {
           padding: 12px 16px;
-          font-size: 13px;
+          font-size: 12px;
           color: #1e293b;
           border-bottom: 1px solid #f8fafc;
         }
