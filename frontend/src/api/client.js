@@ -47,7 +47,15 @@ export function setSessionTerminatedHandler(fn) { onSessionTerminated = fn; }
 
 export class ApiError extends Error {
   constructor(status, body) {
-    super(body?.message || `Request failed (${status})`);
+    let msg = body?.message;
+    if (!msg || (typeof msg === 'string' && (msg.includes('ECONNREFUSED') || msg.includes('500 Internal')))) {
+      if (status === 500 || status === 502 || status === 503) {
+        msg = 'Cannot reach the API. Is the PHP server running on port 8000?';
+      } else {
+        msg = `Request failed (${status})`;
+      }
+    }
+    super(msg);
     this.status = status;
     this.code = body?.error_code;
     this.body = body;

@@ -21,6 +21,17 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
           secure: false,
+          configure: (proxy) => {
+            proxy.on('error', (err, req, res) => {
+              if (res.writeHead && !res.headersSent) {
+                res.writeHead(503, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  message: 'Cannot reach PHP backend API (port 8000). Please ensure PHP server is running.',
+                  error_code: 'BACKEND_UNREACHABLE',
+                }));
+              }
+            });
+          },
         },
         '/storage': {
           target: apiTarget,
