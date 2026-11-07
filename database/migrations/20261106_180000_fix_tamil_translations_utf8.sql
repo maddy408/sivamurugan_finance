@@ -62,3 +62,4 @@ INSERT INTO translations (lang, trans_key, trans_value) VALUES
   ('ta','action.delete','நீக்கு'),
   ('ta','action.export','எக்செல் ஏற்றுமதி'),
   ('ta','action.refresh','புதுப்பி');
+

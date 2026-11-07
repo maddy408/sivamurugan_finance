@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal, Confirm } from './ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { FiEdit2, FiXCircle, FiTrash2, FiList, FiPlusCircle } from 'react-icons/fi';
+import { useI18n } from '../state/I18nContext';
+import { FiEdit2, FiXCircle, FiTrash2, FiList, FiPlusCircle, FiCheck } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const STATUS_LABEL = {
@@ -28,6 +29,7 @@ const STATUS_LABEL = {
 export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
   const { meta, can } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const accounts = meta?.accounts || [];
   const officeCash = accounts.find((a) => a.type === 'cash') || accounts[0];
 
@@ -140,11 +142,9 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
   };
 
   const Stat = ({ label, value, accent }) => (
-    <div className="card" style={{ flex: 1, background: '#f8fafc' }}>
-      <div className="card-body" style={{ padding: '10px 14px' }}>
-        <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{label}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: accent || 'inherit' }}>{money(value)}</div>
-      </div>
+    <div className="distribute-stat-card">
+      <div className="stat-label" title={label}>{label}</div>
+      <div className="stat-value" style={{ color: accent || 'inherit' }}>{money(value)}</div>
     </div>
   );
 
@@ -154,76 +154,110 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
 
   return (
     <>
-      <Modal title={`Disburse Chit — ${loan.code}`} size="lg" onClose={onClose}
-        footer={<button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>}>
-        {!data ? <p className="muted">Loading…</p> : (
+      <Modal
+        title={`${t('Disburse Chit', 'Disburse Chit')} — ${loan.code}`}
+        size="lg"
+        onClose={onClose}
+        footer={
+          <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" className="btn secondary" onClick={onClose} disabled={busy} style={{ flex: '1 1 auto' }}>
+              {t('Close', 'Close')}
+            </button>
+            {editing && (
+              <button type="button" className="btn secondary" onClick={resetForm} disabled={busy} style={{ flex: '1 1 auto' }}>
+                {t('Cancel edit', 'Cancel edit')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn"
+              onClick={submit}
+              disabled={busy || !canSubmit}
+              style={{ flex: '2 1 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 700 }}
+            >
+              <FiCheck size={15} />
+              {busy ? t('Saving…', 'Saving…') : (editing ? t('Save changes', 'Save changes') : `${t('Confirm Disbursement', 'Confirm Disbursement')}${form.amount ? ` — ${money(Number(form.amount))}` : ''}`)}
+            </button>
+          </div>
+        }
+      >
+        {!data ? <p className="muted">{t('Loading…', 'Loading…')}</p> : (
           <>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <Stat label="Chit Amount" value={s.chit_amount ?? loan.principal_amount} />
-              <Stat label="Total Distributed" value={s.total_distributed ?? 0} accent="#15803d" />
-              <Stat label="Principal Covered" value={principalCovered} accent="#2563eb" />
-              <Stat label="Extra Disbursed" value={extraDisbursed} accent={extraDisbursed > 0 ? '#f59e0b' : '#64748b'} />
+            <div className="distribute-stats-grid">
+              <Stat label={t('Chit Amount', 'Chit Amount')} value={s.chit_amount ?? loan.principal_amount} />
+              <Stat label={t('Total Distributed', 'Total Distributed')} value={s.total_distributed ?? 0} accent="#15803d" />
+              <Stat label={t('Principal Covered', 'Principal Covered')} value={principalCovered} accent="#2563eb" />
+              <Stat label={t('Extra Disbursed', 'Extra Disbursed')} value={extraDisbursed} accent={extraDisbursed > 0 ? '#f59e0b' : '#64748b'} />
             </div>
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 14px' }}>
-              Remaining undistributed: <b>{money(remaining)}</b> · Status: <b>{STATUS_LABEL[s.status] || s.status}</b>
-            </p>
 
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 14px' }}>
-              Initial EMI <b>{money(s.initial_emi)}</b> &nbsp;·&nbsp; Current EMI <b>{money(s.current_emi)}</b>
-            </p>
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid var(--line-subtle, #e2e8f0)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              marginBottom: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                <span className="muted">{t('Remaining undistributed', 'Remaining undistributed')}: <strong style={{ color: '#0f172a' }}>{money(remaining)}</strong></span>
+                <span className="muted">{t('Status', 'Status')}: <strong style={{ color: '#0f172a' }}>{t(STATUS_LABEL[s.status] || s.status, STATUS_LABEL[s.status] || s.status)}</strong></span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, borderTop: '1px dashed var(--line-subtle, #e2e8f0)', paddingTop: 5 }}>
+                <span className="muted">{t('Initial EMI', 'Initial EMI')}: <strong>{money(s.initial_emi)}</strong></span>
+                <span className="muted">{t('Current EMI', 'Current EMI')}: <strong style={{ color: '#2563eb' }}>{money(s.current_emi)}</strong></span>
+              </div>
+            </div>
 
-            <h4 style={{ margin: '6px 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {editing ? <><FiEdit2 size={14} /> Edit disbursement #{editing.id}</> : <><FiPlusCircle size={14} /> Add Disbursement Payment</>}
+            <h4 style={{ margin: '6px 0 10px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5 }}>
+              {editing ? <><FiEdit2 size={14} /> {t('Edit disbursement', 'Edit disbursement')} #{editing.id}</> : <><FiPlusCircle size={14} /> {t('Add Disbursement Payment', 'Add Disbursement Payment')}</>}
             </h4>
             <div className="form-grid">
-              <Field label="Disbursed Date *" error={errors.distributed_date}>
+              <Field label={`${t('Disbursed Date', 'Disbursed Date')} *`} error={errors.distributed_date}>
                 <input type="date" value={form.distributed_date} onChange={(e) => setForm({ ...form, distributed_date: e.target.value })} />
               </Field>
-              <Field label="Disbursed Amount (₹) *" error={errors.amount}>
+              <Field label={`${t('Disbursed Amount', 'Disbursed Amount')} (₹) *`} error={errors.amount}>
                 <input type="number" min="0.01" step="0.01" value={form.amount} autoFocus
-                  placeholder={`Amount to disburse (remaining ${money(remaining)})`}
+                  placeholder={`${t('Amount to disburse', 'Amount to disburse')} (${t('remaining', 'remaining')} ${money(remaining)})`}
                   onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </Field>
-              <Field label="New EMI Amount (₹)" error={errors.new_emi_amount}>
+              <Field label={`${t('New EMI Amount', 'New EMI Amount')} (₹)`} error={errors.new_emi_amount}>
                 <input type="number" min="0.01" step="0.01" value={form.new_emi_amount}
-                  onChange={(e) => setForm({ ...form, new_emi_amount: e.target.value })} placeholder="leave blank to keep current EMI" />
-                <span className="muted" style={{ fontSize: 11 }}>Applies to future EMIs after the disbursed date. Entered manually — no interest calculation.</span>
+                  onChange={(e) => setForm({ ...form, new_emi_amount: e.target.value })} placeholder={t('leave blank to keep current EMI', 'leave blank to keep current EMI')} />
+                <span className="muted" style={{ fontSize: 11 }}>{t('Applies to future EMIs after the disbursed date. Entered manually — no interest calculation.', 'Applies to future EMIs after the disbursed date. Entered manually — no interest calculation.')}</span>
               </Field>
-              <Field label="Disburse From *" error={errors.account_id}>
+              <Field label={`${t('Disburse From', 'Disburse From')} *`} error={errors.account_id}>
                 <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>
-                  <option value="">— select account —</option>
+                  <option value="">— {t('select account', 'select account')} —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
                 </select>
               </Field>
-              <Field label="Remarks / Notes" error={errors.remarks}>
-                <input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder="e.g. 1st Tranche / Cheque payment…" />
-              </Field>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 10, marginBottom: distributions.length > 0 ? 20 : 6 }}>
-              {editing && <button className="btn secondary" onClick={resetForm} disabled={busy}>Cancel edit</button>}
-              <div style={{ flex: 1 }} />
-              <button className="btn" onClick={submit} disabled={busy || !canSubmit}>
-                {busy ? 'Saving…' : (editing ? 'Save changes' : `Confirm Disbursement${form.amount ? ` — ${money(Number(form.amount))}` : ''}`)}
-              </button>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Field label={t('Remarks / Notes', 'Remarks / Notes')} error={errors.remarks}>
+                  <input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder={t('e.g. 1st Tranche / Cheque payment…', 'e.g. 1st Tranche / Cheque payment…')} />
+                </Field>
+              </div>
             </div>
 
             {distributions.length > 0 && (
-              <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-                <h4 style={{ margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiList size={14} /> Disbursement History &amp; Actions
+              <div style={{ marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                <h4 style={{ margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5 }}>
+                  <FiList size={14} /> {t('Disbursement History & Actions', 'Disbursement History & Actions')}
                 </h4>
                 <div className="table-wrap">
                   <table className="grid">
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>Date</th>
-                        <th>Account</th>
-                        <th className="right">Disbursed Amount</th>
-                        <th className="right">New EMI</th>
-                        <th>Remarks</th>
-                        <th>Status</th>
-                        <th className="right">Actions</th>
+                        <th>{t('Date', 'Date')}</th>
+                        <th>{t('Account', 'Account')}</th>
+                        <th className="right">{t('Disbursed Amount', 'Disbursed Amount')}</th>
+                        <th className="right">{t('New EMI', 'New EMI')}</th>
+                        <th>{t('Remarks', 'Remarks')}</th>
+                        <th>{t('Status', 'Status')}</th>
+                        <th className="right">{t('Actions', 'Actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -231,18 +265,18 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
                         const isActive = row.status === 'active';
                         return (
                           <tr key={row.id} style={!isActive ? { opacity: 0.55 } : undefined}>
-                            <td style={{ fontWeight: 700 }}>#{row.id}</td>
-                            <td>{fmtDate(row.distributed_date)}</td>
-                            <td>{row.account_name}</td>
-                            <td className="right" style={{ fontWeight: 700, color: '#15803d' }}>{money(row.amount)}</td>
-                            <td className="right">{row.new_emi_amount != null ? money(row.new_emi_amount) : '—'}</td>
-                            <td>{row.remarks || '—'}</td>
-                            <td>
+                            <td data-label="#" style={{ fontWeight: 700 }}>#{row.id}</td>
+                            <td data-label={t('Date', 'Date')}>{fmtDate(row.distributed_date)}</td>
+                            <td data-label={t('Account', 'Account')}>{row.account_name}</td>
+                            <td data-label={t('Disbursed Amount', 'Disbursed Amount')} className="right" style={{ fontWeight: 700, color: '#15803d' }}>{money(row.amount)}</td>
+                            <td data-label={t('New EMI', 'New EMI')} className="right">{row.new_emi_amount != null ? money(row.new_emi_amount) : '—'}</td>
+                            <td data-label={t('Remarks', 'Remarks')}>{row.remarks || '—'}</td>
+                            <td data-label={t('Status', 'Status')}>
                               <span className={`badge ${isActive ? 'COMPLETED' : 'CANCELLED'}`}>
-                                {isActive ? 'Active' : 'Cancelled'}
+                                {isActive ? t('Active', 'Active') : t('Cancelled', 'Cancelled')}
                               </span>
                             </td>
-                            <td className="right nowrap">
+                            <td data-label="" className="right nowrap">
                               <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
                                 {isActive && can('distributions.edit') && (
                                   <button className="btn-icon" title="Edit Distribution" onClick={() => startEdit(row)}>

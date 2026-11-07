@@ -1854,6 +1854,70 @@ table.grid tbody tr:last-child td {
   .modal .modal-foot .btn { flex: 1 1 auto; }
 }
 
+/* Disburse Chit Modal responsive stat cards */
+.distribute-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.distribute-stat-card {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.distribute-stat-card .stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.distribute-stat-card .stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .distribute-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+  .distribute-stat-card {
+    padding: 8px 10px !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+  }
+  .distribute-stat-card .stat-label {
+    font-size: 10px !important;
+  }
+  .distribute-stat-card .stat-value {
+    font-size: 14.5px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .distribute-stat-card .stat-value {
+    font-size: 13.5px !important;
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
