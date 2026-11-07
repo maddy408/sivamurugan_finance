@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node dev-runner.js",
+    "dev:vite": "vite",
     "backend": "php -S 0.0.0.0:8000 -t ../backend/public ../backend/public/router.php",
     "build": "vite build && node -e \"require('fs').copyFileSync('public/.htaccess','../web/.htaccess')\"",
     "preview": "vite preview"
