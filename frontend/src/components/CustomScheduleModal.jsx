@@ -233,7 +233,7 @@ export default function CustomScheduleModal({ loan, onClose, onDone, localOnly =
             }}
           />
         </Field>
-        <Field label="Paid Date" error={errors.paid_date}>
+        <Field label={t('Paid Date', 'Paid Date')} error={errors.paid_date}>
           <input
             name="paid_date"
             type="date"
@@ -242,23 +242,22 @@ export default function CustomScheduleModal({ loan, onClose, onDone, localOnly =
             onChange={(e) => set('paid_date', e.target.value)}
           />
         </Field>
-        <Field label="Status">
+        <Field label={t('Status', 'Status')}>
           <select value={selectedStatus} onChange={(e) => handleStatusChange(e.target.value)} disabled={hasPayment}>
-            <option value="PENDING">PENDING</option>
-            <option value="PARTIAL">PARTIAL</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="OVERDUE">OVERDUE</option>
+            <option value="PENDING">{t('PENDING', 'PENDING')}</option>
+            <option value="PARTIAL">{t('PARTIAL', 'PARTIAL')}</option>
+            <option value="COMPLETED">{t('COMPLETED', 'COMPLETED')}</option>
+            <option value="OVERDUE">{t('OVERDUE', 'OVERDUE')}</option>
           </select>
         </Field>
       </div>
       {hasPayment && (
         <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
-          {money(editInstallment.paid_amount)} is already recorded as paid against this due, so Amount Paid/Paid Date
-          are locked here — edit that from Collection History instead.
+          {t(`${money(editInstallment.paid_amount)} is already recorded as paid against this due, so Amount Paid/Paid Date are locked here — edit that from Collection History instead.`, `${money(editInstallment.paid_amount)} is already recorded as paid against this due, so Amount Paid/Paid Date are locked here — edit that from Collection History instead.`)}
         </p>
       )}
       <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
-        Select the status directly from the dropdown or edit the fields above to define/back-fill the schedule.
+        {t('Select the status directly from the dropdown or edit the fields above to define/back-fill the schedule.', 'Select the status directly from the dropdown or edit the fields above to define/back-fill the schedule.')}
       </p>
     </Modal>
   );

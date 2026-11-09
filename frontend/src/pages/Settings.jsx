@@ -96,6 +96,7 @@ export default function Settings() {
 }
 
 function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
+  const { t } = useI18n();
   const [f, setF] = useState(data.organization || {});
   const [orgErrors, setOrgErrors] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
@@ -154,10 +155,10 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.01em' }}>
-              Organization Information
+              {t('Organization Information', 'Organization Information')}
             </h2>
             <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)', fontWeight: 500 }}>
-              Manage your chit fund business details
+              {t('Manage your chit fund business details', 'Manage your chit fund business details')}
             </p>
           </div>
         </div>
@@ -175,7 +176,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 8 }}>
           {/* Organization Name */}
           <div className="form-field-group">
-            <label className="form-field-label">Organization Name</label>
+            <label className="form-field-label">{t('Organization Name', 'Organization Name')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiHome size={13} /></div>
               <input
@@ -188,7 +189,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
           {/* Email Address */}
           <div className="form-field-group">
-            <label className="form-field-label">Email Address</label>
+            <label className="form-field-label">{t('Email Address', 'Email Address')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiMail size={13} /></div>
               <input
@@ -217,7 +218,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
           {/* Mobile Number */}
           <div className="form-field-group">
-            <label className="form-field-label">Mobile Number</label>
+            <label className="form-field-label">{t('Mobile Number', 'Mobile Number')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiPhone size={13} /></div>
               <input
@@ -249,7 +250,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
                 }}
                 aria-invalid={!!orgErrors.mobile}
                 className={orgErrors.mobile ? 'is-invalid' : ''}
-                placeholder="10-digit mobile number"
+                placeholder={t('10-digit mobile number', '10-digit mobile number')}
               />
             </div>
             {orgErrors.mobile && <span className="field-error-msg err">{orgErrors.mobile}</span>}
@@ -257,7 +258,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
           {/* Telephone */}
           <div className="form-field-group">
-            <label className="form-field-label">Telephone</label>
+            <label className="form-field-label">{t('Telephone', 'Telephone')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiPhoneCall size={13} /></div>
               <input
@@ -270,7 +271,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
           {/* Website */}
           <div className="form-field-group">
-            <label className="form-field-label">Website</label>
+            <label className="form-field-label">{t('Website', 'Website')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiGlobe size={13} /></div>
               <input
@@ -283,7 +284,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
           {/* GST / REG. No. */}
           <div className="form-field-group">
-            <label className="form-field-label">GST / REG. No.</label>
+            <label className="form-field-label">{t('GST / REG. No.', 'GST / REG. No.')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiFileText size={13} /></div>
               <input
@@ -297,13 +298,13 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 
         {/* Address spanning full width */}
         <div className="form-field-group" style={{ marginBottom: 10 }}>
-          <label className="form-field-label">Address</label>
+          <label className="form-field-label">{t('Address', 'Address')}</label>
           <div className="input-with-icon">
             <div className="input-icon-pill"><FiMapPin size={13} /></div>
             <input
               value={f.address || ''}
               onChange={(e) => setF({ ...f, address: e.target.value })}
-              placeholder="Main Road, Tamil Nadu"
+              placeholder={t('Main Road, Tamil Nadu', 'Main Road, Tamil Nadu')}
             />
           </div>
         </div>
@@ -321,16 +322,16 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
               padding: 4, overflow: 'hidden'
             }}>
               {selectedFile ? (
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', textAlign: 'center' }}>Selected</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', textAlign: 'center' }}>{t('Selected', 'Selected')}</span>
               ) : logo ? (
                 <img src={API_BASE + logo} alt="logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               ) : (
-                <span className="muted" style={{ fontSize: 10.5 }}>No logo</span>
+                <span className="muted" style={{ fontSize: 10.5 }}>{t('No logo', 'No logo')}</span>
               )}
             </div>
 
             <div>
-              <div style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', lineHeight: 1.2 }}>Organization Logo</div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', lineHeight: 1.2 }}>{t('Organization Logo', 'Organization Logo')}</div>
               <div style={{ fontSize: 11, color: '#64748b' }}>PNG, JPG or SVG</div>
             </div>
 
@@ -355,10 +356,10 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
                 height: 30
               }}
             >
-              <FiUpload size={12} /> Choose File
+              <FiUpload size={12} /> {t('Choose File', 'Choose File')}
             </button>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              {selectedFile ? selectedFile.name : 'No file chosen'}
+              {selectedFile ? selectedFile.name : t('No file chosen', 'No file chosen')}
             </span>
           </div>
 
@@ -368,7 +369,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
             disabled={busy}
             onClick={handleSaveAll}
           >
-            <FiSave size={14} /> {busy ? 'Saving…' : 'Save Changes'}
+            <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Save Changes', 'Save Changes')}
           </button>
         </div>
       </div>
@@ -458,6 +459,7 @@ function IconEyeOff() {
 }
 
 function ChangePasswordTab({ toast }) {
+  const { t } = useI18n();
   const [f, setF] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -493,7 +495,7 @@ function ChangePasswordTab({ toast }) {
     setBusy(true);
     try {
       await api.post('/api/auth/change-password', f);
-      toast.success('Password changed successfully');
+      toast.success(t('Password changed successfully', 'Password changed successfully'));
       setF({ current_password: '', new_password: '', confirm_password: '' });
     } catch (e) {
       if (e.errors) {
@@ -520,14 +522,14 @@ function ChangePasswordTab({ toast }) {
           <FiLock size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Change Password</h2>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Update your account login password</p>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Change Password', 'Change Password')}</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Update your account login password', 'Update your account login password')}</p>
         </div>
       </div>
       <div style={{ padding: '16px 20px' }}>
         <PasswordField
           name="current_password"
-          label="Current Password *"
+          label={t('Current Password *', 'Current Password *')}
           value={f.current_password}
           autoComplete="current-password"
           error={errors.current_password}
@@ -538,7 +540,7 @@ function ChangePasswordTab({ toast }) {
         />
         <PasswordField
           name="new_password"
-          label="New Password *"
+          label={t('New Password *', 'New Password *')}
           value={f.new_password}
           autoComplete="new-password"
           error={errors.new_password}
@@ -550,7 +552,7 @@ function ChangePasswordTab({ toast }) {
         />
         <PasswordField
           name="confirm_password"
-          label="Confirm Password *"
+          label={t('Confirm Password *', 'Confirm Password *')}
           value={f.confirm_password}
           autoComplete="new-password"
           error={errors.confirm_password}
@@ -561,7 +563,7 @@ function ChangePasswordTab({ toast }) {
           }}
         />
         <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} disabled={busy} onClick={submit}>
-          <FiSave size={14} /> {busy ? 'Saving…' : 'Change Password'}
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Change Password', 'Change Password')}
         </button>
       </div>
     </div>
@@ -569,6 +571,7 @@ function ChangePasswordTab({ toast }) {
 }
 
 function ScheduleTab({ data, busy, save }) {
+  const { t } = useI18n();
   const [f, setF] = useState(data.schedule || {});
   const days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   return (
@@ -585,50 +588,50 @@ function ScheduleTab({ data, busy, save }) {
           <FiCalendar size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Collection Schedule</h2>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Configure weekly &amp; monthly due date cycles</p>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Collection Schedule', 'Collection Schedule')}</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Configure weekly & monthly due date cycles', 'Configure weekly & monthly due date cycles')}</p>
         </div>
       </div>
       <div style={{ padding: '16px 20px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 12 }}>
           <div className="form-field-group">
-            <label className="form-field-label">Weekly collection day</label>
+            <label className="form-field-label">{t('Weekly collection day', 'Weekly collection day')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiCalendar size={13} /></div>
               <select value={f.weekly_collection_day || 1} onChange={(e) => setF({ ...f, weekly_collection_day: Number(e.target.value) })}>
-                {[1, 2, 3, 4, 5, 6, 7].map((d) => <option key={d} value={d}>{days[d]}</option>)}
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => <option key={d} value={d}>{t(days[d], days[d])}</option>)}
               </select>
             </div>
           </div>
           <div className="form-field-group">
-            <label className="form-field-label">Monthly mode</label>
+            <label className="form-field-label">{t('Monthly mode', 'Monthly mode')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiCalendar size={13} /></div>
               <select value={f.monthly_mode || 'MONTHLY_WEEKDAY'} onChange={(e) => setF({ ...f, monthly_mode: e.target.value })}>
-                <option value="MONTHLY_WEEKDAY">Weekday cycle</option>
-                <option value="MONTHLY_DAILY">Daily display</option>
-                <option value="MONTHLY_INTERVAL">Day interval</option>
+                <option value="MONTHLY_WEEKDAY">{t('Weekday cycle', 'Weekday cycle')}</option>
+                <option value="MONTHLY_DAILY">{t('Calendar month', 'Calendar month')}</option>
+                <option value="MONTHLY_INTERVAL">{t('Fixed day interval', 'Fixed day interval')}</option>
               </select>
             </div>
           </div>
           <div className="form-field-group">
-            <label className="form-field-label">Cycle weeks (weekday mode)</label>
+            <label className="form-field-label">{t('Cycle weeks (weekday mode)', 'Cycle weeks (weekday mode)')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiCalendar size={13} /></div>
               <input type="number" min="1" max="8" value={f.monthly_cycle_weeks || 4} onChange={(e) => setF({ ...f, monthly_cycle_weeks: Number(e.target.value) })} />
             </div>
           </div>
           <div className="form-field-group">
-            <label className="form-field-label">Interval days (interval mode)</label>
+            <label className="form-field-label">{t('Interval days (interval mode)', 'Interval days (interval mode)')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiCalendar size={13} /></div>
               <input type="number" min="1" max="120" value={f.monthly_interval_days || 30} onChange={(e) => setF({ ...f, monthly_interval_days: Number(e.target.value) })} />
             </div>
           </div>
         </div>
-        <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>Changes apply to newly generated / future unpaid installments only. Historical transactions are never rewritten.</p>
+        <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>{t('Changes apply to newly generated / future unpaid installments only. Historical transactions are never rewritten.', 'Changes apply to newly generated / future unpaid installments only. Historical transactions are never rewritten.')}</p>
         <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.put('/api/settings/schedule', f), 'Schedule settings saved')}>
-          <FiSave size={14} /> Save Schedule
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Save Schedule', 'Save Schedule')}
         </button>
       </div>
     </div>
@@ -636,6 +639,7 @@ function ScheduleTab({ data, busy, save }) {
 }
 
 function FineTab({ data, busy, save }) {
+  const { t } = useI18n();
   const [f, setF] = useState({
     fine_type: 'FIXED_PER_DAY', rate_value: 50, grace_days: 0,
     max_fine_type: 'percent_of_payable', max_fine_value: 10,
@@ -656,20 +660,31 @@ function FineTab({ data, busy, save }) {
             <FiAward size={16} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Effective-dated Fine Rules</h2>
-            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Active late fine calculation rules</p>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Effective-dated Fine Rules', 'Effective-dated Fine Rules')}</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Active late fine calculation rules', 'Active late fine calculation rules')}</p>
           </div>
         </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Effective from</th><th>Type</th><th className="right">Rate</th><th className="right">Grace</th><th>Cap</th><th>Active</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{t('Effective from', 'Effective from')}</th>
+                <th>{t('Type', 'Type')}</th>
+                <th className="right">{t('Rate', 'Rate')}</th>
+                <th className="right">{t('Grace', 'Grace')}</th>
+                <th>{t('Cap', 'Cap')}</th>
+                <th>{t('Active', 'Active')}</th>
+              </tr>
+            </thead>
             <tbody>
               {data.fine_settings.map((r) => (
                 <tr key={r.id}>
-                  <td>{fmtDate(r.effective_from)}</td><td>{r.fine_type}</td>
-                  <td className="right">{r.rate_value}</td><td className="right">{r.grace_days}</td>
-                  <td>{r.max_fine_type === 'none' ? '—' : `${r.max_fine_value} ${r.max_fine_type === 'percent_of_payable' ? '% of payable' : 'flat'}`}</td>
-                  <td><span className={`badge ${r.active ? 'active' : 'inactive'}`}>{r.active ? 'active' : 'inactive'}</span></td>
+                  <td>{fmtDate(r.effective_from)}</td>
+                  <td>{t(r.fine_type, r.fine_type)}</td>
+                  <td className="right">{r.rate_value}</td>
+                  <td className="right">{r.grace_days}</td>
+                  <td>{r.max_fine_type === 'none' ? '—' : `${r.max_fine_value} ${r.max_fine_type === 'percent_of_payable' ? t('% of payable', '% of payable') : t('flat amount', 'flat')}`}</td>
+                  <td><span className={`badge ${r.active ? 'active' : 'inactive'}`}>{r.active ? t('Active', 'active') : t('Inactive', 'inactive')}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -678,53 +693,53 @@ function FineTab({ data, busy, save }) {
       </div>
       <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add a New Fine Rule</h3>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{t('Add a New Fine Rule', 'Add a New Fine Rule')}</h3>
         </div>
         <div style={{ padding: '14px 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 10 }}>
             <div className="form-field-group">
-              <label className="form-field-label">Fine type</label>
+              <label className="form-field-label">{t('Fine type', 'Fine type')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiAward size={13} /></div>
                 <select value={f.fine_type} onChange={(e) => setF({ ...f, fine_type: e.target.value })}>
-                  {['NONE', 'FIXED_PER_DAY', 'PERCENT_PER_DAY', 'FIXED_PER_INSTALLMENT'].map((t) => <option key={t}>{t}</option>)}
+                  {['NONE', 'FIXED_PER_DAY', 'PERCENT_PER_DAY', 'FIXED_PER_INSTALLMENT'].map((item) => <option key={item} value={item}>{t(item, item)}</option>)}
                 </select>
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Rate / value</label>
+              <label className="form-field-label">{t('Rate / value', 'Rate / value')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiAward size={13} /></div>
                 <input type="number" min="0" step="0.01" value={f.rate_value} onChange={(e) => setF({ ...f, rate_value: Number(e.target.value) })} />
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Grace days</label>
+              <label className="form-field-label">{t('Grace days', 'Grace days')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiCalendar size={13} /></div>
                 <input type="number" min="0" max="60" value={f.grace_days} onChange={(e) => setF({ ...f, grace_days: Number(e.target.value) })} />
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Cap type</label>
+              <label className="form-field-label">{t('Cap type', 'Cap type')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiAward size={13} /></div>
                 <select value={f.max_fine_type} onChange={(e) => setF({ ...f, max_fine_type: e.target.value })}>
-                  <option value="none">No cap</option>
-                  <option value="percent_of_payable">% of payable</option>
-                  <option value="flat">Flat amount</option>
+                  <option value="none">{t('No cap', 'No cap')}</option>
+                  <option value="percent_of_payable">{t('% of payable', '% of payable')}</option>
+                  <option value="flat">{t('Flat amount', 'Flat amount')}</option>
                 </select>
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Cap value</label>
+              <label className="form-field-label">{t('Cap value', 'Cap value')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiAward size={13} /></div>
                 <input type="number" min="0" step="0.01" value={f.max_fine_value} onChange={(e) => setF({ ...f, max_fine_value: Number(e.target.value) })} />
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Effective from</label>
+              <label className="form-field-label">{t('Effective from', 'Effective from')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiCalendar size={13} /></div>
                 <input type="date" value={f.effective_from} onChange={(e) => setF({ ...f, effective_from: e.target.value })} />
@@ -732,14 +747,14 @@ function FineTab({ data, busy, save }) {
             </div>
           </div>
           <div className="form-field-group" style={{ marginBottom: 12 }}>
-            <label className="form-field-label">Notes</label>
+            <label className="form-field-label">{t('Notes', 'Notes')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiFileText size={13} /></div>
-              <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Rule notes" />
+              <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder={t('Notes', 'Rule notes')} />
             </div>
           </div>
           <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post('/api/settings/fine', f), 'New fine rule saved')}>
-            <FiSave size={14} /> Add Fine Rule
+            <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Add Fine Rule', 'Add Fine Rule')}
           </button>
         </div>
       </div>
@@ -748,6 +763,7 @@ function FineTab({ data, busy, save }) {
 }
 
 function ListTab({ title, rows, busy, save, createPath, fields }) {
+  const { t } = useI18n();
   const [f, setF] = useState(Object.fromEntries(fields.map(([k]) => [k, ''])));
   const [errors, setErrors] = useState({});
 
@@ -796,18 +812,23 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
             <FiCreditCard size={16} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{title}</h2>
-            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Manage payment mode definitions</p>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t(title, title)}</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Manage payment mode definitions', 'Manage payment mode definitions')}</p>
           </div>
         </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr>{fields.map(([k, l]) => <th key={k}>{l}</th>)}<th>Active</th></tr></thead>
+            <thead>
+              <tr>
+                {fields.map(([k, l]) => <th key={k}>{t(l, l)}</th>)}
+                <th>{t('Active', 'Active')}</th>
+              </tr>
+            </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   {fields.map(([k]) => <td key={k}>{String(r[k] ?? '—')}</td>)}
-                  <td><span className={`badge ${r.is_active ? 'active' : 'inactive'}`}>{r.is_active ? 'active' : 'inactive'}</span></td>
+                  <td><span className={`badge ${r.is_active ? 'active' : 'inactive'}`}>{r.is_active ? t('Active', 'active') : t('Inactive', 'inactive')}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -816,13 +837,13 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
       </div>
       <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add {title.toLowerCase().replace(/s$/, '')}</h3>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{t('Add', 'Add')} {t(title, title)}</h3>
         </div>
         <div style={{ padding: '14px 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 12 }}>
             {fields.map(([k, l, type, opts]) => (
               <div key={k} className="form-field-group">
-                <label className="form-field-label">{l}</label>
+                <label className="form-field-label">{t(l, l)}</label>
                 <div className="input-with-icon">
                   <div className="input-icon-pill"><FiFileText size={13} /></div>
                   {type === 'select'
@@ -840,7 +861,7 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
                         }}
                         className={errors[k] ? 'is-invalid' : ''}
                         aria-invalid={!!errors[k]}
-                        placeholder={l}
+                        placeholder={t(l, l)}
                       />}
                 </div>
                 {errors[k] && <span className="field-error-msg err">{errors[k]}</span>}
@@ -848,7 +869,7 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
             ))}
           </div>
           <button className="btn-save-glow" disabled={busy} onClick={handleAdd}>
-            <FiSave size={14} /> Add
+            <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Add', 'Add')}
           </button>
         </div>
       </div>
@@ -857,6 +878,7 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
 }
 
 function AccountsTab({ data, busy, save }) {
+  const { t } = useI18n();
   const [f, setF] = useState({ code: '', name: '', type: 'bank', opening_balance: 0 });
   const [errors, setErrors] = useState({});
 
@@ -905,26 +927,35 @@ function AccountsTab({ data, busy, save }) {
             <FiDollarSign size={16} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Bank &amp; Cash Accounts</h2>
-            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Office cash, petty cash and bank balance</p>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Bank & Cash Accounts', 'Bank & Cash Accounts')}</h2>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Office cash, petty cash and bank balance', 'Office cash, petty cash and bank balance')}</p>
           </div>
         </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Code</th><th>Name</th><th>Type</th><th className="right">Opening</th><th className="right">Current balance</th><th>Active</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{t('Code', 'Code')}</th>
+                <th>{t('Name', 'Name')}</th>
+                <th>{t('Type', 'Type')}</th>
+                <th className="right">{t('Opening', 'Opening')}</th>
+                <th className="right">{t('Current balance', 'Current balance')}</th>
+                <th>{t('Active', 'Active')}</th>
+              </tr>
+            </thead>
             <tbody>
               {data.accounts.map((a) => (
                 <tr key={a.id}>
-                  <td><code>{a.code}</code></td><td>{a.name}</td><td>{a.type}</td>
+                  <td><code>{a.code}</code></td><td>{a.name}</td><td>{t(a.type, a.type)}</td>
                   <td className="right">{money(a.opening_balance)}</td>
                   <td className="right"><b>{money(a.current_balance)}</b></td>
-                  <td><span className={`badge ${a.is_active ? 'active' : 'inactive'}`}>{a.is_active ? 'active' : 'inactive'}</span></td>
+                  <td><span className={`badge ${a.is_active ? 'active' : 'inactive'}`}>{a.is_active ? t('Active', 'active') : t('Inactive', 'inactive')}</span></td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr style={{ background: 'var(--blue-50)', fontWeight: 800 }}>
-                <td colSpan={4}>Office Cash {money(data.finance?.office_cash)} + Bank Cash {money(data.finance?.bank_cash)} =</td>
+                <td colSpan={4}>{t('Office Cash', 'Office Cash')} {money(data.finance?.office_cash)} + {t('Bank Cash', 'Bank Cash')} {money(data.finance?.bank_cash)} =</td>
                 <td className="right">{money(data.finance?.total_amount)}</td><td />
               </tr>
             </tfoot>
@@ -933,12 +964,12 @@ function AccountsTab({ data, busy, save }) {
       </div>
       <div className="card" style={{ borderRadius: 14, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Add Account</h3>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{t('Add Account', 'Add Account')}</h3>
         </div>
         <div style={{ padding: '14px 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 12 }}>
             <div className="form-field-group">
-              <label className="form-field-label">Code *</label>
+              <label className="form-field-label">{t('Code *', 'Code *')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
                 <input
@@ -957,7 +988,7 @@ function AccountsTab({ data, busy, save }) {
               {errors.code && <span className="field-error-msg err">{errors.code}</span>}
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Name *</label>
+              <label className="form-field-label">{t('Name *', 'Name *')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
                 <input
@@ -976,16 +1007,16 @@ function AccountsTab({ data, busy, save }) {
               {errors.name && <span className="field-error-msg err">{errors.name}</span>}
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Type</label>
+              <label className="form-field-label">{t('Type', 'Type')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiDollarSign size={13} /></div>
                 <select value={f.type} onChange={(e) => setField('type', e.target.value)}>
-                  <option value="cash">cash</option><option value="bank">bank</option><option value="other">other</option>
+                  <option value="cash">{t('Cash', 'cash')}</option><option value="bank">{t('Bank', 'bank')}</option><option value="other">{t('Other', 'other')}</option>
                 </select>
               </div>
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Opening balance</label>
+              <label className="form-field-label">{t('Opening balance', 'Opening balance')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiDollarSign size={13} /></div>
                 <input
@@ -1008,14 +1039,14 @@ function AccountsTab({ data, busy, save }) {
             </div>
           </div>
           <button className="btn-save-glow" disabled={busy} onClick={handleAdd}>
-            <FiSave size={14} /> Add Account
+            <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Add Account', 'Add Account')}
           </button>
         </div>
       </div>
       <div className="card" style={{ marginTop: 12, borderRadius: 14, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Set Opening Balance</h3>
-          <p className="muted" style={{ fontSize: 11, margin: '2px 0 0' }}>Use this to enter the real starting cash / bank balance for the business.</p>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{t('Set Opening Balance', 'Set Opening Balance')}</h3>
+          <p className="muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{t('Use this to enter the real starting cash / bank balance for the business.', 'Use this to enter the real starting cash / bank balance for the business.')}</p>
         </div>
         <div style={{ padding: '14px 20px' }}>
           {data.accounts.map((a) => <OpeningBalanceRow key={a.id} account={a} busy={busy} save={save} />)}
@@ -1026,21 +1057,23 @@ function AccountsTab({ data, busy, save }) {
 }
 
 function OpeningBalanceRow({ account, busy, save }) {
+  const { t } = useI18n();
   const [v, setV] = useState(account.opening_balance);
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-      <span style={{ width: 180, fontWeight: 700, fontSize: 12.5 }}>{account.name} ({account.type})</span>
+      <span style={{ width: 180, fontWeight: 700, fontSize: 12.5 }}>{account.name} ({t(account.type, account.type)})</span>
       <div className="input-with-icon" style={{ width: 160 }}>
         <div className="input-icon-pill"><FiDollarSign size={13} /></div>
         <input type="number" step="0.01" value={v} onChange={(e) => setV(e.target.value)} />
       </div>
       <button className="btn sm secondary" disabled={busy}
-        onClick={() => save(() => api.put(`/api/settings/accounts/${account.id}`, { opening_balance: Number(v || 0) }), 'Opening balance updated')}>Save</button>
+        onClick={() => save(() => api.put(`/api/settings/accounts/${account.id}`, { opening_balance: Number(v || 0) }), 'Opening balance updated')}>{t('Save', 'Save')}</button>
     </div>
   );
 }
 
 function ChitCodeTab({ data, busy, save }) {
+  const { t } = useI18n();
   const cf = data.code_format || {};
   const [prefix, setPrefix] = useState(cf.loan_prefix || 'SM');
   const clean = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1058,27 +1091,26 @@ function ChitCodeTab({ data, busy, save }) {
           <FiGrid size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>Chit Code Prefix</h2>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Custom prefix for auto-generated chit numbers</p>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('Chit Code Prefix', 'Chit Code Prefix')}</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Custom prefix for auto-generated chit numbers', 'Custom prefix for auto-generated chit numbers')}</p>
         </div>
       </div>
       <div style={{ padding: '14px 20px' }}>
         <div className="form-field-group" style={{ maxWidth: 260, marginBottom: 10 }}>
-          <label className="form-field-label">Chit Code Prefix</label>
+          <label className="form-field-label">{t('Chit Code Prefix', 'Chit Code Prefix')}</label>
           <div className="input-with-icon">
             <div className="input-icon-pill"><FiGrid size={13} /></div>
             <input value={prefix} onChange={(e) => setPrefix(e.target.value)} maxLength={8} />
           </div>
         </div>
         <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>
-          New chits auto-generate as <b>{clean || 'PREFIX'}-1</b>, <b>{clean || 'PREFIX'}-2</b>, <b>{clean || 'PREFIX'}-3</b> …
-          The numeric part increments automatically and is unique (checked on the backend).
-          You can still type a custom code on the New Chit form; leave it blank to auto-generate.
-          <br />Changing the prefix only affects <b>new</b> chits — existing chit codes are never rewritten.
+          {t('New chits auto-generate as', 'New chits auto-generate as')} <b>{clean || 'PREFIX'}-1</b>, <b>{clean || 'PREFIX'}-2</b>, <b>{clean || 'PREFIX'}-3</b> …
+          {t('The numeric part increments automatically and is unique (checked on the backend).', 'The numeric part increments automatically and is unique (checked on the backend).')}
+          <br />{t('Changing the prefix only affects new chits — existing chit codes are never rewritten.', 'Changing the prefix only affects new chits — existing chit codes are never rewritten.')}
         </p>
         <button className="btn-save-glow" disabled={busy || !clean}
           onClick={() => save(() => api.put('/api/settings/chit-prefix', { prefix: clean }), `Chit code prefix saved — next chit will be ${clean}-N`)}>
-          <FiSave size={14} /> Save Prefix
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Save Prefix', 'Save Prefix')}
         </button>
       </div>
     </div>
@@ -1102,13 +1134,13 @@ function LangTab({ data, busy, save }) {
           <FiGlobe size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>System Language</h2>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Configure default application language</p>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('System Language', 'System Language')}</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Configure default application language', 'Configure default application language')}</p>
         </div>
       </div>
       <div style={{ padding: '14px 20px' }}>
         <div className="form-field-group" style={{ maxWidth: 260, marginBottom: 10 }}>
-          <label className="form-field-label">Language</label>
+          <label className="form-field-label">{t('Language', 'Language')}</label>
           <div className="input-with-icon">
             <div className="input-icon-pill"><FiGlobe size={13} /></div>
             <select value={lang} onChange={(e) => { setLang(e.target.value); setDef(e.target.value); }}>
@@ -1118,12 +1150,11 @@ function LangTab({ data, busy, save }) {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 11, marginBottom: 12 }}>
-          The interface switches immediately and your choice is remembered on this device (localStorage).
-          "{t('nav.dashboard')} · {t('nav.collection')} · {t('nav.chits')}" — sample of the current language.
+          {t('The interface switches immediately and your choice is remembered on this device (localStorage).', 'The interface switches immediately and your choice is remembered on this device (localStorage).')}
         </p>
         <button className="btn-save-glow" disabled={busy}
           onClick={() => save(() => api.put('/api/settings/locale', { default: def }), 'Default language saved for all users')}>
-          <FiSave size={14} /> Make Default for Everyone
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Make Default for Everyone', 'Make Default for Everyone')}
         </button>
       </div>
     </div>

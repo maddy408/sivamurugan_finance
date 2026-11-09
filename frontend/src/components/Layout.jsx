@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { API_BASE } from '../api/client';
+import defaultLogo from '../assets/logo.jpeg';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
 import {
@@ -34,6 +35,11 @@ export default function Layout() {
 
   const items = NAV.filter((n) => (!n.adminOnly || isAdmin) && can(n.perm));
   const orgLogo = meta?.organization?.logo_path;
+  const logoSrc = orgLogo && !logoBroken ? (API_BASE + orgLogo) : defaultLogo;
+  const handleLogoError = (e) => {
+    setLogoBroken(true);
+    if (e?.currentTarget) e.currentTarget.src = defaultLogo;
+  };
   const closeDrawer = () => setMobileOpen(false);
   const doLogout = async () => { closeDrawer(); await logout(); nav('/login'); };
 
@@ -57,12 +63,12 @@ export default function Layout() {
         <div className="top-navbar-container">
           {/* Brand Container with Capsule Pill Border */}
           <Link to="/" className="brand-container" onClick={closeDrawer}>
-            <div className="brand-logo-pill">
+            <div className="brand-logo-pill" style={{ width: 28, height: 28, minWidth: 28, minHeight: 28, flexShrink: 0, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
               <img
-                src={orgLogo && !logoBroken ? API_BASE + orgLogo : '/logo.jpeg'}
+                src={logoSrc}
                 alt="logo"
-                onError={() => setLogoBroken(true)}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={handleLogoError}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
               />
             </div>
             <div className="brand-text-wrap">
@@ -127,11 +133,22 @@ export default function Layout() {
         aria-label="Navigation drawer"
       >
         <div className="drawer-header">
-          <div className="drawer-user">
-            <div className="drawer-avatar">{(user?.name || 'U').charAt(0).toUpperCase()}</div>
-            <div className="drawer-user-info">
-              <div className="drawer-name">{user?.name}</div>
-              <div className="drawer-role">{t(user?.role_name || user?.role || '')}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            <div className="brand-logo-pill" style={{ width: 34, height: 34, minWidth: 34, minHeight: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffffff', border: '1.5px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <img
+                src={logoSrc}
+                alt="logo"
+                onError={handleLogoError}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t('app.title', 'Siva Murugan Chit Fund')}
+              </span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                {user?.name} · {t(user?.role_name || user?.role || '')}
+              </span>
             </div>
           </div>
           <button

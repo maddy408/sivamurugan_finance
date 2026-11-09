@@ -390,10 +390,12 @@ export default function Pending({ hideTitle = false }) {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700 }}>Customer Pending Due</div>
+                <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700 }}>{t('Customer Pending Due', 'Customer Pending Due')}</div>
                 <b style={{ fontSize: 15, color: '#e11d48' }}>{money(totalCustomerPending)}</b>
                 <div style={{ fontSize: 10.5, color: overdueCount > 0 ? '#e11d48' : '#64748b', fontWeight: 600 }}>
-                  {displayDues.length} due{displayDues.length === 1 ? '' : 's'} pending {overdueCount > 0 ? `(${overdueCount} overdue)` : ''}
+                  {lang === 'ta'
+                    ? `${displayDues.length} தவணைகள் நிலுவை ${overdueCount > 0 ? `(${overdueCount} தாமதமானது)` : ''}`
+                    : `${displayDues.length} due${displayDues.length === 1 ? '' : 's'} pending ${overdueCount > 0 ? `(${overdueCount} overdue)` : ''}`}
                 </div>
               </div>
             </div>

@@ -630,10 +630,10 @@ export default function CollectionChit() {
 
       {deleteCustomInst && (
         <Confirm
-          title={`Delete Installment #${deleteCustomInst.installment_no}?`}
+          title={`${t('Delete Installment', 'Delete Installment')} #${deleteCustomInst.installment_no}?`}
           danger busy={customDeleteBusy}
-          message="This custom schedule row will be permanently removed. This is only possible because it has no payments recorded against it yet."
-          confirmLabel="Delete"
+          message={t("This custom schedule row will be permanently removed. This is only possible because it has no payments recorded against it yet.", "This custom schedule row will be permanently removed. This is only possible because it has no payments recorded against it yet.")}
+          confirmLabel={t("Delete", "Delete")}
           onConfirm={runDeleteCustomInst}
           onClose={() => setDeleteCustomInst(null)}
         />
@@ -641,42 +641,42 @@ export default function CollectionChit() {
 
       {act && (
         <Confirm
-          title={act.type === 'cancel' ? 'Cancel this collection?' : 'Delete this collection?'}
+          title={act.type === 'cancel' ? t('Cancel this collection?', 'Cancel this collection?') : t('Delete this collection?', 'Delete this collection?')}
           danger={act.type === 'delete'} busy={busy}
           message={
             <>
               <p style={{ marginTop: 0 }}>
                 {act.type === 'cancel'
-                  ? 'The collection is kept as a cancelled history record. Its cash, total-collection and outstanding effects are reversed automatically.'
-                  : 'The collection record is removed. Its financial effect is reversed once (no double reversal).'}
+                  ? t('The collection is kept as a cancelled history record. Its cash, total-collection and outstanding effects are reversed automatically.', 'The collection is kept as a cancelled history record. Its cash, total-collection and outstanding effects are reversed automatically.')
+                  : t('The collection record is removed. Its financial effect is reversed once (no double reversal).', 'The collection record is removed. Its financial effect is reversed once (no double reversal).')}
               </p>
-              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--line)' }} placeholder="Reason (optional)"
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--line)' }} placeholder={t("Reason (optional)", "Reason (optional)")}
                 value={act.reason} onChange={(e) => setAct({ ...act, reason: e.target.value })} />
             </>
           }
-          confirmLabel={act.type === 'cancel' ? 'Cancel collection' : 'Delete'}
+          confirmLabel={act.type === 'cancel' ? t('Cancel collection', 'Cancel collection') : t('Delete', 'Delete')}
           onConfirm={runAct} onClose={() => setAct(null)}
         />
       )}
 
       {distAct && (
         <Confirm
-          title={distAct.type === 'cancel' ? `Cancel disbursement of ${money(distAct.row.amount)}?` : `Delete disbursement of ${money(distAct.row.amount)}?`}
+          title={distAct.type === 'cancel' ? `${t('Cancel disbursement of', 'Cancel disbursement of')} ${money(distAct.row.amount)}?` : `${t('Delete disbursement of', 'Delete disbursement of')} ${money(distAct.row.amount)}?`}
           danger busy={busy}
           message={
             <>
               <p style={{ marginTop: 0 }}>
                 {distAct.type === 'cancel'
-                  ? `${money(distAct.row.amount)} returns to ${distAct.row.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`
+                  ? t(`${money(distAct.row.amount)} returns to ${distAct.row.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`, `${money(distAct.row.amount)} returns to ${distAct.row.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`)
                   : distAct.row.status === 'active'
-                    ? `This first reverses its financial effect (${money(distAct.row.amount)} returns to ${distAct.row.account_name}), then removes it from the history list.`
-                    : 'This record is already cancelled and contributes nothing financially. It will be removed from the history list.'}
+                    ? t(`This first reverses its financial effect (${money(distAct.row.amount)} returns to ${distAct.row.account_name}), then removes it from the history list.`, `This first reverses its financial effect (${money(distAct.row.amount)} returns to ${distAct.row.account_name}), then removes it from the history list.`)
+                    : t('This record is already cancelled and contributes nothing financially. It will be removed from the history list.', 'This record is already cancelled and contributes nothing financially. It will be removed from the history list.')}
               </p>
-              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--line)' }} placeholder="Reason (optional)"
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--line)' }} placeholder={t("Reason (optional)", "Reason (optional)")}
                 value={distAct.reason} onChange={(e) => setDistAct({ ...distAct, reason: e.target.value })} />
             </>
           }
-          confirmLabel={distAct.type === 'cancel' ? 'Cancel disbursement' : 'Delete'}
+          confirmLabel={distAct.type === 'cancel' ? t('Cancel disbursement', 'Cancel disbursement') : t('Delete', 'Delete')}
           onConfirm={runDistAct} onClose={() => setDistAct(null)}
         />
       )}

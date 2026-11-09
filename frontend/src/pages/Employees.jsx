@@ -376,7 +376,7 @@ export default function Employees() {
                     }}
                     aria-invalid={!!createErrors.phone}
                     className={createErrors.phone ? 'is-invalid' : ''}
-                    placeholder="10-digit mobile number"
+                    placeholder={t('10-digit mobile number', '10-digit mobile number')}
                   />
                 </div>
                 <FieldError error={createErrors.phone} />
@@ -516,13 +516,13 @@ export default function Employees() {
                   }}
                   aria-invalid={!!editErrors.phone}
                   className={editErrors.phone ? 'is-invalid' : ''}
-                  placeholder="10-digit mobile number"
+                  placeholder={t('10-digit mobile number', '10-digit mobile number')}
                 />
               </div>
               <FieldError error={editErrors.phone} />
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Email</label>
+              <label className="form-field-label">{t('Email', 'Email')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiMail /></div>
                 <input
@@ -556,12 +556,12 @@ export default function Employees() {
               <FieldError error={editErrors.email} />
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Status</label>
+              <label className="form-field-label">{t('Status', 'Status')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiCheckCircle /></div>
                 <select value={edit.is_active ? '1' : '0'} onChange={(e) => setEdit({ ...edit, is_active: e.target.value === '1' })}>
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
+                  <option value="1">{t('Active', 'Active')}</option>
+                  <option value="0">{t('Inactive', 'Inactive')}</option>
                 </select>
               </div>
             </div>
@@ -570,15 +570,15 @@ export default function Employees() {
       )}
 
       {confirm?.type === 'force' && (
-        <Confirm title="Force logout?" danger busy={busy}
-          message={`Immediately invalidate every active session for ${confirm.row.name}.`}
-          confirmLabel="Force logout" onConfirm={() => act(confirm.row, 'force-logout')} onClose={() => setConfirm(null)} />
+        <Confirm title={t("Force logout?", "Force logout?")} danger busy={busy}
+          message={t(`Immediately invalidate every active session for ${confirm.row.name}.`, `Immediately invalidate every active session for ${confirm.row.name}.`)}
+          confirmLabel={t("Force logout", "Force logout")} onConfirm={() => act(confirm.row, 'force-logout')} onClose={() => setConfirm(null)} />
       )}
       {confirm?.type === 'reset' && (
-        <Confirm title={`Reset password — ${confirm.row.name}`} busy={busy}
-          message={<input type="password" style={{ width: '100%', padding: 8 }} placeholder="New password (min 8 chars)"
+        <Confirm title={`${t('Reset password', 'Reset password')} — ${confirm.row.name}`} busy={busy}
+          message={<input type="password" style={{ width: '100%', padding: 8 }} placeholder={t("New password (min 8 chars)", "New password (min 8 chars)")}
             value={confirm.password} onChange={(e) => setConfirm({ ...confirm, password: e.target.value })} />}
-          confirmLabel="Reset & sign out" onConfirm={() => act(confirm.row, 'reset')} onClose={() => setConfirm(null)} />
+          confirmLabel={t("Reset & sign out", "Reset & sign out")} onConfirm={() => act(confirm.row, 'reset')} onClose={() => setConfirm(null)} />
       )}
     </div>
   );

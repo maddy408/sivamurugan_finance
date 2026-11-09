@@ -5,6 +5,7 @@ import { validateText, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
 import { API_BASE } from '../api/client';
+import defaultLogo from '../assets/logo.jpeg';
 
 export default function Login() {
   const { user, login, terminatedMessage } = useAuth();
@@ -97,8 +98,15 @@ export default function Login() {
 
         <div className="login-brand">
           <div className="brand-logo-pill" style={{ padding: 0, background: '#fff', overflow: 'hidden' }}>
-            <img src={logoBroken ? '/logo.jpeg' : API_BASE + '/api/settings/organization/logo'} alt="Organization logo"
-              onError={() => setLogoBroken(true)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img
+              src={logoBroken ? defaultLogo : API_BASE + '/api/settings/organization/logo'}
+              alt="Organization logo"
+              onError={(e) => {
+                setLogoBroken(true);
+                if (e?.currentTarget) e.currentTarget.src = defaultLogo;
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           <div>
             <h1>{t('Sign in', 'Sign in')}</h1>

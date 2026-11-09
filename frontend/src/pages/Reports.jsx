@@ -612,7 +612,7 @@ export default function Reports() {
                   <input
                     value={filters.chit_code || ''}
                     onChange={(e) => setF('chit_code', e.target.value)}
-                    placeholder="e.g. SM-001"
+                    placeholder={t('e.g. SM-001', 'e.g. SM-001')}
                     style={{
                       padding: '8px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
                       fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', width: 130
@@ -818,7 +818,10 @@ export default function Reports() {
                 </div>
               ) : displayRows.length === 0 ? (
                 <div style={{ padding: '40px 20px' }}>
-                  <EmptyState title="NIL — No Data Available" hint="No records match the selected filters. Adjust the date range or clear the filters." />
+                  <EmptyState
+                    title={t("NIL — No Data Available", "NIL — No Data Available")}
+                    hint={t("No records match the selected filters. Adjust the date range or clear the filters.", "No records match the selected filters. Adjust the date range or clear the filters.")}
+                  />
                 </div>
               ) : (
                 <div className="table-wrap rpt-table-wrap" style={{ overflowX: 'auto' }}>

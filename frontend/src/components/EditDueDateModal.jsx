@@ -3,6 +3,7 @@ import { api, money } from '../api/client';
 import { Field, Modal } from './ui';
 import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiSave } from 'react-icons/fi';
 
 /**
@@ -13,6 +14,7 @@ import { FiSave } from 'react-icons/fi';
  */
 export default function EditDueDateModal({ installment, onClose, onDone }) {
   const toast = useToast();
+  const { t } = useI18n();
   const hasPayment = Number(installment.paid_amount) > 0;
   const [form, setForm] = useState({
     due_date: String(installment.due_date).slice(0, 10),
@@ -68,16 +70,16 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
   };
 
   return (
-    <Modal title={`Edit Due — #${installment.installment_no}`} onClose={onClose}
+    <Modal title={`${t('Edit Due', 'Edit Due')} — #${installment.installment_no}`} onClose={onClose}
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn secondary" onClick={onClose} disabled={busy}>{t('Cancel', 'Cancel')}</button>
         <button className="btn" onClick={submit} disabled={busy || !form.due_date}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiSave size={14} /> {busy ? 'Saving…' : 'Save'}
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : t('Save', 'Save')}
         </button>
       </>}>
       <div className="form-grid">
-        <Field label="EMI / Due Date *" error={errors.due_date}>
+        <Field label={t('EMI / Due Date *', 'EMI / Due Date *')} error={errors.due_date}>
           <input
             name="due_date"
             type="date"
@@ -89,7 +91,7 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
             }}
           />
         </Field>
-        <Field label="Due Amount" error={errors.payable_amount}>
+        <Field label={t('Due Amount', 'Due Amount')} error={errors.payable_amount}>
           <input
             name="payable_amount"
             type="number"
@@ -109,12 +111,11 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
       </div>
       {hasPayment ? (
         <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
-          {money(installment.paid_amount)} is already paid against this due, so its amount is locked — only the due
-          date can be corrected here. To change the amount, edit or cancel the payment instead.
+          {t(`${money(installment.paid_amount)} is already paid against this due, so its amount is locked — only the due date can be corrected here. To change the amount, edit or cancel the payment instead.`, `${money(installment.paid_amount)} is already paid against this due, so its amount is locked — only the due date can be corrected here. To change the amount, edit or cancel the payment instead.`)}
         </p>
       ) : (
         <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
-          This only changes the EMI due date shown on the schedule — it never touches any collection/paid date.
+          {t('This only changes the EMI due date shown on the schedule — it never touches any collection/paid date.', 'This only changes the EMI due date shown on the schedule — it never touches any collection/paid date.')}
         </p>
       )}
     </Modal>

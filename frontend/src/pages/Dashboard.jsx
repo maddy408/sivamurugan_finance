@@ -70,7 +70,7 @@ export default function Dashboard() {
     {
       key: 'total_amount',
       label: 'CASH & BANK BALANCE',
-      subtext: `Office: ${money(c.office_cash)} · Bank: ${money(c.bank_cash)}`,
+      subtext: `${t('Office', 'Office')}: ${money(c.office_cash)} · ${t('Bank', 'Bank')}: ${money(c.bank_cash)}`,
       icon: (
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e0f2fe', display: 'grid', placeItems: 'center' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#0284c7">
@@ -85,7 +85,7 @@ export default function Dashboard() {
     {
       key: 'total_expense',
       label: 'TOTAL EXPENSE',
-      subtext: `This Month: ${money(c.expense_this_month || 0)}`,
+      subtext: `${t('This Month', 'This Month')}: ${money(c.expense_this_month || 0)}`,
       icon: (
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fee2e2', display: 'grid', placeItems: 'center' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#ef4444">
@@ -554,7 +554,7 @@ export default function Dashboard() {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             <polyline points="9 12 11 14 15 10" />
           </svg>
-          <span>Secure & Trusted</span>
+          <span>{t('Secure & Trusted', 'Secure & Trusted')}</span>
         </div>
       </div>
     </div>

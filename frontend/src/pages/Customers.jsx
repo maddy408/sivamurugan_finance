@@ -163,16 +163,16 @@ export default function Customers() {
     {
       key: '_a', header: 'Action', align: 'right', width: 96, render: (r) => (
         <div className="action-buttons" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Link className="btn-icon view" to={`/customers/${r.id}`} title="View Profile">
+          <Link className="btn-icon view" to={`/customers/${r.id}`} title={t('View Profile', 'View Profile')}>
             <IconView />
           </Link>
           {can('customers.edit') && (
-            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit Customer">
+            <button className="btn-icon edit" onClick={() => openEdit(r)} title={t('Edit Customer', 'Edit Customer')}>
               <IconEdit />
             </button>
           )}
           {can('customers.delete') && (
-            <button className="btn-icon delete" onClick={() => setDel(r)} title="Delete Customer">
+            <button className="btn-icon delete" onClick={() => setDel(r)} title={t('Delete Customer', 'Delete Customer')}>
               <IconDelete />
             </button>
           )}
@@ -527,8 +527,8 @@ export default function Customers() {
             onSort={list.onSort}
             onPage={list.setPage}
             onPerPage={list.setPerPage}
-            emptyTitle="No customers match your filters"
-            emptyHint="Register a new member using the form on the left or clear your search criteria."
+            emptyTitle={t("No customers match your filters", "No customers match your filters")}
+            emptyHint={t("Register a new member using the form on the left or clear your search criteria.", "Register a new member using the form on the left or clear your search criteria.")}
           />
         </div>
       </div>
@@ -536,14 +536,14 @@ export default function Customers() {
       {/* Edit Customer Modal with Settings Theme */}
       {editModal && (
         <Modal
-          title={`Edit ${editModal.name}`}
+          title={`${t('Edit', 'Edit')} ${editModal.name}`}
           size="lg"
           onClose={() => setEditModal(null)}
           footer={
             <>
-              <button className="btn secondary sm" onClick={() => setEditModal(null)} disabled={editBusy}>Cancel</button>
+              <button className="btn secondary sm" onClick={() => setEditModal(null)} disabled={editBusy}>{t('Cancel', 'Cancel')}</button>
               <button className="btn-save-glow" onClick={handleSaveEdit} disabled={editBusy}>
-                <FiSave size={14} /> {editBusy ? 'Saving…' : 'Save Changes'}
+                <FiSave size={14} /> {editBusy ? t('Saving…', 'Saving…') : t('Save Changes', 'Save Changes')}
               </button>
             </>
           }
@@ -616,14 +616,14 @@ export default function Customers() {
                   }}
                   aria-invalid={!!editErrors.mobile}
                   className={editErrors.mobile ? 'is-invalid' : ''}
-                  placeholder="10-digit mobile number"
+                  placeholder={t('10-digit mobile number', '10-digit mobile number')}
                 />
               </div>
               <FieldError error={editErrors.mobile} />
             </div>
 
             <div className="form-field-group">
-              <label className="form-field-label">Aadhar Number</label>
+              <label className="form-field-label">{t('Aadhar Number', 'Aadhar Number')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
                 <input
@@ -655,14 +655,14 @@ export default function Customers() {
                   }}
                   aria-invalid={!!editErrors.aadhar_number}
                   className={editErrors.aadhar_number ? 'is-invalid' : ''}
-                  placeholder="12-digit Aadhar"
+                  placeholder={t('12-digit Aadhar number', '12-digit Aadhar number')}
                 />
               </div>
               <FieldError error={editErrors.aadhar_number} />
             </div>
 
             <div className="form-field-group">
-              <label className="form-field-label">Alternate Mobile</label>
+              <label className="form-field-label">{t('Alternate Mobile', 'Alternate Mobile')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiPhone size={13} /></div>
                 <input
@@ -694,7 +694,7 @@ export default function Customers() {
                   }}
                   aria-invalid={!!editErrors.alt_mobile}
                   className={editErrors.alt_mobile ? 'is-invalid' : ''}
-                  placeholder="10-digit mobile number"
+                  placeholder={t('10-digit mobile number', '10-digit mobile number')}
                 />
               </div>
               <FieldError error={editErrors.alt_mobile} />
@@ -838,38 +838,38 @@ export default function Customers() {
                   }}
                   aria-invalid={!!editErrors.nominee_mobile}
                   className={editErrors.nominee_mobile ? 'is-invalid' : ''}
-                  placeholder="10-digit mobile number"
+                  placeholder={t('10-digit mobile number', '10-digit mobile number')}
                 />
               </div>
               {editErrors.nominee_mobile && <span className="field-error-msg err">{editErrors.nominee_mobile}</span>}
             </div>
 
             <div className="form-field-group">
-              <label className="form-field-label">Status</label>
+              <label className="form-field-label">{t('Status', 'Status')}</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiShield size={13} /></div>
                 <select value={editForm.status || 'active'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="blacklisted">Blacklisted</option>
+                  <option value="active">{t('Active', 'Active')}</option>
+                  <option value="inactive">{t('Inactive', 'Inactive')}</option>
+                  <option value="blacklisted">{t('Blacklisted', 'Blacklisted')}</option>
                 </select>
               </div>
             </div>
           </div>
           <div className="form-field-group" style={{ marginTop: 10 }}>
-            <label className="form-field-label">Notes</label>
+            <label className="form-field-label">{t('Notes', 'Notes')}</label>
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiFileText size={13} /></div>
-              <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Customer remarks" />
+              <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder={t('Customer remarks', 'Customer remarks')} />
             </div>
           </div>
         </Modal>
       )}
 
       {del && (
-        <Confirm title={`Delete ${del.name}?`} danger busy={busy}
-          message="The customer record will be removed."
-          confirmLabel="Delete" onConfirm={doDelete} onClose={() => setDel(null)} />
+        <Confirm title={`${t('Delete', 'Delete')} ${del.name}?`} danger busy={busy}
+          message={t("The customer record will be removed.", "The customer record will be removed.")}
+          confirmLabel={t("Delete", "Delete")} onConfirm={doDelete} onClose={() => setDel(null)} />
       )}
     </>
   );

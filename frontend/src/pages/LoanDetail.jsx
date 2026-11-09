@@ -212,30 +212,35 @@ export default function LoanDetail() {
       )}
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Installment schedule</h2></div>
+        <div className="card-head"><h2>{t('Installment schedule', 'Installment schedule')}</h2></div>
         <div className="table-wrap">
           <table className="grid">
             <thead>
               <tr>
-                <th>#</th><th>Due date</th><th className="right">Installment Amount</th>
-                <th className="right">Paid</th><th className="right">Balance</th>
-                <th>Last paid</th><th>Status</th><th></th>
+                <th>#</th>
+                <th>{t('Due date', 'Due date')}</th>
+                <th className="right">{t('Installment Amount', 'Installment Amount')}</th>
+                <th className="right">{t('Paid', 'Paid')}</th>
+                <th className="right">{t('Balance', 'Balance')}</th>
+                <th>{t('Last paid', 'Last paid')}</th>
+                <th>{t('Status', 'Status')}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {loan.installments.map((i) => (
                 <tr key={i.id}>
                   <td data-label="#">{i.installment_no}</td>
-                  <td data-label="Due date">{fmtDate(i.due_date)}</td>
-                  <td data-label="Installment Amount" className="right">{money(i.payable_amount)}</td>
-                  <td data-label="Paid" className="right">{money(i.paid_amount)}</td>
-                  <td data-label="Balance" className="right">{money(i.balance_amount)}</td>
-                  <td data-label="Last paid">{fmtDate(i.last_paid_date)}</td>
-                  <td data-label="Status"><Badge value={i.status} /></td>
+                  <td data-label={t('Due date', 'Due date')}>{fmtDate(i.due_date)}</td>
+                  <td data-label={t('Installment Amount', 'Installment Amount')} className="right">{money(i.payable_amount)}</td>
+                  <td data-label={t('Paid', 'Paid')} className="right">{money(i.paid_amount)}</td>
+                  <td data-label={t('Balance', 'Balance')} className="right">{money(i.balance_amount)}</td>
+                  <td data-label={t('Last paid', 'Last paid')}>{fmtDate(i.last_paid_date)}</td>
+                  <td data-label={t('Status', 'Status')}><Badge value={i.status} /></td>
                   <td data-label="" className="right">
                     {can('collection.create') && i.status !== 'COMPLETED' && loan.status === 'active' && (
                       <button className="btn sm" onClick={() => goToCollection(`?due=${i.id}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <FiZap size={12} /> Collect
+                        <FiZap size={12} /> {t('Collect', 'Collect')}
                       </button>
                     )}
                   </td>
@@ -247,35 +252,47 @@ export default function LoanDetail() {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Collection history</h2></div>
+        <div className="card-head"><h2>{t('Collection history', 'Collection history')}</h2></div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Receipt</th><th>Bill No</th><th>Date</th><th>Mode</th><th className="right">Fine</th><th className="right">Paid (actual)</th><th className="right">Total</th><th>Status</th><th></th></tr></thead>
+            <thead>
+              <tr>
+                <th>{t('Receipt', 'Receipt')}</th>
+                <th>{t('Bill No', 'Bill No')}</th>
+                <th>{t('Date', 'Date')}</th>
+                <th>{t('Mode', 'Mode')}</th>
+                <th className="right">{t('Fine', 'Fine')}</th>
+                <th className="right">{t('Paid (actual)', 'Paid (actual)')}</th>
+                <th className="right">{t('Total', 'Total')}</th>
+                <th>{t('Status', 'Status')}</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
               {loan.collections.map((c) => (
                 <tr key={c.id} style={c.status !== 'posted' ? { opacity: 0.6 } : undefined}>
-                  <td data-label="Receipt">{c.receipt_no}</td>
-                  <td data-label="Bill No">{c.bill_no || '—'}</td>
-                  <td data-label="Date">{fmtDate(c.collection_date)}</td>
-                  <td data-label="Mode">{c.payment_mode}</td>
-                  <td data-label="Fine" className="right">{money(c.fine_amount)}</td>
-                  <td data-label="Paid (actual)" className="right">{money(c.amount)}</td>
-                  <td data-label="Total" className="right"><b style={{ color: '#10b981', fontSize: 12 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
-                  <td data-label="Status"><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
+                  <td data-label={t('Receipt', 'Receipt')}>{c.receipt_no}</td>
+                  <td data-label={t('Bill No', 'Bill No')}>{c.bill_no || '—'}</td>
+                  <td data-label={t('Date', 'Date')}>{fmtDate(c.collection_date)}</td>
+                  <td data-label={t('Mode', 'Mode')}>{t(c.payment_mode, c.payment_mode)}</td>
+                  <td data-label={t('Fine', 'Fine')} className="right">{money(c.fine_amount)}</td>
+                  <td data-label={t('Paid (actual)', 'Paid (actual)')} className="right">{money(c.amount)}</td>
+                  <td data-label={t('Total', 'Total')} className="right"><b style={{ color: '#10b981', fontSize: 12 }}>{money(c.total_amount || (Number(c.amount) + Number(c.fine_amount || 0)))}</b></td>
+                  <td data-label={t('Status', 'Status')}><Badge value={c.status === 'posted' ? 'COMPLETED' : c.status} /></td>
                   <td data-label="" className="right nowrap">
                     <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <button className="btn-icon" title="Print Receipt" onClick={() => setReceipt(c)}>
+                      <button className="btn-icon" title={t('Print Receipt', 'Print Receipt')} onClick={() => setReceipt(c)}>
                         <FiPrinter size={14} />
                       </button>
                       {c.status === 'posted' && !String(c.receipt_no).endsWith('-REV') && (
                         <>
                           {can('collection.cancel') && (
-                            <button className="btn-icon warning" title="Cancel Collection" onClick={() => setConfirm({ type: 'cancel', id: c.id, reason: '' })}>
+                            <button className="btn-icon warning" title={t('Cancel Collection', 'Cancel Collection')} onClick={() => setConfirm({ type: 'cancel', id: c.id, reason: '' })}>
                               <FiXCircle size={14} />
                             </button>
                           )}
                           {can('collection.delete') && (
-                            <button className="btn-icon danger" title="Delete Collection" onClick={() => setConfirm({ type: 'delete_col', id: c.id, reason: '' })}>
+                            <button className="btn-icon danger" title={t('Delete Collection', 'Delete Collection')} onClick={() => setConfirm({ type: 'delete_col', id: c.id, reason: '' })}>
                               <FiTrash2 size={14} />
                             </button>
                           )}
@@ -285,49 +302,49 @@ export default function LoanDetail() {
                   </td>
                 </tr>
               ))}
-              {loan.collections.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>No collections yet</td></tr>}
+              {loan.collections.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>{t('No collections yet', 'No collections yet')}</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       {edit && (
-        <Modal title={`Edit ${loan.code}`} onClose={() => setEdit(null)}
+        <Modal title={`${t('Edit', 'Edit')} ${loan.code}`} onClose={() => setEdit(null)}
           footer={<>
-            <button className="btn secondary" onClick={() => setEdit(null)} disabled={busy}>Cancel</button>
-            <button className="btn" onClick={saveEdit} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+            <button className="btn secondary" onClick={() => setEdit(null)} disabled={busy}>{t('Cancel', 'Cancel')}</button>
+            <button className="btn" onClick={saveEdit} disabled={busy}>{busy ? t('Saving…', 'Saving…') : t('Save', 'Save')}</button>
           </>}>
           <div className="form-grid">
-            <Field label="Chit Code">
+            <Field label={t('Chit Code', 'Chit Code')}>
               <input value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value })} />
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                Leave unchanged to keep <b>{loan.code}</b>. A new value must be unique.
+                {t('Leave unchanged to keep', 'Leave unchanged to keep')} <b>{loan.code}</b>. {t('A new value must be unique.', 'A new value must be unique.')}
               </p>
             </Field>
-            <Field label="Chit Status">
+            <Field label={t('Chit Status', 'Chit Status')}>
               <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="closed">Closed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="active">{t('Active', 'Active')}</option>
+                <option value="completed">{t('Completed', 'Completed')}</option>
+                <option value="closed">{t('Closed', 'Closed')}</option>
+                <option value="cancelled">{t('Cancelled', 'Cancelled')}</option>
               </select>
             </Field>
-            <Field label="Due / Installment Amount">
+            <Field label={t('Due / Installment Amount', 'Due / Installment Amount')}>
               <input type="number" min="0.01" step="0.01" value={edit.installment_amount}
                 onChange={(e) => setEdit({ ...edit, installment_amount: e.target.value })} />
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                Changes future unpaid dues only. Chit amount, distributed amount and paid installments stay exactly as recorded.
+                {t('Changes future unpaid dues only. Chit amount, distributed amount and paid installments stay exactly as recorded.', 'Changes future unpaid dues only. Chit amount, distributed amount and paid installments stay exactly as recorded.')}
               </p>
             </Field>
-            <Field label="Chit / principal amount">
+            <Field label={t('Chit / principal amount', 'Chit / principal amount')}>
               <input type="number" min="0" step="0.01" value={edit.principal_amount}
                 onChange={(e) => setEdit({ ...edit, principal_amount: e.target.value })} />
             </Field>
-            <Field label="Tenure">
+            <Field label={t('Tenure', 'Tenure')}>
               <input type="number" min="1" step="1" value={edit.tenure}
                 onChange={(e) => setEdit({ ...edit, tenure: e.target.value })} />
             </Field>
-            <Field label="Repayment Frequency">
+            <Field label={t('Repayment Frequency', 'Repayment Frequency')}>
               <select value={edit.frequency} onChange={(e) => {
                 const v = e.target.value;
                 const st = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY_DAILY' };
@@ -338,65 +355,64 @@ export default function LoanDetail() {
                     ? edit.schedule_type : st[v],
                 });
               }}>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="daily">{t('Daily', 'Daily')}</option>
+                <option value="weekly">{t('Weekly', 'Weekly')}</option>
+                <option value="monthly">{t('Monthly', 'Monthly')}</option>
               </select>
             </Field>
-            <Field label="Start date">
+            <Field label={t('Start date', 'Start date')}>
               <input type="date" value={edit.start_date} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
             </Field>
             {edit.frequency === 'monthly' && (
-              <Field label="Monthly schedule style">
+              <Field label={t('Monthly schedule style', 'Monthly schedule style')}>
                 <select value={edit.schedule_type} onChange={(e) => setEdit({ ...edit, schedule_type: e.target.value })}>
-                  <option value="MONTHLY_DAILY">Calendar month</option>
-                  <option value="MONTHLY_WEEKDAY">Weekday cycle</option>
-                  <option value="MONTHLY_INTERVAL">Fixed day interval</option>
+                  <option value="MONTHLY_DAILY">{t('Calendar month', 'Calendar month')}</option>
+                  <option value="MONTHLY_WEEKDAY">{t('Weekday cycle', 'Weekday cycle')}</option>
+                  <option value="MONTHLY_INTERVAL">{t('Fixed day interval', 'Fixed day interval')}</option>
                 </select>
               </Field>
             )}
             {(edit.frequency === 'weekly' || edit.schedule_type === 'MONTHLY_WEEKDAY') && (
-              <Field label="Preferred collection day (optional)">
+              <Field label={t('Preferred collection day (optional)', 'Preferred collection day (optional)')}>
                 <select value={edit.weekday} onChange={(e) => setEdit({ ...edit, weekday: e.target.value })}>
-                  <option value="">From start date — no fixed day</option>
+                  <option value="">{t('From start date — no fixed day', 'From start date — no fixed day')}</option>
                   {[['1', 'Monday'], ['2', 'Tuesday'], ['3', 'Wednesday'], ['4', 'Thursday'], ['5', 'Friday'], ['6', 'Saturday'], ['7', 'Sunday']].map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
+                    <option key={v} value={v}>{t(l, l)}</option>
                   ))}
                 </select>
               </Field>
             )}
           </div>
-          <Field label="Notes">
+          <Field label={t('Notes', 'Notes')}>
             <textarea rows={2} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />
           </Field>
           <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Changing the installment amount recalculates <b>future unpaid</b> installments only. Paid / partially-paid
-            installments and every recorded collection are left exactly as they are.
+            {t('Changing the installment amount recalculates future unpaid installments only. Paid / partially-paid installments and every recorded collection are left exactly as they are.', 'Changing the installment amount recalculates future unpaid installments only. Paid / partially-paid installments and every recorded collection are left exactly as they are.')}
           </p>
         </Modal>
       )}
 
       {confirm?.type === 'delete' && (
-        <Confirm title="Delete this chit?" danger busy={busy}
+        <Confirm title={t('Delete this chit?', 'Delete this chit?')} danger busy={busy}
           message={<>
-            <p>The chit disappears from every list. Any posted collections stay in the ledger for audit.</p>
-            <input style={{ width: '100%', padding: 8 }} placeholder="Reason (optional)"
+            <p>{t('The chit disappears from every list. Any posted collections stay in the ledger for audit.', 'The chit disappears from every list. Any posted collections stay in the ledger for audit.')}</p>
+            <input style={{ width: '100%', padding: 8 }} placeholder={t('Reason (optional)', 'Reason (optional)')}
               value={confirm.reason} onChange={(e) => setConfirm({ ...confirm, reason: e.target.value })} />
           </>}
-          confirmLabel="Delete" onConfirm={doDelete} onClose={() => setConfirm(null)} />
+          confirmLabel={t('Delete', 'Delete')} onConfirm={doDelete} onClose={() => setConfirm(null)} />
       )}
       {(confirm?.type === 'cancel' || confirm?.type === 'delete_col') && (
         <Confirm
-          title={confirm.type === 'cancel' ? 'Cancel this collection?' : 'Delete this collection?'}
+          title={confirm.type === 'cancel' ? t('Cancel this collection?', 'Cancel this collection?') : t('Delete this collection?', 'Delete this collection?')}
           danger={confirm.type === 'delete_col'} busy={busy}
           message={<>
             <p>{confirm.type === 'cancel'
-              ? 'Kept as a cancelled history record. Cash, total collection and outstanding are reversed automatically.'
-              : 'The record is removed. Its financial effect is reversed once (no double reversal).'}</p>
-            <input style={{ width: '100%', padding: 8 }} placeholder="Reason (optional)"
+              ? t('Kept as a cancelled history record. Cash, total collection and outstanding are reversed automatically.', 'Kept as a cancelled history record. Cash, total collection and outstanding are reversed automatically.')
+              : t('The record is removed. Its financial effect is reversed once (no double reversal).', 'The record is removed. Its financial effect is reversed once (no double reversal).')}</p>
+            <input style={{ width: '100%', padding: 8 }} placeholder={t('Reason (optional)', 'Reason (optional)')}
               value={confirm.reason} onChange={(e) => setConfirm({ ...confirm, reason: e.target.value })} />
           </>}
-          confirmLabel={confirm.type === 'cancel' ? 'Cancel collection' : 'Delete'}
+          confirmLabel={confirm.type === 'cancel' ? t('Cancel collection', 'Cancel collection') : t('Delete', 'Delete')}
           onConfirm={async () => {
             setBusy(true);
             try {

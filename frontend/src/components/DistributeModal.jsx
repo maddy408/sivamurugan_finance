@@ -353,17 +353,17 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
                             <td data-label="" className="right nowrap">
                               <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
                                 {isActive && can('distributions.edit') && (
-                                  <button className="btn-icon" title="Edit Distribution" onClick={() => startEdit(row)}>
+                                  <button className="btn-icon" title={t('Edit Distribution', 'Edit Distribution')} onClick={() => startEdit(row)}>
                                     <FiEdit2 size={14} />
                                   </button>
                                 )}
                                 {isActive && can('distributions.cancel') && (
-                                  <button className="btn-icon warning" title="Cancel Distribution" onClick={() => setCancelRow({ ...row, reason: '' })}>
+                                  <button className="btn-icon warning" title={t('Cancel Distribution', 'Cancel Distribution')} onClick={() => setCancelRow({ ...row, reason: '' })}>
                                     <FiXCircle size={14} />
                                   </button>
                                 )}
                                 {can('distributions.delete') && (
-                                  <button className="btn-icon danger" title="Delete Distribution" onClick={() => setDeleteRow({ ...row, reason: '' })}>
+                                  <button className="btn-icon danger" title={t('Delete Distribution', 'Delete Distribution')} onClick={() => setDeleteRow({ ...row, reason: '' })}>
                                     <FiTrash2 size={14} />
                                   </button>
                                 )}
@@ -381,18 +381,18 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
         )}
       </Modal>
       {cancelRow && (
-        <Confirm title={`Cancel disbursement of ${money(cancelRow.amount)}?`} danger busy={busy}
-          message={`${money(cancelRow.amount)} returns to ${cancelRow.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`}
-          confirmLabel="Cancel disbursement" onConfirm={doCancel} onClose={() => setCancelRow(null)} />
+        <Confirm title={`${t('Cancel disbursement of', 'Cancel disbursement of')} ${money(cancelRow.amount)}?`} danger busy={busy}
+          message={t(`${money(cancelRow.amount)} returns to ${cancelRow.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`, `${money(cancelRow.amount)} returns to ${cancelRow.account_name}. Distributed total drops, remaining undistributed rises, and the current EMI is recomputed from the remaining history.`)}
+          confirmLabel={t("Cancel disbursement", "Cancel disbursement")} onConfirm={doCancel} onClose={() => setCancelRow(null)} />
       )}
       {deleteRow && (
-        <Confirm title={`Delete disbursement of ${money(deleteRow.amount)}?`} danger busy={busy}
+        <Confirm title={`${t('Delete disbursement of', 'Delete disbursement of')} ${money(deleteRow.amount)}?`} danger busy={busy}
           message={
             deleteRow.status === 'active'
-              ? `This will first reverse its financial effect (${money(deleteRow.amount)} returns to ${deleteRow.account_name}), then remove it from the history list. This cannot be undone from the UI.`
-              : 'This record is already cancelled and contributes nothing financially. It will be removed from the history list.'
+              ? t(`This will first reverse its financial effect (${money(deleteRow.amount)} returns to ${deleteRow.account_name}), then remove it from the history list. This cannot be undone from the UI.`, `This will first reverse its financial effect (${money(deleteRow.amount)} returns to ${deleteRow.account_name}), then remove it from the history list. This cannot be undone from the UI.`)
+              : t('This record is already cancelled and contributes nothing financially. It will be removed from the history list.', 'This record is already cancelled and contributes nothing financially. It will be removed from the history list.')
           }
-          confirmLabel="Delete" onConfirm={doDelete} onClose={() => setDeleteRow(null)} />
+          confirmLabel={t("Delete", "Delete")} onConfirm={doDelete} onClose={() => setDeleteRow(null)} />
       )}
     </>
   );

@@ -4,6 +4,7 @@ import { Field, Modal } from './ui';
 import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiSave } from 'react-icons/fi';
 
 /**
@@ -13,6 +14,7 @@ import { FiSave } from 'react-icons/fi';
  */
 export default function CollectionEditModal({ collection, onClose, onDone }) {
   const { meta } = useAuth();
+  const { t } = useI18n();
   const toast = useToast();
   const modes = meta?.payment_modes || [];
   const accounts = meta?.accounts || [];
@@ -102,11 +104,11 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
   };
 
   return (
-    <Modal title={`Edit Collection — ${collection.receipt_no}`} onClose={onClose}
+    <Modal title={`${t('Edit Collection', 'Edit Collection')} — ${collection.receipt_no}`} onClose={onClose}
       footer={<>
-        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>{t('Cancel', 'Cancel')}</button>
         <button type="submit" form="edit-collection-form" className="btn" disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiSave size={14} /> {busy ? 'Saving…' : `Save (${money(total)})`}
+          <FiSave size={14} /> {busy ? t('Saving…', 'Saving…') : `${t('Save', 'Save')} (${money(total)})`}
         </button>
       </>}>
       <form id="edit-collection-form" onSubmit={(e) => { e.preventDefault(); if (!busy) submit(); }}>

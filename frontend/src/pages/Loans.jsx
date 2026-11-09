@@ -288,16 +288,16 @@ export default function Loans() {
     {
       key: '_a', header: 'Action', align: 'right', width: 96, render: (r) => (
         <div className="action-buttons" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Link className="btn-icon view" to={`/loans/${r.id}`} title="View Details">
+          <Link className="btn-icon view" to={`/loans/${r.id}`} title={t('View Details', 'View Details')}>
             <IconView />
           </Link>
           {can('loans.edit') && (
-            <button className="btn-icon edit" onClick={() => openEdit(r)} title="Edit Chit & Status">
+            <button className="btn-icon edit" onClick={() => openEdit(r)} title={t('Edit Chit & Status', 'Edit Chit & Status')}>
               <IconEdit />
             </button>
           )}
           {can('loans.delete') && (
-            <button className="btn-icon delete" onClick={() => setDel(r)} title="Delete Chit">
+            <button className="btn-icon delete" onClick={() => setDel(r)} title={t('Delete Chit', 'Delete Chit')}>
               <IconDelete />
             </button>
           )}
@@ -658,7 +658,7 @@ export default function Loans() {
                         {customRows.map((row, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9' }}>
                             <span>#{row.installment_no} · {row.due_date} · {money(row.payable_amount)}</span>
-                            <button type="button" className="btn-icon danger" title="Remove" style={{ width: 22, height: 22 }}
+                            <button type="button" className="btn-icon danger" title={t('Remove', 'Remove')} style={{ width: 22, height: 22 }}
                               onClick={() => setCustomRows((rows) => rows.filter((_, i) => i !== idx))}>
                               <FiX size={12} />
                             </button>
@@ -742,8 +742,8 @@ export default function Loans() {
             columns={columns} rows={list.rows} loading={list.loading} error={list.error} onRetry={list.reload}
             page={list.page} perPage={list.perPage} total={list.pagination.total} totalPages={list.pagination.total_pages}
             sortBy={list.sortBy} sortDir={list.sortDir} onSort={list.onSort} onPage={list.setPage} onPerPage={list.setPerPage}
-            emptyTitle="No chits match your filters"
-            emptyHint="Create a new chit using the form on the left or clear your search filters."
+            emptyTitle={t("No chits match your filters", "No chits match your filters")}
+            emptyHint={t("Create a new chit using the form on the left or clear your search filters.", "Create a new chit using the form on the left or clear your search filters.")}
             selectedIds={selectedIds}
             onSelectChange={setSelectedIds}
             selectable={can('loans.delete')}
@@ -852,12 +852,12 @@ export default function Loans() {
                     ? edit.schedule_type : st[v],
                 });
               }}>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="daily">{t('Daily', 'Daily')}</option>
+                <option value="weekly">{t('Weekly', 'Weekly')}</option>
+                <option value="monthly">{t('Monthly', 'Monthly')}</option>
               </select>
             </Field>
-            <Field label="Start date *" error={editErrors.start_date}>
+            <Field label={t('Start date *', 'Start date *')} error={editErrors.start_date}>
               <input
                 type="date"
                 name="start_date"
@@ -873,21 +873,20 @@ export default function Loans() {
               />
             </Field>
             {edit.frequency === 'monthly' && (
-              <Field label="Monthly schedule style">
+              <Field label={t('Monthly schedule style', 'Monthly schedule style')}>
                 <select value={edit.schedule_type} onChange={(e) => setEdit({ ...edit, schedule_type: e.target.value })}>
-                  <option value="MONTHLY_DAILY">Calendar month</option>
-                  <option value="MONTHLY_WEEKDAY">Weekday cycle</option>
-                  <option value="MONTHLY_INTERVAL">Fixed day interval</option>
+                  <option value="MONTHLY_DAILY">{t('Calendar month', 'Calendar month')}</option>
+                  <option value="MONTHLY_WEEKDAY">{t('Weekday cycle', 'Weekday cycle')}</option>
+                  <option value="MONTHLY_INTERVAL">{t('Fixed day interval', 'Fixed day interval')}</option>
                 </select>
               </Field>
             )}
           </div>
-          <Field label="Notes">
+          <Field label={t('Notes', 'Notes')}>
             <textarea rows={2} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />
           </Field>
           <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Changing the installment amount recalculates <b>future unpaid</b> installments only. Paid / partially-paid
-            installments and every recorded collection are left exactly as they are.
+            {t('Changing the installment amount recalculates future unpaid installments only. Paid / partially-paid installments and every recorded collection are left exactly as they are.', 'Changing the installment amount recalculates future unpaid installments only. Paid / partially-paid installments and every recorded collection are left exactly as they are.')}
           </p>
         </Modal>
       )}

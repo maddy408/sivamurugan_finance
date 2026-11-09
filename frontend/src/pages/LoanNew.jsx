@@ -5,6 +5,7 @@ import { Field, Modal } from '../components/ui';
 import { validateDate, validateAmount, validateInteger, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiArrowLeft, FiFileText, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -24,6 +25,7 @@ const emptyDist = { amount: '', account_id: '', distributed_date: today(), new_e
 export default function LoanNew() {
   const nav = useNavigate();
   const toast = useToast();
+  const { t } = useI18n();
   const { meta, refreshMeta } = useAuth();
   const accounts = meta?.accounts || [];
   const [form, setForm] = useState(initial);
@@ -177,8 +179,8 @@ export default function LoanNew() {
   return (
     <form onSubmit={submit}>
       <div className="toolbar">
-        <button type="button" className="btn sm secondary" onClick={() => nav('/loans')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Chits</button>
-        <h1 style={{ margin: 0, fontSize: 18 }}>New chit</h1>
+        <button type="button" className="btn sm secondary" onClick={() => nav('/loans')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> {t('Chits', 'Chits')}</button>
+        <h1 style={{ margin: 0, fontSize: 18 }}>{t('New chit', 'New chit')}</h1>
       </div>
 
       <div className="card chit-form-card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
@@ -202,17 +204,17 @@ export default function LoanNew() {
             <FiFileText size={18} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#ffffff' }}>New Chit Details</h2>
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>Enter customer, installment terms, and repayment cycle</p>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#ffffff' }}>{t('New Chit Details', 'New Chit Details')}</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('Enter customer, installment terms, and repayment cycle', 'Enter customer, installment terms, and repayment cycle')}</p>
           </div>
         </div>
         <div className="card-body" style={{ padding: '16px 20px' }}>
           <div className="form-grid">
-            <Field label="Customer *" error={errors.customer_id}>
+            <Field label={`${t('Customer', 'Customer')} *`} error={errors.customer_id}>
               <input
                 name="customer_id"
                 list="cust-options"
-                placeholder="Search name, code or mobile…"
+                placeholder={t('Search name, code or mobile…', 'Search name, code or mobile…')}
                 value={form._customerLabel ?? (selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : '')}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -227,31 +229,31 @@ export default function LoanNew() {
                 }}
                 onBlur={() => {
                   if (!form.customer_id) {
-                    setErrors((prev) => ({ ...prev, customer_id: 'Please select a customer.' }));
+                    setErrors((prev) => ({ ...prev, customer_id: t('Please select a customer.', 'Please select a customer.') }));
                   }
                 }}
                 required />
               <datalist id="cust-options">
                 {customers.map((c) => (
                   <option key={c.id} value={`${c.name} (${c.customer_code})`}>
-                    {c.mobile || ''} · {c.address_line1 || 'No address on file'}
+                    {c.mobile || ''} · {c.address_line1 || t('No address on file', 'No address on file')}
                   </option>
                 ))}
               </datalist>
               {selectedCustomer && (
                 <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                  Address: <b>{selectedCustomer.address_line1 || '—'}</b> (copied from the customer's record)
+                  {t('Address', 'Address')}: <b>{selectedCustomer.address_line1 || '—'}</b> ({t("Address: copied from the customer's record", "copied from the customer's record")})
                 </p>
               )}
             </Field>
-            <Field label="Chit Code" error={errors.code}>
+            <Field label={t('Chit Code', 'Chit Code')} error={errors.code}>
               <input name="code" value={form.code} onChange={(e) => set('code', e.target.value)}
-                placeholder={nextCode ? `Leave blank to auto-generate (next: ${nextCode})` : 'Leave blank to auto-generate'} />
+                placeholder={nextCode ? `${t('Leave blank to auto-generate', 'Leave blank to auto-generate')} (${t('Next', 'next')}: ${nextCode})` : t('Leave blank to auto-generate', 'Leave blank to auto-generate')} />
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                Empty → the server generates the next code. Typed → saved exactly as entered (must be unique).
+                {t('Empty → the server generates the next code. Typed → saved exactly as entered (must be unique).', 'Empty → the server generates the next code. Typed → saved exactly as entered (must be unique).')}
               </p>
             </Field>
-            <Field label="Chit / principal amount *" error={errors.principal_amount}>
+            <Field label={`${t('Chit / principal amount', 'Chit / principal amount')} *`} error={errors.principal_amount}>
               <input
                 type="number"
                 name="principal_amount"
@@ -265,7 +267,7 @@ export default function LoanNew() {
                 }}
                 required />
             </Field>
-            <Field label="Installment Amount *" error={errors.installment_amount}>
+            <Field label={`${t('Installment Amount', 'Installment Amount')} *`} error={errors.installment_amount}>
               <input
                 type="number"
                 name="installment_amount"
@@ -278,9 +280,9 @@ export default function LoanNew() {
                   if (err) setErrors((prev) => ({ ...prev, installment_amount: err }));
                 }}
                 required
-                placeholder="e.g. 2000 — used exactly as entered" />
+                placeholder={t('e.g. 2000 — used exactly as entered', 'e.g. 2000 — used exactly as entered')} />
             </Field>
-            <Field label="Tenure (number of installments) *" error={errors.tenure}>
+            <Field label={`${t('Tenure (number of installments)', 'Tenure (number of installments)')} *`} error={errors.tenure}>
               <input
                 type="number"
                 name="tenure"
@@ -294,49 +296,49 @@ export default function LoanNew() {
                 }}
                 required />
             </Field>
-            <Field label="Due Date Schedule" error={errors.due_date_mode}>
+            <Field label={t('Due Date Schedule', 'Due Date Schedule')} error={errors.due_date_mode}>
               <select value={form.due_date_mode} onChange={(e) => set('due_date_mode', e.target.value)}>
-                <option value="auto">Auto Due Date</option>
-                <option value="custom">Custom Due Date</option>
+                <option value="auto">{t('Auto Due Date', 'Auto Due Date')}</option>
+                <option value="custom">{t('Custom Due Date', 'Custom Due Date')}</option>
               </select>
               {form.due_date_mode === 'custom' && (
                 <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                  No due dates are generated automatically. Add each installment from the Collection page once the chit is created.
+                  {t('No due dates are generated automatically. Add each installment from the Collection page once the chit is created.', 'No due dates are generated automatically. Add each installment from the Collection page once the chit is created.')}
                 </p>
               )}
             </Field>
             {form.due_date_mode === 'auto' && (
               <>
-                <Field label="Repayment Frequency">
+                <Field label={t('Repayment Frequency', 'Repayment Frequency')}>
                   <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
+                    <option value="daily">{t('Daily', 'Daily')}</option>
+                    <option value="weekly">{t('Weekly', 'Weekly')}</option>
+                    <option value="monthly">{t('Monthly', 'Monthly')}</option>
                   </select>
                 </Field>
                 {form.frequency === 'monthly' && (
-                  <Field label="Monthly schedule style">
+                  <Field label={t('Monthly schedule style', 'Monthly schedule style')}>
                     <select value={form.schedule_type} onChange={(e) => set('schedule_type', e.target.value)}>
-                      <option value="MONTHLY_DAILY">Calendar month (same day each month)</option>
-                      <option value="MONTHLY_WEEKDAY">Weekday cycle (e.g. every 4th Monday)</option>
-                      <option value="MONTHLY_INTERVAL">Fixed day interval</option>
+                      <option value="MONTHLY_DAILY">{t('Calendar month (same day each month)', 'Calendar month (same day each month)')}</option>
+                      <option value="MONTHLY_WEEKDAY">{t('Weekday cycle (e.g. every 4th Monday)', 'Weekday cycle (e.g. every 4th Monday)')}</option>
+                      <option value="MONTHLY_INTERVAL">{t('Fixed day interval', 'Fixed day interval')}</option>
                     </select>
                   </Field>
                 )}
                 {wantsWeekday && (
-                  <Field label="Preferred collection day (optional)">
+                  <Field label={t('Preferred collection day (optional)', 'Preferred collection day (optional)')}>
                     <select value={form.weekday} onChange={(e) => set('weekday', e.target.value)}>
-                      <option value="">From start date — no fixed day</option>
-                      {WEEKDAYS.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
+                      <option value="">{t('From start date — no fixed day', 'From start date — no fixed day')}</option>
+                      {WEEKDAYS.map((d) => <option key={d.v} value={d.v}>{t(d.l, d.l)}</option>)}
                     </select>
                     <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                      Leave as “no fixed day” and the schedule simply runs weekly from the start date.
+                      {t('Leave as “no fixed day” and the schedule simply runs weekly from the start date.', 'Leave as “no fixed day” and the schedule simply runs weekly from the start date.')}
                     </p>
                   </Field>
                 )}
               </>
             )}
-            <Field label="Start date *" error={errors.start_date}>
+            <Field label={`${t('Start date', 'Start date')} *`} error={errors.start_date}>
               <input
                 type="date"
                 name="start_date"
@@ -348,28 +350,26 @@ export default function LoanNew() {
                 }}
                 required />
             </Field>
-            <Field label="Assign to employee (optional)">
+            <Field label={t('Assign to employee (optional)', 'Assign to employee (optional)')}>
               <select value={form.employee_id} onChange={(e) => set('employee_id', e.target.value)}>
-                <option value="">Unassigned</option>
+                <option value="">{t('Unassigned', 'Unassigned')}</option>
                 {employees.map((emp) => <option key={emp.employee_id} value={emp.employee_id}>{emp.name} ({emp.emp_code})</option>)}
               </select>
             </Field>
           </div>
           <p className="muted" style={{ fontSize: 12 }}>
-            This is a chit fund — there is <b>no interest and no EMI formula</b>. Every installment is exactly the
-            <b> installment amount</b> you enter above. At collection time the employee can take a partial, exact
-            or higher amount; the actual paid amount is stored as-is.
+            {t('This is a chit fund — there is no interest and no EMI formula. Every installment is exactly the installment amount you enter above. At collection time the employee can take a partial, exact or higher amount; the actual paid amount is stored as-is.', 'This is a chit fund — there is no interest and no EMI formula. Every installment is exactly the installment amount you enter above. At collection time the employee can take a partial, exact or higher amount; the actual paid amount is stored as-is.')}
           </p>
-          <Field label="Notes" error={errors.notes}>
+          <Field label={t('Notes', 'Notes')} error={errors.notes}>
             <textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           </Field>
           <div style={{ display: 'flex', gap: 10 }}>
             {form.due_date_mode === 'auto' && (
               <button type="button" className="btn secondary" onClick={runPreview}
-                disabled={!form.installment_amount || !form.tenure}>Preview schedule</button>
+                disabled={!form.installment_amount || !form.tenure}>{t('Preview schedule', 'Preview schedule')}</button>
             )}
             <button className="btn-save-glow" disabled={busy || !form.customer_id}>
-              {busy ? 'Saving…' : (wantDist ? `Create chit + distribute ${money(distAmt)}` : 'Create Chit')}
+              {busy ? t('Saving…', 'Saving…') : (wantDist ? `${t('Create chit + distribute', 'Create chit + distribute')} ${money(distAmt)}` : t('Create Chit', 'Create Chit'))}
             </button>
           </div>
         </div>
@@ -378,16 +378,16 @@ export default function LoanNew() {
       {/* Optional: distribute the chit immediately on creation */}
       <div className="card chit-form-card" style={{ marginTop: 16 }}>
         <div className="card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiDollarSign size={15} /> Distribute now <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>(optional)</span></h2>
+          <h2 style={{ display: "flex", alignItems: "center", gap: 6 }}><FiDollarSign size={15} /> {t('Distribute now', 'Distribute now')} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>({t('optional', 'optional')})</span></h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
             <input type="checkbox" checked={distOpen} onChange={(e) => { setDistOpen(e.target.checked); if (!e.target.checked) setDist(emptyDist); }} />
-            Distribute money to the customer as part of creation
+            {t('Distribute money to the customer as part of creation', 'Distribute money to the customer as part of creation')}
           </label>
         </div>
         {distOpen && (
           <div className="card-body">
             <div className="form-grid">
-              <Field label="Distributed Amount *" error={errors['distribution.amount']}>
+              <Field label={`${t('Distributed Amount', 'Distributed Amount')} *`} error={errors['distribution.amount']}>
                 <input
                   type="number"
                   name="distribution.amount"
@@ -404,15 +404,15 @@ export default function LoanNew() {
                     const err = validateAmount(dist.amount, { required: true, min: 0.01, fieldLabel: 'Distributed amount' });
                     if (err) setErrors((prev) => ({ ...prev, 'distribution.amount': err }));
                   }}
-                  placeholder="amount handed to the customer" />
+                  placeholder={t('amount handed to the customer', 'amount handed to the customer')} />
                 {principal > 0 && distAmt > 0 && (
                   <span className="muted" style={{ fontSize: 12 }}>
-                    Principal covered: <b>{money(Math.min(distAmt, principal))}</b>
-                    {distAmt > principal && <> · Extra disbursed: <b>{money(distAmt - principal)}</b></>}
+                    {t('Principal covered', 'Principal covered')}: <b>{money(Math.min(distAmt, principal))}</b>
+                    {distAmt > principal && <> · {t('Extra disbursed', 'Extra disbursed')}: <b>{money(distAmt - principal)}</b></>}
                   </span>
                 )}
               </Field>
-              <Field label="Distribution Account *" error={errors['distribution.account_id']}>
+              <Field label={`${t('Distribution Account', 'Distribution Account')} *`} error={errors['distribution.account_id']}>
                 <select
                   name="distribution.account_id"
                   value={dist.account_id}
@@ -424,29 +424,28 @@ export default function LoanNew() {
                   }}
                   onBlur={() => {
                     if (!dist.account_id) {
-                      setErrors((prev) => ({ ...prev, 'distribution.account_id': 'Choose the account the money comes from.' }));
+                      setErrors((prev) => ({ ...prev, 'distribution.account_id': t('Choose the account the money comes from.', 'Choose the account the money comes from.') }));
                     }
                   }}>
-                  <option value="">— select account —</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+                  <option value="">{t('— select account —', '— select account —')}</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({t(a.type, a.type)})</option>)}
                 </select>
               </Field>
-              <Field label="Distribution Date">
+              <Field label={t('Distribution Date', 'Distribution Date')}>
                 <input type="date" value={dist.distributed_date} onChange={(e) => setDist({ ...dist, distributed_date: e.target.value })} />
               </Field>
-              <Field label="New EMI Amount" error={errors['distribution.new_emi_amount']}>
+              <Field label={t('New EMI Amount', 'New EMI Amount')} error={errors['distribution.new_emi_amount']}>
                 <input type="number" min="0.01" step="0.01" value={dist.new_emi_amount}
                   onChange={(e) => setDist({ ...dist, new_emi_amount: e.target.value })}
-                  placeholder={`blank = keep ${money(Number(form.installment_amount || 0))}`} />
-                <span className="muted" style={{ fontSize: 12 }}>Entered manually — no interest calculation. Applies to future dues.</span>
+                  placeholder={`${t('blank = keep', 'blank = keep')} ${money(Number(form.installment_amount || 0))}`} />
+                <span className="muted" style={{ fontSize: 12 }}>{t('Entered manually — no interest calculation. Applies to future dues.', 'Entered manually — no interest calculation. Applies to future dues.')}</span>
               </Field>
             </div>
-            <Field label="Remarks">
+            <Field label={t('Remarks', 'Remarks')}>
               <input value={dist.remarks} onChange={(e) => setDist({ ...dist, remarks: e.target.value })} placeholder="e.g. Initial distribution / 1st tranche" />
             </Field>
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-              Only the actual distributed amount leaves the selected account — one transaction, recorded in the chit's
-              distribution history. Leave this off to create the chit with no money movement.
+              {t("Only the actual distributed amount leaves the selected account — one transaction, recorded in the chit's distribution history. Leave this off to create the chit with no money movement.", "Only the actual distributed amount leaves the selected account — one transaction, recorded in the chit's distribution history. Leave this off to create the chit with no money movement.")}
             </p>
           </div>
         )}
@@ -455,17 +454,17 @@ export default function LoanNew() {
       {preview && (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-head">
-            <h2>Preview — installment {money(preview.installment_amount)}</h2>
-            <span className="muted">Scheduled total {money(preview.totals.scheduled)} ({preview.schedule.length} × {money(preview.installment_amount)})</span>
+            <h2>{t('Preview', 'Preview')} — {t('Installment', 'installment')} {money(preview.installment_amount)}</h2>
+            <span className="muted">{t('Scheduled total', 'Scheduled total')} {money(preview.totals.scheduled)} ({preview.schedule.length} × {money(preview.installment_amount)})</span>
           </div>
           <div className="table-wrap">
             <table className="grid">
-              <thead><tr><th>#</th><th>Due date</th><th className="right">Installment Amount</th></tr></thead>
+              <thead><tr><th>#</th><th>{t('Due date', 'Due date')}</th><th className="right">{t('Installment Amount', 'Installment Amount')}</th></tr></thead>
               <tbody>
                 {preview.schedule.map((s) => (
                   <tr key={s.installment_no}>
-                    <td>{s.installment_no}</td><td>{fmtDate(s.due_date)}</td>
-                    <td className="right">{money(s.payable_amount)}</td>
+                    <td data-label="#">{s.installment_no}</td><td data-label={t('Due date', 'Due date')}>{fmtDate(s.due_date)}</td>
+                    <td data-label={t('Installment Amount', 'Installment Amount')} className="right">{money(s.payable_amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -475,17 +474,17 @@ export default function LoanNew() {
       )}
 
       {success && (
-        <Modal title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiCheckCircle /> Chit Created Successfully</span>} onClose={() => nav(`/loans/${success.chit.id}`)}
-          footer={<button className="btn" onClick={() => nav(`/loans/${success.chit.id}`)}>Open chit details</button>}>
+        <Modal title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiCheckCircle /> {t('Chit Created Successfully', 'Chit Created Successfully')}</span>} onClose={() => nav(`/loans/${success.chit.id}`)}
+          footer={<button className="btn" onClick={() => nav(`/loans/${success.chit.id}`)}>{t('Open chit details', 'Open chit details')}</button>}>
           <dl className="kv" style={{ gridTemplateColumns: '180px 1fr', rowGap: 8 }}>
-            <dt>Chit Code</dt><dd style={{ fontWeight: 700 }}>{success.chit.code}</dd>
-            <dt>Chit Amount</dt><dd>{money(success.chit.principal_amount)}</dd>
-            <dt>Distributed</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(success.distribution?.total_distributed)}</dd>
-            <dt>Remaining Undistributed</dt><dd>{money(success.distribution?.remaining_undistributed)}</dd>
-            <dt>Current EMI</dt><dd><b>{money(success.distribution?.current_emi ?? success.chit.installment_amount)}</b></dd>
-            <dt>Account</dt><dd>{accounts.find((a) => String(a.id) === String(dist.account_id))?.name || '—'}</dd>
+            <dt>{t('Chit Code', 'Chit Code')}</dt><dd style={{ fontWeight: 700 }}>{success.chit.code}</dd>
+            <dt>{t('Chit Amount', 'Chit Amount')}</dt><dd>{money(success.chit.principal_amount)}</dd>
+            <dt>{t('Distributed', 'Distributed')}</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(success.distribution?.total_distributed)}</dd>
+            <dt>{t('Remaining Undistributed', 'Remaining Undistributed')}</dt><dd>{money(success.distribution?.remaining_undistributed)}</dd>
+            <dt>{t('Current EMI', 'Current EMI')}</dt><dd><b>{money(success.distribution?.current_emi ?? success.chit.installment_amount)}</b></dd>
+            <dt>{t('Account', 'Account')}</dt><dd>{accounts.find((a) => String(a.id) === String(dist.account_id))?.name || '—'}</dd>
           </dl>
-          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>Office Cash / Bank and the dashboard have been updated.</p>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{t('Office Cash / Bank and the dashboard have been updated.', 'Office Cash / Bank and the dashboard have been updated.')}</p>
         </Modal>
       )}
     </form>

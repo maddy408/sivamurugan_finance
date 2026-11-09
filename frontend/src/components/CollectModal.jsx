@@ -242,9 +242,9 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         <div key={d.id} className="field" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontWeight: 800, fontSize: 12, color: '#92400e', marginBottom: 6 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FiClock size={13} /> Previous Payment History — Due #{d.installment_no}
+              <FiClock size={13} /> {t('Previous Payment History', 'Previous Payment History')} — {lang === 'ta' ? `தவணை #${d.installment_no}` : `Due #${d.installment_no}`}
             </span>
-            <button type="button" className="btn-icon" title="Print / Download this due's payment statement"
+            <button type="button" className="btn-icon" title={t("Print / Download this due's payment statement", "Print / Download this due's payment statement")}
               onClick={() => setPrintInstId(d.id)} style={{ width: 24, height: 24 }}>
               <FiPrinter size={13} />
             </button>
@@ -252,13 +252,13 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
           {(history[d.id] || []).length > 0 && (
             <div className="table-wrap" style={{ border: '1px solid var(--line)', borderRadius: 8, marginBottom: 8 }}>
               <table className="grid" style={{ fontSize: 12 }}>
-                <thead><tr><th>Date</th><th>Bill No</th><th className="right">Paid Amount</th></tr></thead>
+                <thead><tr><th>{t('Date', 'Date')}</th><th>{t('Bill No', 'Bill No')}</th><th className="right">{t('Paid Amount', 'Paid Amount')}</th></tr></thead>
                 <tbody>
                   {(history[d.id] || []).map((p) => (
                     <tr key={p.collection_id}>
-                      <td data-label="Date">{fmtDate(p.collection_date)}</td>
-                      <td data-label="Bill No">{p.bill_no || '—'}</td>
-                      <td data-label="Paid Amount" className="right">{money(p.principal_alloc)}</td>
+                      <td data-label={t('Date', 'Date')}>{fmtDate(p.collection_date)}</td>
+                      <td data-label={t('Bill No', 'Bill No')}>{p.bill_no || '—'}</td>
+                      <td data-label={t('Paid Amount', 'Paid Amount')} className="right">{money(p.principal_alloc)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -266,9 +266,9 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 16, fontSize: 12, flexWrap: 'wrap' }}>
-            <span>Current Due Amount: <b>{money(d.payable_amount)}</b></span>
-            <span>Previously Paid: <b style={{ color: '#10b981' }}>{money(d.paid_amount)}</b></span>
-            <span>Remaining Due: <b style={{ color: '#f43f5e' }}>{money(d.balance_amount)}</b></span>
+            <span>{t('Current Due Amount', 'Current Due Amount')}: <b>{money(d.payable_amount)}</b></span>
+            <span>{t('Previously Paid', 'Previously Paid')}: <b style={{ color: '#10b981' }}>{money(d.paid_amount)}</b></span>
+            <span>{t('Remaining Due', 'Remaining Due')}: <b style={{ color: '#f43f5e' }}>{money(d.balance_amount)}</b></span>
           </div>
         </div>
       ))}
@@ -412,21 +412,21 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
           </div>
           <div className="split-payment-summary" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, padding: '8px 12px', background: '#eff4fc', borderRadius: 8, fontSize: 12 }}>
             <div><span className="muted">Total Split:</span> <b style={{ color: 'var(--blue-primary)', fontSize: 14, marginLeft: 4 }}>{money(cashNum + upiNum)}</b></div>
-            <div><span className="muted">Selected Due Total:</span> <b style={{ marginLeft: 4 }}>{money(installmentTotal)}</b></div>
+            <div><span className="muted">{t('Selected Due Total', 'Selected Due Total')}:</span> <b style={{ marginLeft: 4 }}>{money(installmentTotal)}</b></div>
           </div>
           {splitInvalid && (
             <p className="err" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-              Enter a Cash and/or UPI portion greater than 0.
+              {t('Enter a Cash and/or UPI portion greater than 0.', 'Enter a Cash and/or UPI portion greater than 0.')}
             </p>
           )}
         </div>
       )}
 
-      <Field label="Remarks" error={errors.remarks}>
-        <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional collection notes…" />
+      <Field label={t('Remarks', 'Remarks')} error={errors.remarks}>
+        <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder={t('Optional collection notes…', 'Optional collection notes…')} />
       </Field>
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-        Each selected due gets its own payment record. The EMI amount is never changed by a collection.
+        {t('Each selected due gets its own payment record. The EMI amount is never changed by a collection.', 'Each selected due gets its own payment record. The EMI amount is never changed by a collection.')}
       </p>
       </form>
     </Modal>
