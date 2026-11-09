@@ -222,11 +222,11 @@ export default function CollectionChit() {
 
       {/* Side-by-Side Main Grid — left rail is a compact ~25% details column,
           right side (~75%) is the primary working area: dues + collection. */}
-      <div className="collection-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 20, alignItems: 'start' }}>
+      <div className="collection-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 20, alignItems: 'start', maxWidth: '100%', minWidth: 0 }}>
 
         {/* LEFT COLUMN: Customer + Chit + Distribution in ONE combined card,
             so every detail is visible at once with no internal scrolling. */}
-        <div className="card">
+        <div className="card" style={{ maxWidth: '100%', minWidth: 0 }}>
 
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Customer */}
@@ -256,7 +256,7 @@ export default function CollectionChit() {
 
             {can('distributions.view') && (
               <>
-                <div className="section-title" style={{ margin: '2px 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="section-title" style={{ margin: '2px 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiDollarSign size={13} /> {t('Distribution', 'Distribution')}</span>
                   {loan.status === 'active' && can('distributions.create') && (
                     <button className="btn sm" style={{ padding: '3px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
@@ -282,7 +282,7 @@ export default function CollectionChit() {
         </div>
 
         {/* RIGHT COLUMN: Collection Actions & Installment Schedule */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: '100%', minWidth: 0 }}>
           {/* Quick Collect Action Header & Installment Schedule Table */}
           <div className="card">
             <div className="card-head">
