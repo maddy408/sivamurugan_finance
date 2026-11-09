@@ -1,9 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from './ui';
+import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import InstallmentStatementModal from './InstallmentStatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiZap, FiCreditCard, FiClock, FiPrinter } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -19,6 +21,7 @@ const today = () => new Date().toISOString().slice(0, 10);
  */
 export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   const { meta } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const modes = meta?.payment_modes || [];
   const accounts = meta?.accounts || [];
@@ -129,6 +132,31 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
 
   const handleCollectSubmit = (e) => {
     e.preventDefault();
+    const errs = {};
+    const dateErr = validateDate(collectionDate, { required: true, fieldLabel: 'Collection date' });
+    if (dateErr) errs.collection_date = dateErr;
+
+    if (isSplit) {
+      if (cashNum < 0) errs.cash_amount = 'Cash portion cannot be negative.';
+      if (upiNum < 0) errs.upi_amount = 'UPI portion cannot be negative.';
+      if (cashNum === 0 && upiNum === 0) errs.cash_amount = 'Enter a Cash and/or UPI portion greater than 0.';
+    } else {
+      if (paid !== '' && Number(paid) < 0) {
+        errs.amount = 'Paid amount cannot be negative.';
+      } else if (paidNum <= 0) {
+        errs.amount = 'Amount must be greater than 0.';
+      }
+    }
+    if (fine !== '' && Number(fine) < 0) {
+      errs.fine_amount = 'Fine amount cannot be negative.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setErrors({});
     if (canProceed && !busy) {
       setConfirming(true);
     }
@@ -137,33 +165,33 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   // ---------- Step 2: confirmation ----------
   if (confirming) {
     return (
-      <Modal title="Confirm Collection" size="sm" onClose={() => setConfirming(false)}
+      <Modal title={t("Confirm Collection", "Confirm Collection")} size="sm" onClose={() => setConfirming(false)}
         footer={<>
-          <button type="button" className="btn secondary" onClick={() => setConfirming(false)} disabled={busy}>Back</button>
-          <button type="submit" form="confirm-collect-form" className="btn" disabled={busy}>{busy ? 'Posting…' : `Confirm ${money(grandTotal)}`}</button>
+          <button type="button" className="btn secondary" onClick={() => setConfirming(false)} disabled={busy}>{t("Back", "Back")}</button>
+          <button type="submit" form="confirm-collect-form" className="btn" disabled={busy}>{busy ? t('Posting…', 'Posting…') : `${t('Confirm', 'Confirm')} ${money(grandTotal)}`}</button>
         </>}>
         <form id="confirm-collect-form" onSubmit={(e) => { e.preventDefault(); if (!busy) submit(); }}>
           <dl className="kv" style={{ gridTemplateColumns: '150px 1fr', rowGap: 8 }}>
-            <dt>Customer</dt><dd style={{ fontWeight: 700 }}>{loan?.customer?.name || loan?.customer_name || '—'}</dd>
-            <dt>Chit</dt><dd>{loan?.code}</dd>
-            <dt>Selected dues</dt>
-            <dd>{selectedDues.map((d) => <span key={d.id} className="badge PENDING" style={{ marginRight: 6 }}>Due #{d.installment_no}</span>)}</dd>
-            <dt>Installment Total</dt><dd style={{ fontWeight: 700 }}>{money(installmentTotal)}</dd>
-            <dt>Actual Paid</dt><dd style={{ fontWeight: 700 }}>{money(paidNum)}</dd>
+            <dt>{t("Customer", "Customer")}</dt><dd style={{ fontWeight: 700 }}>{loan?.customer?.name || loan?.customer_name || '—'}</dd>
+            <dt>{t("Chit", "Chit")}</dt><dd>{loan?.code}</dd>
+            <dt>{t("Selected Dues", "Selected dues")}</dt>
+            <dd>{selectedDues.map((d) => <span key={d.id} className="badge PENDING" style={{ marginRight: 6 }}>{t(`Due #${d.installment_no}`, `Due #${d.installment_no}`)}</span>)}</dd>
+            <dt>{t("Installment Total", "Installment Total")}</dt><dd style={{ fontWeight: 700 }}>{money(installmentTotal)}</dd>
+            <dt>{t("Actual Paid", "Actual Paid")}</dt><dd style={{ fontWeight: 700 }}>{money(paidNum)}</dd>
             {isSplit && (
               <>
-                <dt>&nbsp;&nbsp;· Cash</dt><dd>{money(cashNum)}</dd>
+                <dt>&nbsp;&nbsp;· {t("Cash", "Cash")}</dt><dd>{money(cashNum)}</dd>
                 <dt>&nbsp;&nbsp;· UPI</dt><dd>{money(upiNum)}</dd>
               </>
             )}
-            {billNo && (<><dt>Bill No</dt><dd>{billNo}</dd></>)}
-            <dt>Fine</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
-            <dt>Total</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
-            <dt>Payment Method</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
+            {billNo && (<><dt>{t("Bill No", "Bill No")}</dt><dd>{billNo}</dd></>)}
+            <dt>{t("Fine", "Fine")}</dt><dd style={{ color: '#f59e0b', fontWeight: 700 }}>{money(fineNum)}</dd>
+            <dt>{t("Total", "Total")}</dt><dd style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>{money(grandTotal)}</dd>
+            <dt>{t("Payment Method", "Payment Method")}</dt><dd>{modes.find((m) => String(m.id) === String(modeId))?.name || '—'}</dd>
           </dl>
           {paidNum < installmentTotal && (
             <p className="muted" style={{ fontSize: 12, background: '#fffbeb', color: '#92400e', padding: '6px 10px', borderRadius: 6 }}>
-              Partial payment — allocated across the selected dues in order; the last due keeps its remaining balance.
+              {t("Partial payment — allocated across the selected dues in order; the last due keeps its remaining balance.", "Partial payment — allocated across the selected dues in order; the last due keeps its remaining balance.")}
             </p>
           )}
         </form>
@@ -175,12 +203,12 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
   return (
     <>
     <Modal
-      title={`Collect — ${loan?.code || ''}`}
+      title={t(`Collect — ${loan?.code || ''}`, `Collect — ${loan?.code || ''}`)}
       onClose={onClose}
       footer={<>
-        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>{t("Cancel", "Cancel")}</button>
         <button type="submit" form="collect-modal-form" className="btn" disabled={!canProceed}>
-          <FiZap size={14} style={{ marginRight: 5, verticalAlign: -2 }} />Collect {money(grandTotal)}
+          <FiZap size={14} style={{ marginRight: 5, verticalAlign: -2 }} />{t("Collect", "Collect")} {money(grandTotal)}
         </button>
       </>}
     >
@@ -189,9 +217,9 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
           table — selection itself never happens inside this form. */}
       <div className="field">
         <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Selected Dues</span>
+          <span>{t("Selected Dues", "Selected Dues")}</span>
           <span className="muted" style={{ fontWeight: 600, fontSize: 12 }}>
-            {selectedDues.length} due{selectedDues.length === 1 ? '' : 's'} · {money(installmentTotal)}
+            {selectedDues.length} {lang === 'ta' ? 'தவணைகள்' : (selectedDues.length === 1 ? 'due' : 'dues')} · {money(installmentTotal)}
           </span>
         </label>
         <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
@@ -246,8 +274,20 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
       ))}
 
       <div className="form-grid" style={{ marginBottom: 12 }}>
-        <Field label="Collection date" error={errors.collection_date}>
-          <input type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+        <Field label="Collection date *" error={errors.collection_date}>
+          <input
+            type="date"
+            name="collection_date"
+            value={collectionDate}
+            onChange={(e) => {
+              setCollectionDate(e.target.value);
+              if (errors.collection_date) setErrors((prev) => { const n = { ...prev }; delete n.collection_date; return n; });
+            }}
+            onBlur={() => {
+              const err = validateDate(collectionDate, { required: true, fieldLabel: 'Collection date' });
+              if (err) setErrors((prev) => ({ ...prev, collection_date: err }));
+            }}
+          />
         </Field>
         <Field label="Payment method" error={errors.payment_mode_id}>
           <select value={modeId} onChange={(e) => setModeId(e.target.value)}>
@@ -269,14 +309,23 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
             <Field label="Bill No" error={errors.bill_no}>
               <input value={billNo} onChange={(e) => setBillNo(e.target.value)} placeholder="e.g. BILL-1025" />
             </Field>
-            <Field label="EMI Amount (Paid)" error={errors.amount}>
+            <Field label="EMI Amount (Paid) *" error={errors.amount}>
               <input
                 type="number"
+                name="amount"
                 min="0"
                 step="0.01"
                 placeholder={String(installmentTotal)}
                 value={paid}
-                onChange={(e) => setPaid(e.target.value)}
+                onChange={(e) => {
+                  setPaid(e.target.value);
+                  if (errors.amount) setErrors((prev) => { const n = { ...prev }; delete n.amount; return n; });
+                }}
+                onBlur={() => {
+                  const val = paid === '' ? installmentTotal : Number(paid || 0);
+                  if (val <= 0) setErrors((prev) => ({ ...prev, amount: 'Amount must be greater than 0.' }));
+                  else if (val < 0) setErrors((prev) => ({ ...prev, amount: 'Amount cannot be negative.' }));
+                }}
               />
             </Field>
           </>
@@ -285,10 +334,19 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
         <Field label="Fine Amount" error={errors.fine_amount}>
           <input
             type="number"
+            name="fine_amount"
             min="0"
             step="0.01"
             value={fine}
-            onChange={(e) => setFine(e.target.value)}
+            onChange={(e) => {
+              setFine(e.target.value);
+              if (errors.fine_amount) setErrors((prev) => { const n = { ...prev }; delete n.fine_amount; return n; });
+            }}
+            onBlur={() => {
+              if (fine !== '' && Number(fine) < 0) {
+                setErrors((prev) => ({ ...prev, fine_amount: 'Fine amount cannot be negative.' }));
+              }
+            }}
             placeholder="0"
           />
         </Field>
@@ -312,20 +370,44 @@ export default function CollectModal({ selectedIds, loan, onClose, onDone }) {
           </div>
           <div className="split-payment-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="CASH PORTION (₹)" error={errors.cash_amount}>
-              <input type="number" min="0" step="0.01" value={cashAmount}
+              <input
+                type="number"
+                name="cash_amount"
+                min="0"
+                step="0.01"
+                value={cashAmount}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCashAmount(val);
+                  if (errors.cash_amount) setErrors((prev) => { const n = { ...prev }; delete n.cash_amount; return n; });
                   if (installmentTotal > 0 && val !== '') {
                     const c = Number(val || 0);
                     const rem = Math.max(0, installmentTotal - c);
                     setUpiAmount(rem > 0 ? String(rem) : '0');
                   }
-                }} placeholder="e.g. 8000" />
+                }}
+                onBlur={() => {
+                  if (cashNum < 0) setErrors((prev) => ({ ...prev, cash_amount: 'Cash portion cannot be negative.' }));
+                }}
+                placeholder="e.g. 8000"
+              />
             </Field>
             <Field label="UPI PORTION (₹)" error={errors.upi_amount}>
-              <input type="number" min="0" step="0.01" value={upiAmount}
-                onChange={(e) => setUpiAmount(e.target.value)} placeholder="e.g. 4000" />
+              <input
+                type="number"
+                name="upi_amount"
+                min="0"
+                step="0.01"
+                value={upiAmount}
+                onChange={(e) => {
+                  setUpiAmount(e.target.value);
+                  if (errors.upi_amount) setErrors((prev) => { const n = { ...prev }; delete n.upi_amount; return n; });
+                }}
+                onBlur={() => {
+                  if (upiNum < 0) setErrors((prev) => ({ ...prev, upi_amount: 'UPI portion cannot be negative.' }));
+                }}
+                placeholder="e.g. 4000"
+              />
             </Field>
           </div>
           <div className="split-payment-summary" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, padding: '8px 12px', background: '#eff4fc', borderRadius: 8, fontSize: 12 }}>

@@ -41,7 +41,7 @@
   --shadow-xl: 0 20px 35px -10px rgba(13, 56, 120, 0.15), 0 10px 15px -8px rgba(13, 56, 120, 0.05);
   --shadow-glow: 0 8px 20px -4px rgba(13, 56, 120, 0.3);
 
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Nirmala UI", "Mukta Malar", "Latha", Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -2934,4 +2934,46 @@ body.drawer-open { overflow: hidden; }
   .users-page-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Strict Indian Mobile Validation & Form Error States */
+.input-with-icon input.is-invalid,
+.input-with-icon input.input-error,
+.input-with-icon input[aria-invalid="true"],
+.input-with-icon select.is-invalid,
+.input-with-icon textarea.is-invalid,
+input.is-invalid,
+input.input-error,
+input[aria-invalid="true"],
+select.is-invalid,
+textarea.is-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18) !important;
+}
+
+.input-with-icon input.is-invalid:focus,
+.input-with-icon input.input-error:focus,
+.input-with-icon input[aria-invalid="true"]:focus,
+.input-with-icon select.is-invalid:focus,
+.input-with-icon textarea.is-invalid:focus,
+input.is-invalid:focus,
+input.input-error:focus,
+input[aria-invalid="true"]:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25) !important;
+}
+
+.field-error-msg,
+.form-field-group .err,
+.field .err {
+  font-size: 11px;
+  color: #ef4444 !important;
+  margin-top: 4px;
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  line-height: 1.3;
 }

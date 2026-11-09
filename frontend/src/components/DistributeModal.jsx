@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal, Confirm } from './ui';
+import { validateAmount, validateDate, validateSelect, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { useI18n } from '../state/I18nContext';
@@ -89,6 +90,23 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
   };
 
   const submit = async () => {
+    const errs = {};
+    const amtErr = validateAmount(form.amount, { required: true, min: 0.01, fieldLabel: 'Disbursed amount' });
+    if (amtErr) errs.amount = amtErr;
+    const dateErr = validateDate(form.distributed_date, { required: true, fieldLabel: 'Disbursed date' });
+    if (dateErr) errs.distributed_date = dateErr;
+    const accErr = validateSelect(form.account_id, 'Account');
+    if (accErr) errs.account_id = accErr;
+    if (form.new_emi_amount !== '' && Number(form.new_emi_amount) <= 0) {
+      errs.new_emi_amount = 'New EMI amount must be greater than 0.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+
     setBusy(true); setErrors({});
     const body = {
       distributed_date: form.distributed_date,
@@ -110,8 +128,13 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
       onDone?.();
       onClose?.(); // Auto close modal on success
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, v[0]])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -216,20 +239,71 @@ export default function DistributeModal({ loan, onClose, onDone, editRowId }) {
             </h4>
             <div className="form-grid">
               <Field label={`${t('Disbursed Date', 'Disbursed Date')} *`} error={errors.distributed_date}>
-                <input type="date" value={form.distributed_date} onChange={(e) => setForm({ ...form, distributed_date: e.target.value })} />
+                <input
+                  name="distributed_date"
+                  type="date"
+                  value={form.distributed_date}
+                  onChange={(e) => {
+                    setForm({ ...form, distributed_date: e.target.value });
+                    if (errors.distributed_date) setErrors((prev) => { const n = { ...prev }; delete n.distributed_date; return n; });
+                  }}
+                  onBlur={() => {
+                    const err = validateDate(form.distributed_date, { required: true, fieldLabel: 'Disbursed date' });
+                    if (err) setErrors((prev) => ({ ...prev, distributed_date: err }));
+                  }}
+                />
               </Field>
               <Field label={`${t('Disbursed Amount', 'Disbursed Amount')} (₹) *`} error={errors.amount}>
-                <input type="number" min="0.01" step="0.01" value={form.amount} autoFocus
+                <input
+                  name="amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={form.amount}
+                  autoFocus
                   placeholder={`${t('Amount to disburse', 'Amount to disburse')} (${t('remaining', 'remaining')} ${money(remaining)})`}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                  onChange={(e) => {
+                    setForm({ ...form, amount: e.target.value });
+                    if (errors.amount) setErrors((prev) => { const n = { ...prev }; delete n.amount; return n; });
+                  }}
+                  onBlur={() => {
+                    const err = validateAmount(form.amount, { required: true, min: 0.01, fieldLabel: 'Disbursed amount' });
+                    if (err) setErrors((prev) => ({ ...prev, amount: err }));
+                  }}
+                />
               </Field>
               <Field label={`${t('New EMI Amount', 'New EMI Amount')} (₹)`} error={errors.new_emi_amount}>
-                <input type="number" min="0.01" step="0.01" value={form.new_emi_amount}
-                  onChange={(e) => setForm({ ...form, new_emi_amount: e.target.value })} placeholder={t('leave blank to keep current EMI', 'leave blank to keep current EMI')} />
+                <input
+                  name="new_emi_amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={form.new_emi_amount}
+                  onChange={(e) => {
+                    setForm({ ...form, new_emi_amount: e.target.value });
+                    if (errors.new_emi_amount) setErrors((prev) => { const n = { ...prev }; delete n.new_emi_amount; return n; });
+                  }}
+                  onBlur={() => {
+                    if (form.new_emi_amount !== '' && Number(form.new_emi_amount) <= 0) {
+                      setErrors((prev) => ({ ...prev, new_emi_amount: 'New EMI amount must be greater than 0.' }));
+                    }
+                  }}
+                  placeholder={t('leave blank to keep current EMI', 'leave blank to keep current EMI')}
+                />
                 <span className="muted" style={{ fontSize: 11 }}>{t('Applies to future EMIs after the disbursed date. Entered manually — no interest calculation.', 'Applies to future EMIs after the disbursed date. Entered manually — no interest calculation.')}</span>
               </Field>
               <Field label={`${t('Disburse From', 'Disburse From')} *`} error={errors.account_id}>
-                <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>
+                <select
+                  name="account_id"
+                  value={form.account_id}
+                  onChange={(e) => {
+                    setForm({ ...form, account_id: e.target.value });
+                    if (errors.account_id) setErrors((prev) => { const n = { ...prev }; delete n.account_id; return n; });
+                  }}
+                  onBlur={() => {
+                    const err = validateSelect(form.account_id, 'Account');
+                    if (err) setErrors((prev) => ({ ...prev, account_id: err }));
+                  }}>
                   <option value="">— {t('select account', 'select account')} —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
                 </select>

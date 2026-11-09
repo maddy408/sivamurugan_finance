@@ -14,6 +14,7 @@ import EditCloseAmountModal from '../components/EditCloseAmountModal';
 import EditDueDateModal from '../components/EditDueDateModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import {
   FiArrowLeft, FiPrinter, FiFileText, FiDollarSign, FiCalendar, FiZap,
   FiEdit2, FiXCircle, FiTrash2, FiClipboard, FiList, FiPlusCircle, FiDownload, FiRefreshCw,
@@ -32,6 +33,7 @@ export default function CollectionChit() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { can, refreshMeta } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const [loan, setLoan] = useState(null);
   const [error, setError] = useState(null);
@@ -181,28 +183,28 @@ export default function CollectionChit() {
       <div className="toolbar" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link to="/collection" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <FiArrowLeft size={14} /> Collection Workload
+            <FiArrowLeft size={14} /> {t('Collection Workload', 'Collection Workload')}
           </Link>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Collect — {loan.code}</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{t(`Collect — ${loan.code}`, `Collect — ${loan.code}`)}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button className="btn sm secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <FiPrinter size={14} /> Print Statement
+            <FiPrinter size={14} /> {t('Print Statement', 'Print Statement')}
           </button>
           {loan.status === 'active' && can('loans.cancel') && (
             <button className="btn sm danger" onClick={() => setCloseChit(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <FiXCircle size={14} /> Close Chit
+              <FiXCircle size={14} /> {t('Close Chit', 'Close Chit')}
             </button>
           )}
           {loan.status === 'closed' && can('loans.cancel') && (
             <>
               {settlement && (
                 <button className="btn sm secondary" onClick={() => setEditCloseAmount(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <FiEdit2 size={14} /> Edit Close Settlement
+                  <FiEdit2 size={14} /> {t('Edit Close Settlement', 'Edit Close Settlement')}
                 </button>
               )}
               <button className="btn sm" onClick={runReopen} disabled={reopenBusy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <FiRefreshCw size={14} /> {reopenBusy ? 'Reopening…' : 'Reopen Chit'}
+                <FiRefreshCw size={14} /> {reopenBusy ? t('Reopening…', 'Reopening…') : t('Reopen Chit', 'Reopen Chit')}
               </button>
             </>
           )}
@@ -212,10 +214,9 @@ export default function CollectionChit() {
 
       {loan.status === 'closed' && (
         <div className="muted" style={{ fontSize: 12, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 8, padding: '8px 14px', marginBottom: 16 }}>
-          This chit was closed on {fmtDate(loan.closed_at)}{settlement ? ` (close amount ${money(settlement.amount)})` : ''}
-          {settlement?.remarks ? ` — ${settlement.remarks}` : ''}.
-          Existing paid/unpaid dues are preserved as-is; no further collections or distributions can be recorded until reopened.
-          {loan.reopened_at && <> Previously reopened on {fmtDate(loan.reopened_at)}.</>}
+          {lang === 'ta'
+            ? `இந்த சீட்டு ${fmtDate(loan.closed_at)} அன்று நிறைவடைந்தது${settlement ? ` (முடிவுத் தொகை ${money(settlement.amount)})` : ''}${settlement?.remarks ? ` — ${settlement.remarks}` : ''}.`
+            : `This chit was closed on ${fmtDate(loan.closed_at)}${settlement ? ` (close amount ${money(settlement.amount)})` : ''}${settlement?.remarks ? ` — ${settlement.remarks}` : ''}.`}
         </div>
       )}
 
@@ -241,36 +242,36 @@ export default function CollectionChit() {
 
 
             <div className="section-title" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FiFileText size={13} /> Chit
+              <FiFileText size={13} /> {t('Chit', 'Chit')}
             </div>
             <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
-              <dt>Chit Code</dt><dd><span className="badge PENDING">{loan.code}</span></dd>
-              <dt>Principal</dt><dd>{money(loan.principal_amount)}</dd>
-              <dt>Installment</dt><dd><b style={{ color: '#2563eb' }}>{money(loan.installment_amount)}</b></dd>
-              <dt>Tenure / Freq</dt><dd>{loan.tenure} · {loan.frequency}</dd>
-              <dt>Total Paid</dt><dd style={{ color: '#10b981', fontWeight: 700 }}>{money(s.collected_principal)}</dd>
-              <dt>Pending Due</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
-              <dt>Chit Balance</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
+              <dt>{t('Chit Code', 'Chit Code')}</dt><dd><span className="badge PENDING">{loan.code}</span></dd>
+              <dt>{t('Principal', 'Principal')}</dt><dd>{money(loan.principal_amount)}</dd>
+              <dt>{t('Installment', 'Installment')}</dt><dd><b style={{ color: '#2563eb' }}>{money(loan.installment_amount)}</b></dd>
+              <dt>{t('Tenure / Freq', 'Tenure / Freq')}</dt><dd>{loan.tenure} · {t(loan.frequency, loan.frequency)}</dd>
+              <dt>{t('Total Paid', 'Total Paid')}</dt><dd style={{ color: '#10b981', fontWeight: 700 }}>{money(s.collected_principal)}</dd>
+              <dt>{t('Pending Due', 'Pending Due')}</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
+              <dt>{t('Chit Balance', 'Chit Balance')}</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
             </dl>
 
             {can('distributions.view') && (
               <>
                 <div className="section-title" style={{ margin: '2px 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiDollarSign size={13} /> Distribution</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiDollarSign size={13} /> {t('Distribution', 'Distribution')}</span>
                   {loan.status === 'active' && can('distributions.create') && (
                     <button className="btn sm" style={{ padding: '3px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
                       onClick={() => { setDistEditId(null); setDistribute(true); }}>
-                      <FiDollarSign size={12} /> {d.status === 'not_distributed' ? 'Disburse Chit' : 'Disburse / Edit'}
+                      <FiDollarSign size={12} /> {d.status === 'not_distributed' ? t('Disburse Chit', 'Disburse Chit') : t('Disburse / Edit', 'Disburse / Edit')}
                     </button>
                   )}
                 </div>
                 <dl className="kv" style={{ gridTemplateColumns: '110px 1fr', rowGap: 4 }}>
-                  <dt>Status</dt><dd><b>{DIST_STATUS_LABEL[d.status] || 'Not Distributed'}</b></dd>
-                  <dt>Current EMI</dt><dd><b style={{ color: '#2563eb' }}>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
-                  <dt>Distributed</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(d.total_distributed ?? 0)}</dd>
-                  <dt>Principal Covered</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
-                  <dt>Extra Disbursed</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : '#64748b', fontWeight: 700 }}>{money(d.extra_disbursed ?? 0)}</dd>
-                  <dt>Remaining</dt>
+                  <dt>{t('Status', 'Status')}</dt><dd><b>{t(DIST_STATUS_LABEL[d.status] || 'Not Distributed', DIST_STATUS_LABEL[d.status] || 'Not Distributed')}</b></dd>
+                  <dt>{t('Current EMI', 'Current EMI')}</dt><dd><b style={{ color: '#2563eb' }}>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
+                  <dt>{t('Distributed', 'Distributed')}</dt><dd style={{ color: '#15803d', fontWeight: 700 }}>{money(d.total_distributed ?? 0)}</dd>
+                  <dt>{t('Principal Covered', 'Principal Covered')}</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
+                  <dt>{t('Extra Disbursed', 'Extra Disbursed')}</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : '#64748b', fontWeight: 700 }}>{money(d.extra_disbursed ?? 0)}</dd>
+                  <dt>{t('Remaining', 'Remaining')}</dt>
                   <dd style={{ color: Number(d.remaining_undistributed ?? 0) > 0 ? '#b45309' : '#64748b', fontWeight: 700 }}>
                     {money(d.remaining_undistributed ?? 0)}
                   </dd>
@@ -285,16 +286,16 @@ export default function CollectionChit() {
           {/* Quick Collect Action Header & Installment Schedule Table */}
           <div className="card">
             <div className="card-head">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiCalendar size={15} /> Installment Schedule &amp; Collect</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiCalendar size={15} /> {t('Installment Schedule & Collect', 'Installment Schedule & Collect')}</h2>
               <div style={{ display: 'flex', gap: 8 }}>
                 {loan.due_date_mode === 'custom' && loan.status === 'active' && (can('loans.create') || can('loans.edit')) && (
                   <button className="btn sm secondary" onClick={() => setCustomSchedule(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <FiPlusCircle size={12} /> Add Custom Schedule
+                    <FiPlusCircle size={12} /> {t('Add Custom Schedule', 'Add Custom Schedule')}
                   </button>
                 )}
                 {can('collection.create') && loan.status === 'active' && checked.size >= 2 && (
                   <button className="btn" onClick={() => setCollectIds([...checked])} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <FiZap size={14} /> Pay Multiple Due ({checked.size})
+                    <FiZap size={14} /> {t(`Pay Multiple Due (${checked.size})`, `Pay Multiple Due (${checked.size})`)}
                   </button>
                 )}
               </div>
@@ -305,11 +306,11 @@ export default function CollectionChit() {
                   <tr>
                     <th></th>
                     <th>#</th>
-                    <th>Due date</th>
-                    <th className="right">Installment Amount</th>
-                    <th className="right">Paid</th>
-                    <th className="right">Balance</th>
-                    <th>Status</th>
+                    <th>{t('Due date', 'Due date')}</th>
+                    <th className="right">{t('Installment Amount', 'Installment Amount')}</th>
+                    <th className="right">{t('Paid', 'Paid')}</th>
+                    <th className="right">{t('Balance', 'Balance')}</th>
+                    <th>{t('Status', 'Status')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -325,23 +326,23 @@ export default function CollectionChit() {
                           )}
                         </td>
                         <td data-label="#" style={{ fontWeight: 700 }}>#{i.installment_no}</td>
-                        <td data-label="Due date">{fmtDate(i.due_date)}</td>
-                        <td data-label="Installment Amount" className="right">{money(i.payable_amount)}</td>
-                        <td data-label="Paid" className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
-                        <td data-label="Balance" className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
+                        <td data-label={t('Due date', 'Due date')}>{fmtDate(i.due_date)}</td>
+                        <td data-label={t('Installment Amount', 'Installment Amount')} className="right">{money(i.payable_amount)}</td>
+                        <td data-label={t('Paid', 'Paid')} className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
+                        <td data-label={t('Balance', 'Balance')} className="right" style={{ fontWeight: 700, color: Number(i.balance_amount) > 0 ? '#f43f5e' : '#64748b' }}>
                           {money(i.balance_amount)}
                         </td>
-                        <td data-label="Status"><Badge value={i.status} /></td>
+                        <td data-label={t('Status', 'Status')}><Badge value={i.status} /></td>
                         <td data-label="" className="right nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                             {(can('loans.edit') || can('loans.create')) && !CLOSED_LIKE.includes(loan.status) && (
-                              <button className="btn-icon" title="Edit Due (date/amount)" onClick={() => setEditDue(i)}>
+                              <button className="btn-icon" title={t('Edit Due', 'Edit Due')} onClick={() => setEditDue(i)}>
                                 <FiEdit2 size={13} />
                               </button>
                             )}
                             {can('collection.create') && payable && (
                               <button className="btn sm" onClick={() => setCollectIds([i.id])} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                                <FiZap size={12} /> Collect
+                                <FiZap size={12} /> {t('Collect', 'Collect')}
                               </button>
                             )}
                           </div>
@@ -360,17 +361,17 @@ export default function CollectionChit() {
           {loan.due_date_mode === 'custom' && (
             <div className="card">
               <div className="card-head">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> Custom Schedule History</h2>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> {t('Custom Schedule History', 'Custom Schedule History')}</h2>
               </div>
               <div className="table-wrap">
                 <table className="grid">
                   <thead>
                     <tr>
-                      <th>Installment</th>
-                      <th>Due Date</th>
-                      <th className="right">Amount</th>
-                      <th className="right">Paid</th>
-                      <th>Status</th>
+                      <th>{t('Installment', 'Installment')}</th>
+                      <th>{t('Due Date', 'Due Date')}</th>
+                      <th className="right">{t('Amount', 'Amount')}</th>
+                      <th className="right">{t('Paid', 'Paid')}</th>
+                      <th>{t('Status', 'Status')}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -379,23 +380,23 @@ export default function CollectionChit() {
                       const hasPayments = Number(i.paid_amount) > 0;
                       return (
                         <tr key={i.id}>
-                          <td data-label="Installment" style={{ fontWeight: 700 }}>#{i.installment_no}</td>
-                          <td data-label="Due Date">{fmtDate(i.due_date)}</td>
-                          <td data-label="Amount" className="right">{money(i.payable_amount)}</td>
-                          <td data-label="Paid" className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
-                          <td data-label="Status"><Badge value={i.status} /></td>
+                          <td data-label={t('Installment', 'Installment')} style={{ fontWeight: 700 }}>#{i.installment_no}</td>
+                          <td data-label={t('Due Date', 'Due Date')}>{fmtDate(i.due_date)}</td>
+                          <td data-label={t('Amount', 'Amount')} className="right">{money(i.payable_amount)}</td>
+                          <td data-label={t('Paid', 'Paid')} className="right" style={{ color: '#10b981', fontWeight: 600 }}>{money(i.paid_amount)}</td>
+                          <td data-label={t('Status', 'Status')}><Badge value={i.status} /></td>
                           <td data-label="" className="right nowrap">
                             <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                              <button className="btn-icon" title="Print / Download PDF" onClick={() => setPrintInstId(i.id)}>
+                              <button className="btn-icon" title={t('Print / Download PDF', 'Print / Download PDF')} onClick={() => setPrintInstId(i.id)}>
                                 <FiPrinter size={14} />
                               </button>
                               {(can('loans.create') || can('loans.edit')) && (
-                                <button className="btn-icon" title="Edit Schedule" onClick={() => setEditCustomInst(i)}>
+                                <button className="btn-icon" title={t('Edit Schedule', 'Edit Schedule')} onClick={() => setEditCustomInst(i)}>
                                   <FiEdit2 size={14} />
                                 </button>
                               )}
                               {(can('loans.create') || can('loans.edit')) && (
-                                <button className="btn-icon danger" title={hasPayments ? 'Cannot delete — payments already recorded' : 'Delete Schedule'}
+                                <button className="btn-icon danger" title={hasPayments ? t('Cannot delete — payments already recorded', 'Cannot delete — payments already recorded') : t('Delete Schedule', 'Delete Schedule')}
                                   disabled={hasPayments} onClick={() => setDeleteCustomInst(i)}>
                                   <FiTrash2 size={14} />
                                 </button>
@@ -406,7 +407,7 @@ export default function CollectionChit() {
                       );
                     })}
                     {loan.installments.length === 0 && (
-                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>No custom installments added yet</td></tr>
+                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>{t('No custom installments added yet', 'No custom installments added yet')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -417,18 +418,18 @@ export default function CollectionChit() {
           {/* Collection History Table */}
           <div className="card">
             <div className="card-head">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiClipboard size={15} /> Collection History</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiClipboard size={15} /> {t('Collection History', 'Collection History')}</h2>
             </div>
             <div className="table-wrap">
               <table className="grid">
                 <thead>
                   <tr>
-                    <th>Receipt</th>
-                    <th>Bill No</th>
-                    <th>Date</th>
-                    <th>Mode</th>
-                    <th className="right">Paid (actual)</th>
-                    <th>Status</th>
+                    <th>{t('Receipt', 'Receipt')}</th>
+                    <th>{t('Bill No', 'Bill No')}</th>
+                    <th>{t('Date', 'Date')}</th>
+                    <th>{t('Mode', 'Mode')}</th>
+                    <th className="right">{t('Paid (actual)', 'Paid (actual)')}</th>
+                    <th>{t('Status', 'Status')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -438,34 +439,34 @@ export default function CollectionChit() {
                     const isSettlement = col.collection_type === 'close_settlement';
                     return (
                       <tr key={col.id} style={col.status !== 'posted' ? { opacity: 0.6 } : undefined}>
-                        <td data-label="Receipt" style={{ fontWeight: 700 }}>
+                        <td data-label={t('Receipt', 'Receipt')} style={{ fontWeight: 700 }}>
                           {col.receipt_no}
                           {isSettlement && (
-                            <div><span className="badge closed" style={{ marginTop: 3 }}>Close Chit / Final Settlement</span></div>
+                            <div><span className="badge closed" style={{ marginTop: 3 }}>{t('Close Chit / Final Settlement', 'Close Chit / Final Settlement')}</span></div>
                           )}
                         </td>
-                        <td data-label="Bill No">{col.bill_no || '—'}</td>
-                        <td data-label="Date">{fmtDate(col.collection_date)}</td>
-                        <td data-label="Mode">{isSettlement ? '—' : <span className="badge PENDING">{col.payment_mode}</span>}</td>
-                        <td data-label="Paid (actual)" className="right">
+                        <td data-label={t('Bill No', 'Bill No')}>{col.bill_no || '—'}</td>
+                        <td data-label={t('Date', 'Date')}>{fmtDate(col.collection_date)}</td>
+                        <td data-label={t('Mode', 'Mode')}>{isSettlement ? '—' : <span className="badge PENDING">{t(col.payment_mode, col.payment_mode)}</span>}</td>
+                        <td data-label={t('Paid (actual)', 'Paid (actual)')} className="right">
                           <div style={{ fontWeight: 800, color: '#10b981', fontSize: 12 }}>
                             {money(col.total_amount || (Number(col.amount) + Number(col.fine_amount || 0)))}
                           </div>
                           {Number(col.fine_amount) > 0 && (
                             <div className="muted" style={{ fontSize: 11 }}>
-                              EMI {money(col.amount)} + Fine {money(col.fine_amount)}
+                              {t('EMI', 'EMI')} {money(col.amount)} + {t('Fine', 'Fine')} {money(col.fine_amount)}
                             </div>
                           )}
                         </td>
-                        <td data-label="Status"><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
+                        <td data-label={t('Status', 'Status')}><Badge value={col.status === 'posted' ? 'COMPLETED' : col.status} /></td>
                         <td data-label="" className="right nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                             {!isSettlement && (
                               <>
-                                <button className="btn-icon" title="Print Receipt" onClick={() => openReceipt(col)}>
+                                <button className="btn-icon" title={t('Print Receipt', 'Print Receipt')} onClick={() => openReceipt(col)}>
                                   <FiPrinter size={14} />
                                 </button>
-                                <button className="btn-icon" title="Download Receipt PDF" onClick={() => downloadCollectionPdf(col)}>
+                                <button className="btn-icon" title={t('Download Receipt PDF', 'Download Receipt PDF')} onClick={() => downloadCollectionPdf(col)}>
                                   <FiDownload size={14} />
                                 </button>
                               </>
@@ -474,22 +475,22 @@ export default function CollectionChit() {
                               <>
                                 {isSettlement ? (
                                   can('loans.cancel') && (
-                                    <button className="btn-icon" title="Edit Close Settlement" onClick={() => setEditCloseAmount(true)}>
+                                    <button className="btn-icon" title={t('Edit Close Settlement', 'Edit Close Settlement')} onClick={() => setEditCloseAmount(true)}>
                                       <FiEdit2 size={14} />
                                     </button>
                                   )
                                 ) : can('collection.edit') && (
-                                  <button className="btn-icon" title="Edit Collection" onClick={() => setEditCollection(col)}>
+                                  <button className="btn-icon" title={t('Edit Collection', 'Edit Collection')} onClick={() => setEditCollection(col)}>
                                     <FiEdit2 size={14} />
                                   </button>
                                 )}
                                 {can('collection.cancel') && (
-                                  <button className="btn-icon warning" title="Cancel Collection" onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>
+                                  <button className="btn-icon warning" title={t('Cancel Collection', 'Cancel Collection')} onClick={() => setAct({ type: 'cancel', id: col.id, reason: '' })}>
                                     <FiXCircle size={14} />
                                   </button>
                                 )}
                                 {can('collection.delete') && (
-                                  <button className="btn-icon danger" title="Delete Collection" onClick={() => setAct({ type: 'delete', id: col.id, reason: '' })}>
+                                  <button className="btn-icon danger" title={t('Delete Collection', 'Delete Collection')} onClick={() => setAct({ type: 'delete', id: col.id, reason: '' })}>
                                     <FiTrash2 size={14} />
                                   </button>
                                 )}
@@ -501,7 +502,7 @@ export default function CollectionChit() {
                     );
                   })}
                   {loan.collections.length === 0 && (
-                    <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>No collections recorded yet</td></tr>
+                    <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>{t('No collections recorded yet', 'No collections recorded yet')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -513,17 +514,17 @@ export default function CollectionChit() {
           {can('distributions.view') && (
             <div className="card">
               <div className="card-head">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> Disbursement History</h2>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiList size={15} /> {t('Disbursement History', 'Disbursement History')}</h2>
               </div>
               <div className="table-wrap">
                 <table className="grid">
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Account</th>
-                      <th className="right">Amount</th>
-                      <th>Remarks</th>
-                      <th>Status</th>
+                      <th>{t('Date', 'Date')}</th>
+                      <th>{t('Account', 'Account')}</th>
+                      <th className="right">{t('Amount', 'Amount')}</th>
+                      <th>{t('Remarks', 'Remarks')}</th>
+                      <th>{t('Status', 'Status')}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -532,27 +533,27 @@ export default function CollectionChit() {
                       const isActive = row.status === 'active';
                       return (
                         <tr key={row.id} style={!isActive ? { opacity: 0.6 } : undefined}>
-                          <td>{fmtDate(row.distributed_date)}</td>
-                          <td>{row.account_name}</td>
-                          <td className="right" style={{ fontWeight: 800, color: '#15803d', fontSize: 12 }}>{money(row.amount)}</td>
-                          <td>{row.remarks || '—'}</td>
-                          <td><Badge value={isActive ? 'active' : 'cancelled'} /></td>
-                          <td className="right nowrap">
+                          <td data-label={t('Date', 'Date')}>{fmtDate(row.distributed_date)}</td>
+                          <td data-label={t('Account', 'Account')}>{row.account_name}</td>
+                          <td data-label={t('Amount', 'Amount')} className="right" style={{ fontWeight: 800, color: '#15803d', fontSize: 12 }}>{money(row.amount)}</td>
+                          <td data-label={t('Remarks', 'Remarks')}>{row.remarks || '—'}</td>
+                          <td data-label={t('Status', 'Status')}><Badge value={isActive ? 'active' : 'cancelled'} /></td>
+                          <td data-label="" className="right nowrap">
                             <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                               {isActive && can('distributions.edit') && (
-                                <button className="btn-icon" title="Edit Disbursement"
+                                <button className="btn-icon" title={t('Edit Disbursement', 'Edit Disbursement')}
                                   onClick={() => { setDistEditId(row.id); setDistribute(true); }}>
                                   <FiEdit2 size={14} />
                                 </button>
                               )}
                               {isActive && can('distributions.cancel') && (
-                                <button className="btn-icon warning" title="Cancel Disbursement"
+                                <button className="btn-icon warning" title={t('Cancel Disbursement', 'Cancel Disbursement')}
                                   onClick={() => setDistAct({ type: 'cancel', row, reason: '' })}>
                                   <FiXCircle size={14} />
                                 </button>
                               )}
                               {can('distributions.delete') && (
-                                <button className="btn-icon danger" title="Delete Disbursement"
+                                <button className="btn-icon danger" title={t('Delete Disbursement', 'Delete Disbursement')}
                                   onClick={() => setDistAct({ type: 'delete', row, reason: '' })}>
                                   <FiTrash2 size={14} />
                                 </button>
@@ -563,7 +564,7 @@ export default function CollectionChit() {
                       );
                     })}
                     {distributions.length === 0 && (
-                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>No disbursements recorded yet</td></tr>
+                      <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 20 }}>{t('No disbursements recorded yet', 'No disbursements recorded yet')}</td></tr>
                     )}
                   </tbody>
                 </table>

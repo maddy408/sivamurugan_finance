@@ -86,7 +86,7 @@ class EmployeeController
         $in = Validator::make($req->body, [
             'name'  => 'nullable|string|max:128',
             'email' => 'nullable|email',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|indian_mobile',
         ])->validated();
 
         $fields = [];
@@ -130,7 +130,7 @@ class EmployeeController
             'username'     => 'required|string|min:3|max:64',
             'password'     => 'required|string|min:8|max:128',
             'email'        => 'nullable|email',
-            'phone'        => 'nullable|string|max:20',
+            'phone'        => 'nullable|indian_mobile',
             'emp_code'     => 'nullable|string|max:32',
             'role'         => 'nullable|in:ADMIN,EMPLOYEE',
         ])->validated();

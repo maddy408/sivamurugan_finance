@@ -3,6 +3,7 @@ import { api, API_BASE, fmtDate, money } from '../api/client';
 import { Modal } from './ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiPrinter, FiDownload, FiFileText } from 'react-icons/fi';
 
 /**
@@ -18,6 +19,7 @@ import { FiPrinter, FiDownload, FiFileText } from 'react-icons/fi';
  */
 export default function StatementModal({ loan, onClose }) {
   const { meta } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const org = meta?.organization || {};
   const [busy, setBusy] = useState(false);
@@ -55,17 +57,17 @@ export default function StatementModal({ loan, onClose }) {
   const collections = loan.collections || [];
 
   return (
-    <Modal title={`Statement of Account — ${loan.code}`} onClose={onClose} size="lg"
+    <Modal title={t(`Statement of Account — ${loan.code}`, `Statement of Account — ${loan.code}`)} onClose={onClose} size="lg"
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
+        <button className="btn secondary" onClick={onClose} disabled={busy}>{t('Close', 'Close')}</button>
         <button className="btn btn-excel" onClick={downloadExcel} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiFileText size={13} /> Export Excel
+          <FiFileText size={13} /> {t('Export Excel', 'Export Excel')}
         </button>
         <button className="btn btn-pdf" onClick={downloadPdf} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiDownload size={13} /> Download PDF
+          <FiDownload size={13} /> {t('Download PDF', 'Download PDF')}
         </button>
         <button className="btn btn-print" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiPrinter size={13} /> Print Statement
+          <FiPrinter size={13} /> {t('Print Statement', 'Print Statement')}
         </button>
       </>}>
       <div className="print-statement">

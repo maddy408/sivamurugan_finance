@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { api, money } from '../api/client';
 import { Field, Modal } from './ui';
+import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { FiSave } from 'react-icons/fi';
@@ -31,7 +32,16 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
   });
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
 
   const isSplit = splitMode && String(form.payment_mode_id) === String(splitMode.id);
   const total = isSplit
@@ -39,6 +49,29 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
     : Number(form.amount || 0) + Number(form.fine_amount || 0);
 
   const submit = async () => {
+    const errs = {};
+    const dateErr = validateDate(form.collection_date, { required: true, fieldLabel: 'Collection date' });
+    if (dateErr) errs.collection_date = dateErr;
+
+    if (isSplit) {
+      const c = Number(form.cash_amount || 0);
+      const u = Number(form.upi_amount || 0);
+      if (c < 0) errs.cash_amount = 'Cash portion cannot be negative.';
+      if (u < 0) errs.upi_amount = 'UPI portion cannot be negative.';
+      if (c === 0 && u === 0) errs.cash_amount = 'Enter a Cash and/or UPI portion greater than 0.';
+    } else {
+      const amtErr = validateAmount(form.amount, { required: true, min: 0.01, fieldLabel: 'Amount paid' });
+      if (amtErr) errs.amount = amtErr;
+    }
+    if (form.fine_amount !== '' && Number(form.fine_amount) < 0) {
+      errs.fine_amount = 'Fine amount cannot be negative.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
     setBusy(true); setErrors({});
     try {
       await api.put(`/api/collections/${collection.id}`, {
@@ -56,8 +89,13 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
       toast.success('Collection updated');
       onDone?.();
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -73,8 +111,17 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
       </>}>
       <form id="edit-collection-form" onSubmit={(e) => { e.preventDefault(); if (!busy) submit(); }}>
         <div className="form-grid">
-          <Field label="Collection Date" error={errors.collection_date}>
-            <input type="date" value={form.collection_date} onChange={(e) => set('collection_date', e.target.value)} />
+          <Field label="Collection Date *" error={errors.collection_date}>
+            <input
+              name="collection_date"
+              type="date"
+              value={form.collection_date}
+              onChange={(e) => set('collection_date', e.target.value)}
+              onBlur={() => {
+                const err = validateDate(form.collection_date, { required: true, fieldLabel: 'Collection date' });
+                if (err) setErrors((prev) => ({ ...prev, collection_date: err }));
+              }}
+            />
           </Field>
           <Field label="Payment Mode" error={errors.payment_mode_id}>
             <select value={form.payment_mode_id} onChange={(e) => set('payment_mode_id', e.target.value)}>
@@ -84,16 +131,47 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
           {isSplit ? (
             <>
               <Field label="Cash Amount" error={errors.cash_amount}>
-                <input type="number" min="0" step="0.01" value={form.cash_amount} onChange={(e) => set('cash_amount', e.target.value)} />
+                <input
+                  name="cash_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.cash_amount}
+                  onChange={(e) => set('cash_amount', e.target.value)}
+                  onBlur={() => {
+                    if (Number(form.cash_amount) < 0) setErrors((prev) => ({ ...prev, cash_amount: 'Cash portion cannot be negative.' }));
+                  }}
+                />
               </Field>
               <Field label="UPI Amount" error={errors.upi_amount}>
-                <input type="number" min="0" step="0.01" value={form.upi_amount} onChange={(e) => set('upi_amount', e.target.value)} />
+                <input
+                  name="upi_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.upi_amount}
+                  onChange={(e) => set('upi_amount', e.target.value)}
+                  onBlur={() => {
+                    if (Number(form.upi_amount) < 0) setErrors((prev) => ({ ...prev, upi_amount: 'UPI portion cannot be negative.' }));
+                  }}
+                />
               </Field>
             </>
           ) : (
             <>
-              <Field label="Amount Paid" error={errors.amount}>
-                <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} />
+              <Field label="Amount Paid *" error={errors.amount}>
+                <input
+                  name="amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={form.amount}
+                  onChange={(e) => set('amount', e.target.value)}
+                  onBlur={() => {
+                    const err = validateAmount(form.amount, { required: true, min: 0.01, fieldLabel: 'Amount paid' });
+                    if (err) setErrors((prev) => ({ ...prev, amount: err }));
+                  }}
+                />
               </Field>
               <Field label="Cash / Bank Account" error={errors.account_id}>
                 <select value={form.account_id} onChange={(e) => set('account_id', e.target.value)}>
@@ -104,7 +182,19 @@ export default function CollectionEditModal({ collection, onClose, onDone }) {
             </>
           )}
           <Field label="Fine / Charges" error={errors.fine_amount}>
-            <input type="number" min="0" step="0.01" value={form.fine_amount} onChange={(e) => set('fine_amount', e.target.value)} />
+            <input
+              name="fine_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.fine_amount}
+              onChange={(e) => set('fine_amount', e.target.value)}
+              onBlur={() => {
+                if (form.fine_amount !== '' && Number(form.fine_amount) < 0) {
+                  setErrors((prev) => ({ ...prev, fine_amount: 'Fine amount cannot be negative.' }));
+                }
+              }}
+            />
           </Field>
           <Field label="Reference / Receipt No." error={errors.reference_no}>
             <input value={form.reference_no} onChange={(e) => set('reference_no', e.target.value)} />

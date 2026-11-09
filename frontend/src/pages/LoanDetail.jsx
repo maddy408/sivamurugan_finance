@@ -6,6 +6,7 @@ import ReceiptModal from '../components/ReceiptModal';
 import StatementModal from '../components/StatementModal';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiArrowLeft, FiPrinter, FiXCircle, FiTrash2, FiZap } from 'react-icons/fi';
 
 const DIST_STATUS_LABEL = {
@@ -19,6 +20,7 @@ export default function LoanDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const { can } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const [loan, setLoan] = useState(null);
   const [error, setError] = useState(null);
@@ -122,58 +124,58 @@ export default function LoanDetail() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/loans" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Chits</Link>
+        <Link to="/loans" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> {t('Chits', 'Chits')}</Link>
         <h1 style={{ margin: 0, fontSize: 18 }}>{loan.code}</h1>
         <Badge value={loan.status} />
         <div style={{ flex: 1 }} />
         {can('distributions.view') && loan.status === 'active' &&
-          <button className="btn" disabled={busy} onClick={() => goToCollection('?action=distribute')}>Disburse Chit</button>}
+          <button className="btn" disabled={busy} onClick={() => goToCollection('?action=distribute')}>{t('Disburse Chit', 'Disburse Chit')}</button>}
         <button className="btn secondary" onClick={() => setStatement(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiPrinter size={14} /> Print Statement
+          <FiPrinter size={14} /> {t('Print Statement', 'Print Statement')}
         </button>
         {can('loans.edit') &&
-          <button className="btn secondary" disabled={busy} onClick={openEdit}>Edit</button>}
+          <button className="btn secondary" disabled={busy} onClick={openEdit}>{t('Edit', 'Edit')}</button>}
         {can('loans.cancel') && loan.status === 'closed' && (
           <button className="btn" style={{ background: '#10b981', color: '#fff' }} disabled={busy} onClick={doReopen}>
-            Reopen / Reactivate Chit
+            {t('Reopen / Reactivate Chit', 'Reopen / Reactivate Chit')}
           </button>
         )}
         {can('loans.cancel') && loan.status === 'active' && (
           <button className="btn secondary" disabled={busy} onClick={() => goToCollection('?action=close')}>
-            Close Chit
+            {t('Close Chit', 'Close Chit')}
           </button>
         )}
         {can('loans.delete') &&
-          <button className="btn danger" onClick={() => setConfirm({ type: 'delete', reason: '' })}>Delete</button>}
+          <button className="btn danger" onClick={() => setConfirm({ type: 'delete', reason: '' })}>{t('Delete', 'Delete')}</button>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div className="card">
-          <div className="card-head"><h2>Chit</h2></div>
+          <div className="card-head"><h2>{t('Chit', 'Chit')}</h2></div>
           <div className="card-body">
             <dl className="kv">
-              <dt>Customer</dt><dd><Link to={`/customers/${loan.customer_id}`}>{loan.customer?.name}</Link></dd>
-              <dt>Chit / principal amount</dt><dd>{money(loan.principal_amount)}</dd>
-              <dt><b>Installment Amount</b></dt><dd><b>{money(loan.installment_amount)}</b></dd>
-              <dt>Tenure</dt><dd>{loan.tenure}</dd>
-              <dt>Repayment Frequency</dt><dd style={{ textTransform: 'capitalize' }}>{loan.frequency}</dd>
-              <dt>Schedule type</dt><dd>{loan.schedule_type}</dd>
-              <dt>Start date</dt><dd>{fmtDate(loan.start_date)}</dd>
-              <dt>Location</dt><dd>{loan.location?.name || '—'}</dd>
-              <dt>Collector</dt><dd>{loan.assignment?.employee_name || 'Unassigned'}</dd>
-              {loan.notes && <><dt>Notes</dt><dd>{loan.notes}</dd></>}
+              <dt>{t('Customer', 'Customer')}</dt><dd><Link to={`/customers/${loan.customer_id}`}>{loan.customer?.name}</Link></dd>
+              <dt>{t('Chit Amount', 'Chit / principal amount')}</dt><dd>{money(loan.principal_amount)}</dd>
+              <dt><b>{t('Installment Amount', 'Installment Amount')}</b></dt><dd><b>{money(loan.installment_amount)}</b></dd>
+              <dt>{t('Tenure', 'Tenure')}</dt><dd>{loan.tenure}</dd>
+              <dt>{t('Repayment Frequency', 'Repayment Frequency')}</dt><dd style={{ textTransform: 'capitalize' }}>{t(loan.frequency, loan.frequency)}</dd>
+              <dt>{t('Schedule type', 'Schedule type')}</dt><dd>{t(loan.schedule_type, loan.schedule_type)}</dd>
+              <dt>{t('Start date', 'Start date')}</dt><dd>{fmtDate(loan.start_date)}</dd>
+              <dt>{t('Location', 'Location')}</dt><dd>{loan.location?.name || '—'}</dd>
+              <dt>{t('Collector', 'Collector')}</dt><dd>{loan.assignment?.employee_name || t('Unassigned', 'Unassigned')}</dd>
+              {loan.notes && <><dt>{t('Notes', 'Notes')}</dt><dd>{loan.notes}</dd></>}
             </dl>
           </div>
         </div>
         <div className="card">
-          <div className="card-head"><h2>Ledger summary</h2></div>
+          <div className="card-head"><h2>{t('Ledger summary', 'Ledger summary')}</h2></div>
           <div className="card-body">
             <dl className="kv">
-              <dt>Installments</dt><dd>{s.installments_total} ({s.completed_count} completed, {s.overdue_count} overdue)</dd>
-              <dt>Scheduled total</dt><dd>{money(s.scheduled_total)}</dd>
-              <dt>Collected (actual)</dt><dd>{money(s.collected_principal)}</dd>
-              <dt>Pending due</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
-              <dt>Remaining chit balance</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
+              <dt>{t('Installments', 'Installments')}</dt><dd>{s.installments_total} ({s.completed_count} {t('completed', 'completed')}, {s.overdue_count} {t('overdue', 'overdue')})</dd>
+              <dt>{t('Scheduled total', 'Scheduled total')}</dt><dd>{money(s.scheduled_total)}</dd>
+              <dt>{t('Collected (actual)', 'Collected (actual)')}</dt><dd>{money(s.collected_principal)}</dd>
+              <dt>{t('Pending due', 'Pending due')}</dt><dd><b style={{ color: Number(s.pending_due_amount || 0) > 0 ? '#f43f5e' : '#10b981' }}>{money(s.pending_due_amount || 0)}</b></dd>
+              <dt>{t('Remaining chit balance', 'Remaining chit balance')}</dt><dd style={{ color: '#64748b', fontWeight: 600 }}>{money(s.outstanding_balance)}</dd>
             </dl>
           </div>
         </div>
@@ -182,28 +184,28 @@ export default function LoanDetail() {
       {can('distributions.view') && (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-head">
-            <h2>Distribution</h2>
+            <h2>{t('Distribution', 'Distribution')}</h2>
             {loan.status === 'active' && can('distributions.create') && (
               <button className="btn sm" onClick={() => goToCollection('?action=distribute')}>
-                {d.status === 'not_distributed' ? 'Distribute Chit' : 'Edit / Add Distribution'}
+                {d.status === 'not_distributed' ? t('Distribute Chit', 'Distribute Chit') : t('Edit / Add Distribution', 'Edit / Add Distribution')}
               </button>
             )}
           </div>
           <div className="card-body">
             <dl className="kv" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px' }}>
-              <dt>Chit Amount</dt><dd>{money(d.chit_amount ?? loan.principal_amount)}</dd>
-              <dt>Distribution Status</dt><dd><b>{DIST_STATUS_LABEL[d.status] || 'Not Distributed'}</b></dd>
-              <dt>Initial EMI</dt><dd>{money(d.initial_emi ?? loan.initial_emi_amount ?? loan.installment_amount)}</dd>
-              <dt><b>Current EMI</b></dt><dd><b>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
-              <dt>Total Distributed</dt><dd style={{ color: '#15803d' }}>{money(d.total_distributed ?? 0)}</dd>
-              <dt>Principal Covered</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
-              <dt>Extra Disbursed</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : undefined }}>{money(d.extra_disbursed ?? 0)}</dd>
-              <dt>Remaining Undistributed</dt><dd style={{ color: Number(d.remaining_undistributed ?? 0) > 0 ? '#b45309' : undefined }}>
+              <dt>{t('Chit Amount', 'Chit Amount')}</dt><dd>{money(d.chit_amount ?? loan.principal_amount)}</dd>
+              <dt>{t('Distribution Status', 'Distribution Status')}</dt><dd><b>{t(DIST_STATUS_LABEL[d.status] || 'Not Distributed', DIST_STATUS_LABEL[d.status] || 'Not Distributed')}</b></dd>
+              <dt>{t('Initial EMI', 'Initial EMI')}</dt><dd>{money(d.initial_emi ?? loan.initial_emi_amount ?? loan.installment_amount)}</dd>
+              <dt><b>{t('Current EMI', 'Current EMI')}</b></dt><dd><b>{money(d.current_emi ?? loan.installment_amount)}</b></dd>
+              <dt>{t('Total Distributed', 'Total Distributed')}</dt><dd style={{ color: '#15803d' }}>{money(d.total_distributed ?? 0)}</dd>
+              <dt>{t('Principal Covered', 'Principal Covered')}</dt><dd>{money(d.principal_covered ?? Math.min(Number(d.total_distributed ?? 0), Number(loan.principal_amount || 0)))}</dd>
+              <dt>{t('Extra Disbursed', 'Extra Disbursed')}</dt><dd style={{ color: Number(d.extra_disbursed ?? 0) > 0 ? '#f59e0b' : undefined }}>{money(d.extra_disbursed ?? 0)}</dd>
+              <dt>{t('Remaining Undistributed', 'Remaining Undistributed')}</dt><dd style={{ color: Number(d.remaining_undistributed ?? 0) > 0 ? '#b45309' : undefined }}>
                 {money(d.remaining_undistributed ?? 0)}
               </dd>
             </dl>
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
-              Creating a chit moves no money. Office Cash / Bank changes only when a distribution is saved.
+              {t('Creating a chit moves no money. Office Cash / Bank changes only when a distribution is saved.', 'Creating a chit moves no money. Office Cash / Bank changes only when a distribution is saved.')}
             </p>
           </div>
         </div>

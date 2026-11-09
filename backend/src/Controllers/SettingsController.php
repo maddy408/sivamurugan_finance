@@ -63,7 +63,7 @@ class SettingsController
         $in = Validator::make($req->body, [
             'name'      => 'required|string|max:191',
             'address'   => 'nullable|string|max:500',
-            'mobile'    => 'nullable|string|max:20',
+            'mobile'    => 'nullable|indian_mobile',
             'telephone' => 'nullable|string|max:30',
             'email'     => 'nullable|email',
             'website'   => 'nullable|string|max:191',

@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { api } from '../api/client';
 import { Field, Modal } from './ui';
+import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import { useToast } from '../state/ToastContext';
 import { FiSave } from 'react-icons/fi';
 
@@ -17,11 +18,33 @@ export default function EditCloseAmountModal({ loan, settlement, onClose, onDone
   });
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
 
   const submit = async () => {
+    const errs = {};
+    const dateErr = validateDate(form.close_date, { required: true, fieldLabel: 'Close date' });
+    if (dateErr) errs.close_date = dateErr;
+    if (form.close_amount === '') {
+      errs.close_amount = 'Close amount is required.';
+    } else if (Number(form.close_amount) < 0) {
+      errs.close_amount = 'Close amount cannot be negative.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
     setErrors({});
-    if (form.close_amount === '' || Number(form.close_amount) < 0) { setErrors({ close_amount: 'Required' }); return; }
     setBusy(true);
     try {
       await api.put(`/api/loans/${loan.id}/close`, {
@@ -32,8 +55,13 @@ export default function EditCloseAmountModal({ loan, settlement, onClose, onDone
       toast.success('Close settlement updated');
       onDone?.();
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -50,10 +78,30 @@ export default function EditCloseAmountModal({ loan, settlement, onClose, onDone
       </>}>
       <div className="form-grid">
         <Field label="Close Date *" error={errors.close_date}>
-          <input type="date" value={form.close_date} onChange={(e) => set('close_date', e.target.value)} />
+          <input
+            name="close_date"
+            type="date"
+            value={form.close_date}
+            onChange={(e) => set('close_date', e.target.value)}
+            onBlur={() => {
+              const err = validateDate(form.close_date, { required: true, fieldLabel: 'Close date' });
+              if (err) setErrors((prev) => ({ ...prev, close_date: err }));
+            }}
+          />
         </Field>
         <Field label="Close Amount *" error={errors.close_amount}>
-          <input type="number" min="0" step="0.01" value={form.close_amount} onChange={(e) => set('close_amount', e.target.value)} />
+          <input
+            name="close_amount"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.close_amount}
+            onChange={(e) => set('close_amount', e.target.value)}
+            onBlur={() => {
+              if (form.close_amount === '') setErrors((prev) => ({ ...prev, close_amount: 'Close amount is required.' }));
+              else if (Number(form.close_amount) < 0) setErrors((prev) => ({ ...prev, close_amount: 'Close amount cannot be negative.' }));
+            }}
+          />
         </Field>
         <div style={{ gridColumn: '1 / -1' }}>
           <Field label="Remarks" error={errors.remarks}>

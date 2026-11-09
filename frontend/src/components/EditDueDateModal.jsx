@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { api, money } from '../api/client';
 import { Field, Modal } from './ui';
+import { validateDate, validateAmount, focusFirstError } from '../utils/validation';
 import { useToast } from '../state/ToastContext';
 import { FiSave } from 'react-icons/fi';
 
@@ -19,11 +20,33 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
   });
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
 
   const submit = async () => {
+    const errs = {};
+    const dateErr = validateDate(form.due_date, { required: true, fieldLabel: 'Due date' });
+    if (dateErr) errs.due_date = dateErr;
+    if (!hasPayment) {
+      const amtErr = validateAmount(form.payable_amount, { required: true, min: 0.01, fieldLabel: 'Due amount' });
+      if (amtErr) errs.payable_amount = amtErr;
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+
     setErrors({});
-    if (!form.due_date) { setErrors({ due_date: 'Required' }); return; }
     setBusy(true);
     try {
       const payload = { due_date: form.due_date };
@@ -32,8 +55,13 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
       toast.success(`Due #${installment.installment_no} updated`);
       onDone?.();
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -50,11 +78,33 @@ export default function EditDueDateModal({ installment, onClose, onDone }) {
       </>}>
       <div className="form-grid">
         <Field label="EMI / Due Date *" error={errors.due_date}>
-          <input type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
+          <input
+            name="due_date"
+            type="date"
+            value={form.due_date}
+            onChange={(e) => set('due_date', e.target.value)}
+            onBlur={() => {
+              const err = validateDate(form.due_date, { required: true, fieldLabel: 'Due date' });
+              if (err) setErrors((prev) => ({ ...prev, due_date: err }));
+            }}
+          />
         </Field>
         <Field label="Due Amount" error={errors.payable_amount}>
-          <input type="number" min="0.01" step="0.01" value={form.payable_amount} disabled={hasPayment}
-            onChange={(e) => set('payable_amount', e.target.value)} />
+          <input
+            name="payable_amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.payable_amount}
+            disabled={hasPayment}
+            onChange={(e) => set('payable_amount', e.target.value)}
+            onBlur={() => {
+              if (!hasPayment) {
+                const err = validateAmount(form.payable_amount, { required: true, min: 0.01, fieldLabel: 'Due amount' });
+                if (err) setErrors((prev) => ({ ...prev, payable_amount: err }));
+              }
+            }}
+          />
         </Field>
       </div>
       {hasPayment ? (

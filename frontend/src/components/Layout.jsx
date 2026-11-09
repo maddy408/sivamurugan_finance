@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { API_BASE } from '../api/client';
 import { useAuth } from '../state/AuthContext';
@@ -28,7 +28,6 @@ export default function Layout() {
   const { user, logout, can, isAdmin, meta } = useAuth();
   const { t, lang, setLang } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
@@ -92,7 +91,7 @@ export default function Layout() {
 
           {/* Right Tools: Royal Blue English Pill + Logout Button + Hamburger */}
           <div className="user-tools">
-            <LangSwitcher lang={lang} setLang={setLang} open={langOpen} setOpen={setLangOpen} />
+            <LangSwitcher lang={lang} setLang={setLang} />
             <button
               className="btn-icon logout-icon-btn"
               onClick={doLogout}
@@ -104,7 +103,7 @@ export default function Layout() {
             <button
               className="mobile-nav-btn"
               onClick={() => setMobileOpen((o) => !o)}
-              aria-label="Toggle navigation menu"
+              aria-label={t('Toggle navigation menu', 'Toggle navigation menu')}
               aria-expanded={mobileOpen}
             >
               {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
@@ -132,13 +131,13 @@ export default function Layout() {
             <div className="drawer-avatar">{(user?.name || 'U').charAt(0).toUpperCase()}</div>
             <div className="drawer-user-info">
               <div className="drawer-name">{user?.name}</div>
-              <div className="drawer-role">{user?.role_name || user?.role}</div>
+              <div className="drawer-role">{t(user?.role_name || user?.role || '')}</div>
             </div>
           </div>
           <button
             className="drawer-close-btn"
             onClick={closeDrawer}
-            aria-label="Close menu"
+            aria-label={t('Close menu', 'Close menu')}
           >
             <FiX size={18} />
           </button>
@@ -163,9 +162,35 @@ export default function Layout() {
         </nav>
 
         <div className="drawer-footer">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Language:</span>
-            <LangSwitcher lang={lang} setLang={setLang} open={langOpen} setOpen={setLangOpen} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{t('Language:', 'Language:')}</span>
+            <div className="drawer-lang-toggle" style={{ display: 'inline-flex', background: '#f1f5f9', padding: 3, borderRadius: 20 }}>
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => setLang(l.code)}
+                  style={{
+                    border: 'none',
+                    borderRadius: 16,
+                    padding: '4px 10px',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: l.code === lang ? '#1d4ed8' : 'transparent',
+                    color: l.code === lang ? '#ffffff' : '#475569',
+                    boxShadow: l.code === lang ? '0 1px 4px rgba(29, 78, 216, 0.3)' : 'none',
+                    transition: 'all 0.15s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <span>{l.flag}</span>
+                  <span>{l.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <button className="drawer-logout-btn" onClick={doLogout}>
             <FiLogOut size={16} /> {t('nav.logout', 'Logout')}
@@ -180,15 +205,35 @@ export default function Layout() {
   );
 }
 
-function LangSwitcher({ lang, setLang, open, setOpen }) {
+function LangSwitcher({ lang, setLang }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
   const current = LANGS.find((l) => l.code === lang) || LANGS[0];
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [open]);
+
   return (
-    <div className="lang-switcher" onMouseLeave={() => setOpen(false)}>
+    <div className="lang-switcher" ref={ref}>
       <button
         className="lang-switcher-btn"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        type="button"
         style={{
           background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
           color: '#ffffff',
@@ -215,6 +260,7 @@ function LangSwitcher({ lang, setLang, open, setOpen }) {
           {LANGS.map((l) => (
             <button key={l.code} className={`lang-switcher-item ${l.code === lang ? 'active' : ''}`}
               role="option" aria-selected={l.code === lang}
+              type="button"
               onClick={() => { setLang(l.code); setOpen(false); }}>
               <span>{l.flag}</span><span>{l.label}</span>
               {l.code === lang && <span className="lang-switcher-check"><FiCheck size={13} /></span>}

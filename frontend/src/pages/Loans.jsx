@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import DataTable from '../components/DataTable';
-import { Confirm, Field, Modal, IconView, IconEdit, IconDelete } from '../components/ui';
+import { Confirm, Field, FieldError, Modal, IconView, IconEdit, IconDelete } from '../components/ui';
 import CustomScheduleModal from '../components/CustomScheduleModal';
+import { validateSelect, validateDate, validateAmount, validateInteger, focusFirstError } from '../utils/validation';
 import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
@@ -40,6 +41,7 @@ export default function Loans() {
   const [formBusy, setFormBusy] = useState(false);
   const [customRows, setCustomRows] = useState([]);
   const [addCustomRow, setAddCustomRow] = useState(false);
+  const [editErrors, setEditErrors] = useState({});
 
   useEffect(() => {
     if (can('loans.create')) {
@@ -48,7 +50,16 @@ export default function Loans() {
     }
   }, [can]);
 
-  const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const setF = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (formErrors[k]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
   const selectedCustomer = customers.find((c) => String(c.id) === String(form.customer_id));
 
   const SCHEDULE_FOR_FREQ = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY_DAILY' };
@@ -60,11 +71,23 @@ export default function Loans() {
 
   const handleCreateChit = async (e) => {
     e.preventDefault();
-    setFormErrors({});
-    if (!form.customer_id) {
-      setFormErrors({ customer_id: 'Please select a customer' });
+    const errs = {};
+    if (!form.customer_id) errs.customer_id = 'Please select a customer.';
+    const dateErr = validateDate(form.start_date, { required: true, fieldLabel: 'Start date' });
+    if (dateErr) errs.start_date = dateErr;
+    const amtErr = validateAmount(form.principal_amount, { required: true, min: 1, fieldLabel: 'Chit amount' });
+    if (amtErr) errs.principal_amount = amtErr;
+    const instErr = validateAmount(form.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+    if (instErr) errs.installment_amount = instErr;
+    const tenureErr = validateInteger(form.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+    if (tenureErr) errs.tenure = tenureErr;
+
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      focusFirstError(errs);
       return;
     }
+    setFormErrors({});
     setFormBusy(true);
     try {
       const payload = {
@@ -99,8 +122,13 @@ export default function Loans() {
       api.get('/api/loans/next-code').then((res) => setNextCode(res.data.next_code)).catch(() => {});
       list.reload();
     } catch (err) {
-      if (err.errors) setFormErrors(Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(err.message);
+      if (err.errors) {
+        const mapped = Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setFormErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setFormBusy(false);
     }
@@ -109,6 +137,7 @@ export default function Loans() {
   const openEdit = async (loanRow) => {
     try {
       setBusy(true);
+      setEditErrors({});
       const res = await api.get(`/api/loans/${loanRow.id}`);
       const data = res.data;
       setEdit({
@@ -130,6 +159,22 @@ export default function Loans() {
   };
 
   const saveEdit = async () => {
+    const errs = {};
+    const instErr = validateAmount(edit.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+    if (instErr) errs.installment_amount = instErr;
+    const amtErr = validateAmount(edit.principal_amount, { required: true, min: 0, fieldLabel: 'Chit amount' });
+    if (amtErr) errs.principal_amount = amtErr;
+    const tenureErr = validateInteger(edit.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+    if (tenureErr) errs.tenure = tenureErr;
+    const dateErr = validateDate(edit.start_date, { required: true, fieldLabel: 'Start date' });
+    if (dateErr) errs.start_date = dateErr;
+
+    if (Object.keys(errs).length > 0) {
+      setEditErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setEditErrors({});
     setEditBusy(true);
     try {
       const body = {
@@ -148,7 +193,13 @@ export default function Loans() {
       setEdit(null);
       list.reload();
     } catch (e) {
-      toast.error(e.errors ? Object.values(e.errors)[0][0] : e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setEditErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setEditBusy(false);
     }
@@ -426,8 +477,9 @@ export default function Loans() {
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiUser size={13} /></div>
                     <input
+                      name="customer_id"
                       list="cust-options-inline"
-                      placeholder="Search name, code, phone…"
+                      placeholder={t('Search name, code, phone…', 'Search name, code, phone…')}
                       value={form._customerLabel ?? (selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : '')}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -436,7 +488,16 @@ export default function Loans() {
                           c.customer_code === v || c.mobile === v ||
                           c.name.toLowerCase() === v.toLowerCase());
                         setForm((f) => ({ ...f, _customerLabel: v, customer_id: m ? m.id : '' }));
+                        if (m?.id && formErrors.customer_id) {
+                          setFormErrors((prev) => { const next = { ...prev }; delete next.customer_id; return next; });
+                        }
                       }}
+                      onBlur={() => {
+                        if (!form.customer_id) {
+                          setFormErrors((prev) => ({ ...prev, customer_id: 'Please select a customer.' }));
+                        }
+                      }}
+                      className={formErrors.customer_id ? 'is-invalid' : ''}
                       required
                     />
                   </div>
@@ -447,77 +508,132 @@ export default function Loans() {
                       </option>
                     ))}
                   </datalist>
-                  {formErrors.customer_id && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.customer_id}</span>}
+                  <FieldError error={formErrors.customer_id} />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {/* Chit Code */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Chit Code</label>
+                    <label className="form-field-label">{t('Chit Code', 'Chit Code')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiGrid size={13} /></div>
                       <input
+                        name="code"
                         value={form.code}
                         onChange={(e) => setF('code', e.target.value)}
                         placeholder={nextCode ? `Auto (${nextCode})` : 'Auto'}
+                        className={formErrors.code ? 'is-invalid' : ''}
                       />
                     </div>
-                    {formErrors.code && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.code}</span>}
+                    <FieldError error={formErrors.code} />
                   </div>
 
                   {/* Start Date */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Start Date *</label>
+                    <label className="form-field-label">{t('Start Date *', 'Start Date *')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiCalendar size={13} /></div>
-                      <input type="date" value={form.start_date} onChange={(e) => setF('start_date', e.target.value)} required />
+                      <input
+                        type="date"
+                        name="start_date"
+                        value={form.start_date}
+                        onChange={(e) => setF('start_date', e.target.value)}
+                        onBlur={() => {
+                          const err = validateDate(form.start_date, { required: true, fieldLabel: 'Start date' });
+                          if (err) setFormErrors((prev) => ({ ...prev, start_date: err }));
+                        }}
+                        className={formErrors.start_date ? 'is-invalid' : ''}
+                        required
+                      />
                     </div>
-                    {formErrors.start_date && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.start_date}</span>}
+                    <FieldError error={formErrors.start_date} />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {/* Chit Amount */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Chit Amount *</label>
+                    <label className="form-field-label">{t('Chit Amount *', 'Chit Amount *')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiDollarSign size={13} /></div>
-                      <input type="number" min="1" step="0.01" value={form.principal_amount} onChange={(e) => setF('principal_amount', e.target.value)} required placeholder="e.g. 50000" />
+                      <input
+                        type="number"
+                        name="principal_amount"
+                        min="1"
+                        step="0.01"
+                        value={form.principal_amount}
+                        onChange={(e) => setF('principal_amount', e.target.value)}
+                        onBlur={() => {
+                          const err = validateAmount(form.principal_amount, { required: true, min: 1, fieldLabel: 'Chit amount' });
+                          if (err) setFormErrors((prev) => ({ ...prev, principal_amount: err }));
+                        }}
+                        className={formErrors.principal_amount ? 'is-invalid' : ''}
+                        required
+                        placeholder="e.g. 50000"
+                      />
                     </div>
-                    {formErrors.principal_amount && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.principal_amount}</span>}
+                    <FieldError error={formErrors.principal_amount} />
                   </div>
 
                   {/* Installment */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Installment *</label>
+                    <label className="form-field-label">{t('Installment *', 'Installment *')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiDollarSign size={13} /></div>
-                      <input type="number" min="0.01" step="0.01" value={form.installment_amount} onChange={(e) => setF('installment_amount', e.target.value)} required placeholder="e.g. 2000" />
+                      <input
+                        type="number"
+                        name="installment_amount"
+                        min="0.01"
+                        step="0.01"
+                        value={form.installment_amount}
+                        onChange={(e) => setF('installment_amount', e.target.value)}
+                        onBlur={() => {
+                          const err = validateAmount(form.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+                          if (err) setFormErrors((prev) => ({ ...prev, installment_amount: err }));
+                        }}
+                        className={formErrors.installment_amount ? 'is-invalid' : ''}
+                        required
+                        placeholder="e.g. 2000"
+                      />
                     </div>
-                    {formErrors.installment_amount && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.installment_amount}</span>}
+                    <FieldError error={formErrors.installment_amount} />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {/* Tenure */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Tenure *</label>
+                    <label className="form-field-label">{t('Tenure *', 'Tenure *')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiCalendar size={13} /></div>
-                      <input type="number" min="1" step="1" value={form.tenure} onChange={(e) => setF('tenure', e.target.value)} required placeholder="Installments count" />
+                      <input
+                        type="number"
+                        name="tenure"
+                        min="1"
+                        step="1"
+                        value={form.tenure}
+                        onChange={(e) => setF('tenure', e.target.value)}
+                        onBlur={() => {
+                          const err = validateInteger(form.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+                          if (err) setFormErrors((prev) => ({ ...prev, tenure: err }));
+                        }}
+                        className={formErrors.tenure ? 'is-invalid' : ''}
+                        required
+                        placeholder={t('Installments count', 'Installments count')}
+                      />
                     </div>
-                    {formErrors.tenure && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{formErrors.tenure}</span>}
+                    <FieldError error={formErrors.tenure} />
                   </div>
 
                   {/* Frequency */}
                   <div className="form-field-group">
-                    <label className="form-field-label">Frequency</label>
+                    <label className="form-field-label">{t('Frequency', 'Frequency')}</label>
                     <div className="input-with-icon">
                       <div className="input-icon-pill"><FiClock size={13} /></div>
                       <select value={form.frequency} onChange={(e) => setFrequency(e.target.value)}>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
+                        <option value="daily">{t('Daily', 'Daily')}</option>
+                        <option value="weekly">{t('Weekly', 'Weekly')}</option>
+                        <option value="monthly">{t('Monthly', 'Monthly')}</option>
                       </select>
                     </div>
                   </div>
@@ -525,12 +641,12 @@ export default function Loans() {
 
                 {/* Due Date Schedule */}
                 <div className="form-field-group">
-                  <label className="form-field-label">Due Date Schedule</label>
+                  <label className="form-field-label">{t('Due Date Schedule', 'Due Date Schedule')}</label>
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiCalendar size={13} /></div>
                     <select value={form.due_date_mode} onChange={(e) => { setF('due_date_mode', e.target.value); setCustomRows([]); }}>
-                      <option value="auto">Auto Due Date</option>
-                      <option value="custom">Custom Due Date</option>
+                      <option value="auto">{t('Auto Due Date', 'Auto Due Date')}</option>
+                      <option value="custom">{t('Custom Due Date', 'Custom Due Date')}</option>
                     </select>
                   </div>
                 </div>
@@ -634,7 +750,7 @@ export default function Loans() {
             bulkActions={
               can('loans.delete') && (
                 <button className="btn sm danger" onClick={() => setBulkConfirm(true)}>
-                  <IconDelete /> Bulk Delete ({selectedIds.length})
+                  <IconDelete /> {t(`Bulk Delete (${selectedIds.length})`, `Bulk Delete (${selectedIds.length})`)}
                 </button>
               )
             }
@@ -643,48 +759,87 @@ export default function Loans() {
       </div>
 
       {del && (
-        <Confirm title={`Delete ${del.code}?`} danger busy={busy}
-          message="The chit disappears from every list immediately. Posted collections stay in the ledger for audit."
-          confirmLabel="Delete" onConfirm={doDelete} onClose={() => setDel(null)} />
+        <Confirm title={t(`Delete ${del.code}?`, `Delete ${del.code}?`)} danger busy={busy}
+          message={t("The chit disappears from every list immediately. Posted collections stay in the ledger for audit.", "The chit disappears from every list immediately. Posted collections stay in the ledger for audit.")}
+          confirmLabel={t("Delete", "Delete")} onConfirm={doDelete} onClose={() => setDel(null)} />
       )}
 
       {bulkConfirm && (
-        <Confirm title={`Delete ${selectedIds.length} selected chits?`} danger busy={busy}
-          message="All selected chits will disappear from the list immediately. Any posted collections remain in the audit ledger."
-          confirmLabel={`Delete (${selectedIds.length})`} onConfirm={handleBulkDelete} onClose={() => setBulkConfirm(false)} />
+        <Confirm title={t(`Delete ${selectedIds.length} selected chits?`, `Delete ${selectedIds.length} selected chits?`)} danger busy={busy}
+          message={t("All selected chits will disappear from the list immediately. Any posted collections remain in the audit ledger.", "All selected chits will disappear from the list immediately. Any posted collections remain in the audit ledger.")}
+          confirmLabel={t(`Delete (${selectedIds.length})`, `Delete (${selectedIds.length})`)} onConfirm={handleBulkDelete} onClose={() => setBulkConfirm(false)} />
       )}
 
       {edit && (
-        <Modal title={`Edit ${edit.code}`} onClose={() => setEdit(null)}
+        <Modal title={t(`Edit ${edit.code}`, `Edit ${edit.code}`)} onClose={() => setEdit(null)}
           footer={<>
-            <button className="btn secondary" onClick={() => setEdit(null)} disabled={editBusy}>Cancel</button>
-            <button className="btn-save-glow" onClick={saveEdit} disabled={editBusy}>{editBusy ? 'Saving…' : 'Save Changes'}</button>
+            <button className="btn secondary" onClick={() => setEdit(null)} disabled={editBusy}>{t('Cancel', 'Cancel')}</button>
+            <button className="btn-save-glow" onClick={saveEdit} disabled={editBusy}>{editBusy ? t('Saving…', 'Saving…') : t('Save Changes', 'Save Changes')}</button>
           </>}>
           <div className="form-grid">
-            <Field label="Chit Code">
+            <Field label={t('Chit Code', 'Chit Code')}>
               <input value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value })} />
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
-                Leave unchanged to keep existing code.
+                {t('Leave unchanged to keep existing code.', 'Leave unchanged to keep existing code.')}
               </p>
             </Field>
-            <Field label="Chit Status">
+            <Field label={t('Chit Status', 'Chit Status')}>
               <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="closed">Closed / Cancelled</option>
+                <option value="active">{t('Active', 'Active')}</option>
+                <option value="completed">{t('Completed', 'Completed')}</option>
+                <option value="closed">{t('Closed', 'Closed / Cancelled')}</option>
               </select>
             </Field>
-            <Field label="Installment Amount">
-              <input type="number" min="0.01" step="0.01" value={edit.installment_amount}
-                onChange={(e) => setEdit({ ...edit, installment_amount: e.target.value })} />
+            <Field label="Installment Amount *" error={editErrors.installment_amount}>
+              <input
+                type="number"
+                name="installment_amount"
+                min="0.01"
+                step="0.01"
+                value={edit.installment_amount}
+                onChange={(e) => {
+                  setEdit({ ...edit, installment_amount: e.target.value });
+                  if (editErrors.installment_amount) setEditErrors((prev) => { const n = { ...prev }; delete n.installment_amount; return n; });
+                }}
+                onBlur={() => {
+                  const err = validateAmount(edit.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+                  if (err) setEditErrors((prev) => ({ ...prev, installment_amount: err }));
+                }}
+              />
             </Field>
-            <Field label="Chit / principal amount">
-              <input type="number" min="0" step="0.01" value={edit.principal_amount}
-                onChange={(e) => setEdit({ ...edit, principal_amount: e.target.value })} />
+            <Field label="Chit / principal amount *" error={editErrors.principal_amount}>
+              <input
+                type="number"
+                name="principal_amount"
+                min="0"
+                step="0.01"
+                value={edit.principal_amount}
+                onChange={(e) => {
+                  setEdit({ ...edit, principal_amount: e.target.value });
+                  if (editErrors.principal_amount) setEditErrors((prev) => { const n = { ...prev }; delete n.principal_amount; return n; });
+                }}
+                onBlur={() => {
+                  const err = validateAmount(edit.principal_amount, { required: true, min: 0, fieldLabel: 'Chit amount' });
+                  if (err) setEditErrors((prev) => ({ ...prev, principal_amount: err }));
+                }}
+              />
             </Field>
-            <Field label="Tenure">
-              <input type="number" min="1" step="1" value={edit.tenure}
-                onChange={(e) => setEdit({ ...edit, tenure: e.target.value })} />
+            <Field label="Tenure *" error={editErrors.tenure}>
+              <input
+                type="number"
+                name="tenure"
+                min="1"
+                step="1"
+                value={edit.tenure}
+                onChange={(e) => {
+                  setEdit({ ...edit, tenure: e.target.value });
+                  if (editErrors.tenure) setEditErrors((prev) => { const n = { ...prev }; delete n.tenure; return n; });
+                }}
+                onBlur={() => {
+                  const err = validateInteger(edit.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+                  if (err) setEditErrors((prev) => ({ ...prev, tenure: err }));
+                }}
+              />
             </Field>
             <Field label="Repayment Frequency">
               <select value={edit.frequency} onChange={(e) => {
@@ -702,8 +857,20 @@ export default function Loans() {
                 <option value="monthly">Monthly</option>
               </select>
             </Field>
-            <Field label="Start date">
-              <input type="date" value={edit.start_date} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
+            <Field label="Start date *" error={editErrors.start_date}>
+              <input
+                type="date"
+                name="start_date"
+                value={edit.start_date}
+                onChange={(e) => {
+                  setEdit({ ...edit, start_date: e.target.value });
+                  if (editErrors.start_date) setEditErrors((prev) => { const n = { ...prev }; delete n.start_date; return n; });
+                }}
+                onBlur={() => {
+                  const err = validateDate(edit.start_date, { required: true, fieldLabel: 'Start date' });
+                  if (err) setEditErrors((prev) => ({ ...prev, start_date: err }));
+                }}
+              />
             </Field>
             {edit.frequency === 'monthly' && (
               <Field label="Monthly schedule style">

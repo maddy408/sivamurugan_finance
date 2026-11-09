@@ -120,8 +120,9 @@ class CustomerController
         $user = Guard::authorize($req, 'customers.create');
         $in = Validator::make($req->body, [
             'name'             => 'required|string|max:128',
-            'mobile'           => 'nullable|string|max:20',
-            'alt_mobile'       => 'nullable|string|max:20',
+            'mobile'           => 'nullable|indian_mobile',
+            'aadhar_number'    => 'nullable|aadhaar',
+            'alt_mobile'       => 'nullable|indian_mobile',
             'email'            => 'nullable|email',
             'gender'           => 'nullable|in:male,female,other',
             'dob'              => 'nullable|date',
@@ -130,7 +131,7 @@ class CustomerController
             'location'         => 'nullable|string|max:120',   // plain typed text — no Location Master
             'nominee_name'     => 'nullable|string|max:128',
             'nominee_relation' => 'nullable|string|max:64',
-            'nominee_mobile'   => 'nullable|string|max:20',
+            'nominee_mobile'   => 'nullable|indian_mobile',
             'id_proof_type'    => 'nullable|string|max:32',
             'id_proof_number'  => 'nullable|string|max:64',
             'notes'            => 'nullable|string|max:500',
@@ -167,8 +168,9 @@ class CustomerController
 
         $in = Validator::make($req->body, [
             'name'             => 'nullable|string|max:128',
-            'mobile'           => 'nullable|string|max:20',
-            'alt_mobile'       => 'nullable|string|max:20',
+            'mobile'           => 'nullable|indian_mobile',
+            'aadhar_number'    => 'nullable|aadhaar',
+            'alt_mobile'       => 'nullable|indian_mobile',
             'email'            => 'nullable|email',
             'gender'           => 'nullable|in:male,female,other',
             'dob'              => 'nullable|date',
@@ -177,7 +179,7 @@ class CustomerController
             'location'         => 'nullable|string|max:120',
             'nominee_name'     => 'nullable|string|max:128',
             'nominee_relation' => 'nullable|string|max:64',
-            'nominee_mobile'   => 'nullable|string|max:20',
+            'nominee_mobile'   => 'nullable|indian_mobile',
             'status'           => 'nullable|in:active,inactive,blacklisted',
             'notes'            => 'nullable|string|max:500',
         ])->validated();

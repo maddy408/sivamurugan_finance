@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Expenses from './Expenses';
 import Income from './Income';
 import { useAuth } from '../state/AuthContext';
+import { useI18n } from '../state/I18nContext';
 import { FiTrendingDown, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
 
 export default function Finance() {
@@ -10,6 +11,7 @@ export default function Finance() {
   const initialTab = searchParams.get('tab') || 'expenses';
   const [activeTab, setActiveTab] = useState(initialTab);
   const { can } = useAuth();
+  const { t } = useI18n();
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -33,10 +35,10 @@ export default function Finance() {
         </div>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.3px' }}>
-            Expenses &amp; Income
+            {t('Expenses & Income', 'Expenses & Income')}
           </h1>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
-            Track daily office expenses, revenue income &amp; account transactions
+            {t('Track daily office expenses, revenue income & account transactions', 'Track daily office expenses, revenue income & account transactions')}
           </div>
         </div>
       </div>
@@ -65,7 +67,7 @@ export default function Finance() {
               <line x1="7" y1="17" x2="17" y2="7" />
               <polyline points="7 7 17 7 17 17" />
             </svg>
-            Office Expense
+            {t('Expenses', 'Office Expense')}
           </button>
         )}
         {canIncome && (
@@ -91,7 +93,7 @@ export default function Finance() {
               <line x1="7" y1="17" x2="17" y2="7" />
               <polyline points="7 7 17 7 17 17" />
             </svg>
-            Office Income
+            {t('Office Income', 'Office Income')}
           </button>
         )}
       </div>

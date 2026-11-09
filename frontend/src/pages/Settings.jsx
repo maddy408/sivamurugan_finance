@@ -4,6 +4,7 @@ import { Spinner, ErrorState, Field } from '../components/ui';
 import { useToast } from '../state/ToastContext';
 import { useAuth } from '../state/AuthContext';
 import { useI18n } from '../state/I18nContext';
+import { validateIndianMobile, validatePassword, validateConfirmPassword, validateEmail, validateText, validateAmount, focusFirstError, handleNumericKeyDown } from '../utils/validation';
 import Employees from './Employees';
 import {
   FiSettings, FiUsers, FiUser, FiLock, FiBriefcase, FiGrid,
@@ -95,10 +96,24 @@ export default function Settings() {
 
 function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
   const [f, setF] = useState(data.organization || {});
+  const [orgErrors, setOrgErrors] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const logo = data.organization?.logo_path;
 
   const handleSaveAll = async () => {
+    const errs = {};
+    const mobileErr = validateIndianMobile(f.mobile, false);
+    if (mobileErr) errs.mobile = mobileErr;
+    if (f.email && f.email.trim()) {
+      const emailErr = validateEmail(f.email, false);
+      if (emailErr) errs.email = emailErr;
+    }
+    if (Object.keys(errs).length > 0) {
+      setOrgErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setOrgErrors({});
     if (selectedFile) {
       try {
         await api.upload('/api/settings/organization/logo', selectedFile);
@@ -177,11 +192,26 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
               <div className="input-icon-pill"><FiMail size={13} /></div>
               <input
                 type="email"
+                name="email"
                 value={f.email || ''}
-                onChange={(e) => setF({ ...f, email: e.target.value })}
+                onChange={(e) => {
+                  setF({ ...f, email: e.target.value });
+                  if (orgErrors.email) {
+                    setOrgErrors((prev) => { const n = { ...prev }; delete n.email; return n; });
+                  }
+                }}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    const err = validateEmail(e.target.value, false);
+                    if (err) setOrgErrors((prev) => ({ ...prev, email: err }));
+                  }
+                }}
+                aria-invalid={!!orgErrors.email}
+                className={orgErrors.email ? 'is-invalid' : ''}
                 placeholder="info@sivamuruganchitfund.example"
               />
             </div>
+            {orgErrors.email && <span className="field-error-msg err">{orgErrors.email}</span>}
           </div>
 
           {/* Mobile Number */}
@@ -190,11 +220,38 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
             <div className="input-with-icon">
               <div className="input-icon-pill"><FiPhone size={13} /></div>
               <input
+                type="tel"
+                name="mobile"
+                inputMode="numeric"
+                maxLength={10}
                 value={f.mobile || ''}
-                onChange={(e) => setF({ ...f, mobile: e.target.value })}
-                placeholder="9000000000"
+                onKeyDown={handleNumericKeyDown}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setF({ ...f, mobile: v });
+                  if (orgErrors.mobile && !validateIndianMobile(v, false)) {
+                    setOrgErrors((errs) => {
+                      const next = { ...errs };
+                      delete next.mobile;
+                      return next;
+                    });
+                  }
+                }}
+                onBlur={(e) => {
+                  const err = validateIndianMobile(e.target.value, false);
+                  setOrgErrors((errs) => {
+                    const next = { ...errs };
+                    if (err) next.mobile = err;
+                    else delete next.mobile;
+                    return next;
+                  });
+                }}
+                aria-invalid={!!orgErrors.mobile}
+                className={orgErrors.mobile ? 'is-invalid' : ''}
+                placeholder="10-digit mobile number"
               />
             </div>
+            {orgErrors.mobile && <span className="field-error-msg err">{orgErrors.mobile}</span>}
           </div>
 
           {/* Telephone */}
@@ -358,19 +415,23 @@ function ProfileTab({ user }) {
   );
 }
 
-function PasswordField({ label, value, onChange, autoComplete, error }) {
+function PasswordField({ name, label, value, onChange, onBlur, autoComplete, error }) {
   const [show, setShow] = useState(false);
   return (
     <div className="form-field-group">
       <label className="form-field-label">{label}</label>
-      <div className="input-with-icon">
+      <div className="input-with-icon" style={{ position: 'relative' }}>
         <div className="input-icon-pill"><FiLock size={13} /></div>
         <input
+          name={name}
           type={show ? 'text' : 'password'}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           autoComplete={autoComplete}
           placeholder={label}
+          className={error ? 'is-invalid' : ''}
+          aria-invalid={!!error}
         />
         <button
           type="button"
@@ -383,7 +444,7 @@ function PasswordField({ label, value, onChange, autoComplete, error }) {
           {show ? <IconEyeOff /> : <IconEye />}
         </button>
       </div>
-      {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 2 }}>{error}</span>}
+      {error && <span className="field-error-msg err">{error}</span>}
     </div>
   );
 }
@@ -400,36 +461,47 @@ function ChangePasswordTab({ toast }) {
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
 
-  const submit = async () => {
-    setErrors({});
-    if (!f.current_password || !f.new_password || !f.confirm_password) {
-      setErrors({
-        current_password: !f.current_password ? 'Required' : undefined,
-        new_password: !f.new_password ? 'Required' : undefined,
-        confirm_password: !f.confirm_password ? 'Required' : undefined,
+  const setField = (k, v) => {
+    setF((prev) => ({ ...prev, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
       });
+    }
+  };
+
+  const submit = async () => {
+    const errs = {};
+    if (!f.current_password) errs.current_password = 'Current password is required.';
+    const passErr = validatePassword(f.new_password, true, 8);
+    if (passErr) errs.new_password = passErr;
+    const confirmErr = validateConfirmPassword(f.confirm_password, f.new_password);
+    if (confirmErr) errs.confirm_password = confirmErr;
+    if (f.new_password && f.current_password && f.new_password === f.current_password) {
+      errs.new_password = 'New password must be different from current password.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
       return;
     }
-    if (f.new_password.length < 8) {
-      setErrors({ new_password: 'New password must be at least 8 characters' });
-      return;
-    }
-    if (f.new_password !== f.confirm_password) {
-      setErrors({ confirm_password: 'New password and confirm password do not match' });
-      return;
-    }
-    if (f.new_password === f.current_password) {
-      setErrors({ new_password: 'New password must be different from the current password' });
-      return;
-    }
+    setErrors({});
     setBusy(true);
     try {
       await api.post('/api/auth/change-password', f);
       toast.success('Password changed successfully');
       setF({ current_password: '', new_password: '', confirm_password: '' });
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, v[0]])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally { setBusy(false); }
   };
 
@@ -452,12 +524,41 @@ function ChangePasswordTab({ toast }) {
         </div>
       </div>
       <div style={{ padding: '16px 20px' }}>
-        <PasswordField label="Current Password *" value={f.current_password} autoComplete="current-password" error={errors.current_password}
-          onChange={(e) => setF({ ...f, current_password: e.target.value })} />
-        <PasswordField label="New Password *" value={f.new_password} autoComplete="new-password" error={errors.new_password}
-          onChange={(e) => setF({ ...f, new_password: e.target.value })} />
-        <PasswordField label="Confirm Password *" value={f.confirm_password} autoComplete="new-password" error={errors.confirm_password}
-          onChange={(e) => setF({ ...f, confirm_password: e.target.value })} />
+        <PasswordField
+          name="current_password"
+          label="Current Password *"
+          value={f.current_password}
+          autoComplete="current-password"
+          error={errors.current_password}
+          onChange={(e) => setField('current_password', e.target.value)}
+          onBlur={() => {
+            if (!f.current_password) setErrors((prev) => ({ ...prev, current_password: 'Current password is required.' }));
+          }}
+        />
+        <PasswordField
+          name="new_password"
+          label="New Password *"
+          value={f.new_password}
+          autoComplete="new-password"
+          error={errors.new_password}
+          onChange={(e) => setField('new_password', e.target.value)}
+          onBlur={() => {
+            const err = validatePassword(f.new_password, true, 8);
+            if (err) setErrors((prev) => ({ ...prev, new_password: err }));
+          }}
+        />
+        <PasswordField
+          name="confirm_password"
+          label="Confirm Password *"
+          value={f.confirm_password}
+          autoComplete="new-password"
+          error={errors.confirm_password}
+          onChange={(e) => setField('confirm_password', e.target.value)}
+          onBlur={() => {
+            const err = validateConfirmPassword(f.confirm_password, f.new_password);
+            if (err) setErrors((prev) => ({ ...prev, confirm_password: err }));
+          }}
+        />
         <button className="btn-save-glow" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} disabled={busy} onClick={submit}>
           <FiSave size={14} /> {busy ? 'Saving…' : 'Change Password'}
         </button>
@@ -647,6 +748,38 @@ function FineTab({ data, busy, save }) {
 
 function ListTab({ title, rows, busy, save, createPath, fields }) {
   const [f, setF] = useState(Object.fromEntries(fields.map(([k]) => [k, ''])));
+  const [errors, setErrors] = useState({});
+
+  const setField = (k, v) => {
+    setF((prev) => ({ ...prev, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
+
+  const handleAdd = () => {
+    const errs = {};
+    if (fields.some(([k]) => k === 'code')) {
+      const codeErr = validateText(f.code, { required: true, fieldLabel: 'Code' });
+      if (codeErr) errs.code = codeErr;
+    }
+    if (fields.some(([k]) => k === 'name')) {
+      const nameErr = validateText(f.name, { required: true, fieldLabel: 'Name' });
+      if (nameErr) errs.name = nameErr;
+    }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setErrors({});
+    save(() => api.post(createPath, f), `${title} updated`);
+  };
+
   return (
     <>
       <div className="card" style={{ marginBottom: 12, borderRadius: 14, overflow: 'hidden', padding: 0 }}>
@@ -692,13 +825,28 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
                 <div className="input-with-icon">
                   <div className="input-icon-pill"><FiFileText size={13} /></div>
                   {type === 'select'
-                    ? <select value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })}><option value="">—</option>{opts.map((o) => <option key={o}>{o}</option>)}</select>
-                    : <input type={type || 'text'} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={l} />}
+                    ? <select value={f[k]} onChange={(e) => setField(k, e.target.value)}><option value="">—</option>{opts.map((o) => <option key={o}>{o}</option>)}</select>
+                    : <input
+                        name={k}
+                        type={type || 'text'}
+                        value={f[k]}
+                        onChange={(e) => setField(k, e.target.value)}
+                        onBlur={() => {
+                          if (k === 'code' || k === 'name') {
+                            const err = validateText(f[k], { required: true, fieldLabel: l });
+                            if (err) setErrors((prev) => ({ ...prev, [k]: err }));
+                          }
+                        }}
+                        className={errors[k] ? 'is-invalid' : ''}
+                        aria-invalid={!!errors[k]}
+                        placeholder={l}
+                      />}
                 </div>
+                {errors[k] && <span className="field-error-msg err">{errors[k]}</span>}
               </div>
             ))}
           </div>
-          <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post(createPath, f), `${title} updated`)}>
+          <button className="btn-save-glow" disabled={busy} onClick={handleAdd}>
             <FiSave size={14} /> Add
           </button>
         </div>
@@ -709,6 +857,38 @@ function ListTab({ title, rows, busy, save, createPath, fields }) {
 
 function AccountsTab({ data, busy, save }) {
   const [f, setF] = useState({ code: '', name: '', type: 'bank', opening_balance: 0 });
+  const [errors, setErrors] = useState({});
+
+  const setField = (k, v) => {
+    setF((prev) => ({ ...prev, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
+
+  const handleAdd = () => {
+    const errs = {};
+    const codeErr = validateText(f.code, { required: true, fieldLabel: 'Account code' });
+    if (codeErr) errs.code = codeErr;
+    const nameErr = validateText(f.name, { required: true, fieldLabel: 'Account name' });
+    if (nameErr) errs.name = nameErr;
+    if (f.opening_balance !== '' && Number(f.opening_balance) < 0) {
+      errs.opening_balance = 'Opening balance cannot be negative.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setErrors({});
+    save(() => api.post('/api/settings/accounts', { ...f, opening_balance: Number(f.opening_balance || 0) }), 'Account added');
+  };
+
   return (
     <>
       <div className="card" style={{ marginBottom: 12, borderRadius: 14, overflow: 'hidden', padding: 0 }}>
@@ -757,24 +937,48 @@ function AccountsTab({ data, busy, save }) {
         <div style={{ padding: '14px 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginBottom: 12 }}>
             <div className="form-field-group">
-              <label className="form-field-label">Code</label>
+              <label className="form-field-label">Code *</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
-                <input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} placeholder="e.g. CASH-01" />
+                <input
+                  name="code"
+                  value={f.code}
+                  onChange={(e) => setField('code', e.target.value)}
+                  onBlur={() => {
+                    const err = validateText(f.code, { required: true, fieldLabel: 'Account code' });
+                    if (err) setErrors((prev) => ({ ...prev, code: err }));
+                  }}
+                  className={errors.code ? 'is-invalid' : ''}
+                  aria-invalid={!!errors.code}
+                  placeholder="e.g. CASH-01"
+                />
               </div>
+              {errors.code && <span className="field-error-msg err">{errors.code}</span>}
             </div>
             <div className="form-field-group">
-              <label className="form-field-label">Name</label>
+              <label className="form-field-label">Name *</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
-                <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Main Office Cash" />
+                <input
+                  name="name"
+                  value={f.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  onBlur={() => {
+                    const err = validateText(f.name, { required: true, fieldLabel: 'Account name' });
+                    if (err) setErrors((prev) => ({ ...prev, name: err }));
+                  }}
+                  className={errors.name ? 'is-invalid' : ''}
+                  aria-invalid={!!errors.name}
+                  placeholder="e.g. Main Office Cash"
+                />
               </div>
+              {errors.name && <span className="field-error-msg err">{errors.name}</span>}
             </div>
             <div className="form-field-group">
               <label className="form-field-label">Type</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiDollarSign size={13} /></div>
-                <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
+                <select value={f.type} onChange={(e) => setField('type', e.target.value)}>
                   <option value="cash">cash</option><option value="bank">bank</option><option value="other">other</option>
                 </select>
               </div>
@@ -783,11 +987,26 @@ function AccountsTab({ data, busy, save }) {
               <label className="form-field-label">Opening balance</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiDollarSign size={13} /></div>
-                <input type="number" step="0.01" value={f.opening_balance} onChange={(e) => setF({ ...f, opening_balance: e.target.value })} placeholder="0.00" />
+                <input
+                  name="opening_balance"
+                  type="number"
+                  step="0.01"
+                  value={f.opening_balance}
+                  onChange={(e) => setField('opening_balance', e.target.value)}
+                  onBlur={() => {
+                    if (f.opening_balance !== '' && Number(f.opening_balance) < 0) {
+                      setErrors((prev) => ({ ...prev, opening_balance: 'Opening balance cannot be negative.' }));
+                    }
+                  }}
+                  className={errors.opening_balance ? 'is-invalid' : ''}
+                  aria-invalid={!!errors.opening_balance}
+                  placeholder="0.00"
+                />
               </div>
+              {errors.opening_balance && <span className="field-error-msg err">{errors.opening_balance}</span>}
             </div>
           </div>
-          <button className="btn-save-glow" disabled={busy} onClick={() => save(() => api.post('/api/settings/accounts', { ...f, opening_balance: Number(f.opening_balance || 0) }), 'Account added')}>
+          <button className="btn-save-glow" disabled={busy} onClick={handleAdd}>
             <FiSave size={14} /> Add Account
           </button>
         </div>

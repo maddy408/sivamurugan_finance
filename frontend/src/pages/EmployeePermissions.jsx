@@ -1,14 +1,16 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { Spinner, ErrorState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 
 export default function EmployeePermissions() {
   const { id } = useParams();
   const { can } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const editable = can('permissions.edit');
 
@@ -77,25 +79,25 @@ export default function EmployeePermissions() {
   return (
     <>
       <div className="toolbar">
-        <Link to="/employees" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> Users</Link>
-        <h1 style={{ margin: 0, fontSize: 18 }}>User access &amp; permissions</h1>
+        <Link to="/employees" className="btn sm secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiArrowLeft size={14} /> {t('Users', 'Users')}</Link>
+        <h1 style={{ margin: 0, fontSize: 18 }}>{t('User access & permissions', 'User access & permissions')}</h1>
         <div style={{ flex: 1 }} />
-        {editable && <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>}
+        {editable && <button className="btn" onClick={save} disabled={busy}>{busy ? t('Saving…', 'Saving…') : t('Save changes', 'Save changes')}</button>}
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-body" style={{ padding: '10px 16px' }}>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Access is <b>role + module/action</b> based. There is no location restriction:
-            every employee already sees all customers, loans, chits and pending dues.
-            Turn a module off below and it is denied both in the UI <i>and</i> the API.
+            {lang === 'ta'
+              ? 'அணுகல் பொறுப்பு + தொகுதி/செயல் அடிப்படையிலானது. ஊழியர்கள் அனைவரும் அனுமதிக்கப்பட்ட தொகுதிகளின் தரவைக் காண முடியும்.'
+              : 'Access is role + module/action based. There is no location restriction: every employee already sees all customers, loans, chits and pending dues.'}
           </p>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head"><h2>Directly assigned loans / chits (collector)</h2>
-          <span className="muted">optional — sets the named collector on the chit; does not affect visibility</span>
+        <div className="card-head"><h2>{t('Directly assigned loans / chits (collector)', 'Directly assigned loans / chits (collector)')}</h2>
+          <span className="muted">{t('optional — sets the named collector on the chit; does not affect visibility', 'optional — sets the named collector on the chit; does not affect visibility')}</span>
         </div>
         <div className="card-body">
           <select multiple value={loanSel.map(String)} disabled={!editable} style={{ width: '100%', minHeight: 150 }}
@@ -107,12 +109,12 @@ export default function EmployeePermissions() {
 
       <div className="card">
         <div className="card-head">
-          <h2>Module &amp; action permissions</h2>
+          <h2>{t('Module & action permissions', 'Module & action permissions')}</h2>
           <span className="muted">click a row to cycle default <FiArrowRight size={10} style={{verticalAlign:-1}} /> allow <FiArrowRight size={10} style={{verticalAlign:-1}} /> deny</span>
         </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Module</th><th>Action</th><th>Effective</th></tr></thead>
+            <thead><tr><th>{t('Module', 'Module')}</th><th>{t('Action', 'Action')}</th><th>{t('Effective', 'Effective')}</th></tr></thead>
             <tbody>
               {Object.entries(byModule).map(([mod, perms]) =>
                 perms.map((p, idx) => (

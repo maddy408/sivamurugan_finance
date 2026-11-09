@@ -65,7 +65,7 @@ export default function Collection() {
                 {totalAssignedChits}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                Chits assigned for collection
+                {t('Chits assigned for collection', 'Chits assigned for collection')}
               </div>
             </div>
             <div style={{
@@ -90,13 +90,13 @@ export default function Collection() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#e11d48', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                TOTAL PENDING DUE
+                {t('TOTAL PENDING DUE', 'TOTAL PENDING DUE')}
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '2px 0 1px' }}>
                 {money(totalPendingDueSum)}
               </div>
               <div style={{ fontSize: 11, color: '#64748b' }}>
-                {overdueChitsCount} chit(s) with overdue dues
+                {overdueChitsCount} {t('chit(s) with overdue dues', 'chit(s) with overdue dues')}
               </div>
             </div>
             <div style={{
@@ -122,7 +122,7 @@ export default function Collection() {
           <div className="input-icon-pill"><FiSearch size={13} /></div>
           <input
             type="search"
-            placeholder="Search customer, code, mobile, chit code… (Press Enter to open)"
+            placeholder={t('Search customer, code, mobile, chit code… (Press Enter to open)', 'Search customer, code, mobile, chit code… (Press Enter to open)')}
             value={list.q}
             onChange={(e) => list.setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -138,35 +138,35 @@ export default function Collection() {
           onChange={(e) => list.setFilter('status', e.target.value)}
           style={{ height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1', fontSize: 12, padding: '0 12px', background: '#fff' }}
         >
-          <option value="">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-          <option value="closed">Closed</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('All Statuses', 'All Statuses')}</option>
+          <option value="active">{t('Active', 'Active')}</option>
+          <option value="completed">{t('Completed', 'Completed')}</option>
+          <option value="closed">{t('Closed', 'Closed')}</option>
+          <option value="cancelled">{t('Cancelled', 'Cancelled')}</option>
         </select>
         <select
           value={list.filters.only_due || ''}
           onChange={(e) => list.setFilter('only_due', e.target.value)}
           style={{ height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1', fontSize: 12, padding: '0 12px', background: '#fff' }}
         >
-          <option value="">All chits</option>
-          <option value="1">Only with pending dues</option>
+          <option value="">{t('All chits', 'All chits')}</option>
+          <option value="1">{t('Only with pending dues', 'Only with pending dues')}</option>
         </select>
         <select
           value={list.filters.schedule_type || ''}
           onChange={(e) => list.setFilter('schedule_type', e.target.value)}
           style={{ height: 36, borderRadius: 18, border: '1.5px solid #cbd5e1', fontSize: 12, padding: '0 12px', background: '#fff' }}
         >
-          <option value="">Any schedule</option>
-          <option value="DAILY">Daily</option>
-          <option value="WEEKLY">Weekly</option>
-          <option value="MONTHLY_WEEKDAY">Monthly weekday</option>
-          <option value="MONTHLY_DAILY">Monthly daily</option>
-          <option value="MONTHLY_INTERVAL">Monthly interval</option>
+          <option value="">{t('Any schedule', 'Any schedule')}</option>
+          <option value="DAILY">{t('Daily', 'Daily')}</option>
+          <option value="WEEKLY">{t('Weekly', 'Weekly')}</option>
+          <option value="MONTHLY_WEEKDAY">{t('Monthly weekday', 'Monthly weekday')}</option>
+          <option value="MONTHLY_DAILY">{t('Monthly daily', 'Monthly daily')}</option>
+          <option value="MONTHLY_INTERVAL">{t('Monthly interval', 'Monthly interval')}</option>
         </select>
         {list.hasFilters && (
           <button className="btn secondary sm" onClick={list.clear} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            Clear filters <FiX size={12} />
+            {t('Clear filters', 'Clear filters')} <FiX size={12} />
           </button>
         )}
         <div style={{ flex: 1 }} />
@@ -180,14 +180,14 @@ export default function Collection() {
             cursor: 'pointer'
           }}
         >
-          <FiFileText size={13} style={{ color: '#1d4ed8' }} /> Sample Template
+          <FiFileText size={13} style={{ color: '#1d4ed8' }} /> {t('Sample Template', 'Sample Template')}
         </button>
       </div>
 
       {list.loading && <Spinner />}
       {list.error && <ErrorState error={list.error} onRetry={list.reload} />}
       {!list.loading && !list.error && loans.length === 0 && (
-        <EmptyState title="No collection workload" hint="Chits assigned to you will appear here." />
+        <EmptyState title={t('No collection workload', 'No collection workload')} hint={t('Chits assigned to you will appear here.', 'Chits assigned to you will appear here.')} />
       )}
 
       {/* Compact collection workload table wrapped in card */}
@@ -197,13 +197,13 @@ export default function Collection() {
             <table className="grid">
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Chit</th>
-                  <th className="right">Installment</th>
-                  <th>Next Due</th>
-                  <th className="right">Fine</th>
-                  <th className="right">Pending Due</th>
-                  <th>Status</th>
+                  <th>{t('Customer', 'Customer')}</th>
+                  <th>{t('Chit', 'Chit')}</th>
+                  <th className="right">{t('Installment', 'Installment')}</th>
+                  <th>{t('Next Due', 'Next Due')}</th>
+                  <th className="right">{t('Fine', 'Fine')}</th>
+                  <th className="right">{t('Pending Due', 'Pending Due')}</th>
+                  <th>{t('Status', 'Status')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -224,21 +224,21 @@ export default function Collection() {
                     : { cls: 'active', label: 'ALL CLEAR' };
                   return (
                     <tr key={loan.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/collection/chit/${loan.id}`)}>
-                      <td data-label="Customer">
+                      <td data-label={t('Customer', 'Customer')}>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>{loan.customer_name}</div>
                         <div className="muted" style={{ fontSize: 11 }}>{loan.customer_code} · <FiPhone size={10} style={{ verticalAlign: -1 }} /> {loan.mobile || '—'}</div>
                       </td>
-                      <td data-label="Chit"><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></td>
-                      <td className="right" data-label="Installment" style={{ fontWeight: 700 }}>{money(loan.installment_amount)}</td>
-                      <td data-label="Next Due">
+                      <td data-label={t('Chit', 'Chit')}><span className="badge PENDING" style={{ textTransform: 'none' }}>{loan.code}</span></td>
+                      <td className="right" data-label={t('Installment', 'Installment')} style={{ fontWeight: 700 }}>{money(loan.installment_amount)}</td>
+                      <td data-label={t('Next Due', 'Next Due')}>
                         {nd ? <>{fmtDate(nd.due_date)} <span className="muted">(#{nd.installment_no}, {money(nd.balance_amount)})</span></> : '—'}
                       </td>
-                      <td className="right" data-label="Fine">{fine > 0 ? money(fine) : '—'}</td>
-                      <td className="right" data-label="Pending Due">
+                      <td className="right" data-label={t('Fine', 'Fine')}>{fine > 0 ? money(fine) : '—'}</td>
+                      <td className="right" data-label={t('Pending Due', 'Pending Due')}>
                         <b style={{ color: isDue ? '#e11d48' : '#10b981' }}>{isDue ? money(pendingDue) : '₹0.00'}</b>
                       </td>
-                      <td data-label="Status">
-                        <span className={`badge ${statusBadge.cls}`}>{statusBadge.label}</span>
+                      <td data-label={t('Status', 'Status')}>
+                        <span className={`badge ${statusBadge.cls}`}>{t(statusBadge.label, statusBadge.label)}</span>
                       </td>
                       <td className="right" data-label="">
                         <Link
@@ -247,7 +247,7 @@ export default function Collection() {
                           onClick={(e) => e.stopPropagation()}
                           style={{ height: 26, padding: '2px 12px', fontSize: 11, textDecoration: 'none' }}
                         >
-                          {isActive ? 'Collect' : 'View'}
+                          {isActive ? t('Collect', 'Collect') : t('View', 'View')}
                         </Link>
                       </td>
                     </tr>
@@ -259,17 +259,17 @@ export default function Collection() {
 
           <div className="pagination">
             <div className="pagination-info">
-              <span className="pagination-total">{list.pagination.total} chit{list.pagination.total === 1 ? '' : 's'}</span>
+              <span className="pagination-total">{list.pagination.total} {lang === 'ta' ? 'சீட்டுகள்' : (list.pagination.total === 1 ? 'chit' : 'chits')}</span>
             </div>
             <div className="pagination-controls">
               <button className="btn sm secondary pagination-btn" disabled={list.page <= 1} onClick={() => list.setPage(list.page - 1)}>
-                Prev
+                {t('Prev', 'Prev')}
               </button>
               <span className="pagination-page-indicator">
-                Page {list.page} of {Math.max(1, list.pagination.total_pages)}
+                {lang === 'ta' ? `பக்கம் ${list.page} / ${Math.max(1, list.pagination.total_pages)}` : `Page ${list.page} of ${Math.max(1, list.pagination.total_pages)}`}
               </span>
               <button className="btn sm secondary pagination-btn" disabled={list.page >= list.pagination.total_pages} onClick={() => list.setPage(list.page + 1)}>
-                Next
+                {t('Next', 'Next')}
               </button>
             </div>
           </div>
@@ -277,7 +277,7 @@ export default function Collection() {
       )}
 
       <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
-        <Link to="/loans" style={{ fontWeight: 600, color: '#1d4ed8' }}>Open full chit list <FiArrowRight size={12} style={{ verticalAlign: -2 }} /></Link>
+        <Link to="/loans" style={{ fontWeight: 600, color: '#1d4ed8' }}>{t('Open full chit list', 'Open full chit list')} <FiArrowRight size={12} style={{ verticalAlign: -2 }} /></Link>
       </p>
     </>
   );

@@ -23,6 +23,42 @@ class Validator
         $this->rules = $rules;
     }
 
+    public static function validateIndianMobileValue($value, bool $required = false): ?string
+    {
+        $str = $value === null ? '' : (string)$value;
+        if ($str === '') {
+            return $required ? 'Mobile number is required.' : null;
+        }
+        if (!preg_match('/^[0-9]+$/', $str)) {
+            return 'Only numeric digits are allowed.';
+        }
+        if (!preg_match('/^[6-9]/', $str)) {
+            return 'Mobile number must start with 6, 7, 8, or 9.';
+        }
+        if (strlen($str) < 10) {
+            return 'Mobile number must contain exactly 10 digits.';
+        }
+        if (strlen($str) > 10) {
+            return 'Mobile number cannot exceed 10 digits.';
+        }
+        return null;
+    }
+
+    public static function validateAadhaarValue($value, bool $required = false): ?string
+    {
+        $str = $value === null ? '' : trim((string)$value);
+        if ($str === '') {
+            return $required ? 'Aadhaar number is required.' : null;
+        }
+        if (!preg_match('/^[0-9]+$/', $str)) {
+            return 'Only numeric digits are allowed.';
+        }
+        if (strlen($str) !== 12) {
+            return 'Aadhaar number must contain exactly 12 digits.';
+        }
+        return null;
+    }
+
     public static function make(array $data, array $rules): self
     {
         $v = new self($data, $rules);
@@ -38,9 +74,18 @@ class Validator
             $nullable = in_array('nullable', $rules, true);
             $present = array_key_exists($field, $this->data) && $value !== null && $value !== '';
 
+            $isMobileRule = in_array('indian_mobile', $rules, true) || in_array('mobile', $rules, true);
+            $isAadhaarRule = in_array('aadhaar', $rules, true) || in_array('aadhar', $rules, true);
+
             if (!$present) {
                 if (in_array('required', $rules, true)) {
-                    $this->errors[$field][] = "$field is required";
+                    if ($isAadhaarRule) {
+                        $this->errors[$field][] = 'Aadhaar number is required.';
+                    } elseif ($isMobileRule) {
+                        $this->errors[$field][] = 'Mobile number is required.';
+                    } else {
+                        $this->errors[$field][] = "$field is required";
+                    }
                 } elseif ($nullable || !in_array('required', $rules, true)) {
                     $this->clean[$field] = null;
                 }
@@ -77,7 +122,16 @@ class Validator
                         break;
                     case 'email':
                         if (!filter_var($value, FILTER_VALIDATE_EMAIL))
-                            $this->errors[$field][] = "$field must be a valid email";
+                            $this->errors[$field][] = 'Enter a valid email address.';
+                        break;
+                    case 'aadhaar':
+                    case 'aadhar':
+                        $aadhaarErr = self::validateAadhaarValue($value, false);
+                        if ($aadhaarErr !== null) {
+                            $this->errors[$field][] = $aadhaarErr;
+                        } else {
+                            $value = (string)$value;
+                        }
                         break;
                     case 'date':
                         $d = \DateTime::createFromFormat('Y-m-d', (string)$value);
@@ -104,6 +158,15 @@ class Validator
                         $opts = explode(',', (string)$arg);
                         if (!in_array((string)$value, $opts, true))
                             $this->errors[$field][] = "$field must be one of: " . implode(', ', $opts);
+                        break;
+                    case 'indian_mobile':
+                    case 'mobile':
+                        $mobileErr = self::validateIndianMobileValue($value, false);
+                        if ($mobileErr !== null) {
+                            $this->errors[$field][] = $mobileErr;
+                        } else {
+                            $value = (string)$value;
+                        }
                         break;
                 }
             }

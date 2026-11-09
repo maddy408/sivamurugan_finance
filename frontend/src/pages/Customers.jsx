@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import DataTable from '../components/DataTable';
-import { Modal, Confirm, IconView, IconEdit, IconDelete } from '../components/ui';
+import { Modal, Confirm, IconView, IconEdit, IconDelete, FieldError } from '../components/ui';
 import {
   FiUser, FiPhone, FiFileText, FiUsers, FiMapPin, FiMail,
   FiSave, FiSearch, FiX, FiDownload, FiCalendar, FiShield
@@ -11,6 +11,11 @@ import { useList } from '../hooks/useList';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { useI18n } from '../state/I18nContext';
+import {
+  validatePhone, validateAadhaar, validateEmail,
+  validateText, validateDate, focusFirstError, validateIndianMobile,
+  handleNumericKeyDown
+} from '../utils/validation';
 
 const emptyForm = {
   name: '', mobile: '', aadhar_number: '', alt_mobile: '', email: '', gender: '', dob: '',
@@ -38,6 +43,20 @@ export default function Customers() {
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
+    const errs = {};
+    const nameErr = validateText(createForm.name, { required: true, min: 2, max: 128, fieldLabel: 'Full name' });
+    if (nameErr) errs.name = nameErr;
+    const mobileErr = validatePhone(createForm.mobile, false, 'Mobile number');
+    if (mobileErr) errs.mobile = mobileErr;
+    const aadharErr = validateAadhaar(createForm.aadhar_number, false);
+    if (aadharErr) errs.aadhar_number = aadharErr;
+
+    if (Object.keys(errs).length > 0) {
+      setCreateErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+
     setCreateBusy(true); setCreateErrors({});
     try {
       const payload = { ...createForm };
@@ -47,8 +66,13 @@ export default function Customers() {
       setCreateForm(emptyForm);
       list.reload();
     } catch (err) {
-      if (err.errors) setCreateErrors(Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, v[0]])));
-      else toast.error(err.message);
+      if (err.errors) {
+        const mapped = Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setCreateErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -61,6 +85,28 @@ export default function Customers() {
   };
 
   const handleSaveEdit = async () => {
+    const errs = {};
+    const nameErr = validateText(editForm.name, { required: true, min: 2, max: 128, fieldLabel: 'Full name' });
+    if (nameErr) errs.name = nameErr;
+    const mobileErr = validatePhone(editForm.mobile, false, 'Mobile number');
+    if (mobileErr) errs.mobile = mobileErr;
+    const altErr = validatePhone(editForm.alt_mobile, false, 'Alternate mobile');
+    if (altErr) errs.alt_mobile = altErr;
+    const aadharErr = validateAadhaar(editForm.aadhar_number, false);
+    if (aadharErr) errs.aadhar_number = aadharErr;
+    const emailErr = validateEmail(editForm.email, false);
+    if (emailErr) errs.email = emailErr;
+    const dobErr = validateDate(editForm.dob, { required: false, notFuture: true, fieldLabel: 'Date of birth' });
+    if (dobErr) errs.dob = dobErr;
+    const nomineeErr = validatePhone(editForm.nominee_mobile, false, 'Nominee mobile');
+    if (nomineeErr) errs.nominee_mobile = nomineeErr;
+
+    if (Object.keys(errs).length > 0) {
+      setEditErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+
     setEditBusy(true); setEditErrors({});
     try {
       const payload = { ...editForm };
@@ -70,8 +116,13 @@ export default function Customers() {
       setEditModal(null);
       list.reload();
     } catch (e) {
-      if (e.errors) setEditErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, v[0]])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setEditErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setEditBusy(false);
     }
@@ -266,13 +317,34 @@ export default function Customers() {
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiUser size={13} /></div>
                     <input
+                      name="name"
                       value={createForm.name}
-                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                      required
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCreateForm({ ...createForm, name: v });
+                        if (createErrors.name && !validateText(v, { required: true, min: 2, max: 128, fieldLabel: 'Full name' })) {
+                          setCreateErrors((errs) => {
+                            const next = { ...errs };
+                            delete next.name;
+                            return next;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validateText(e.target.value, { required: true, min: 2, max: 128, fieldLabel: 'Full name' });
+                        setCreateErrors((errs) => {
+                          const next = { ...errs };
+                          if (err) next.name = err;
+                          else delete next.name;
+                          return next;
+                        });
+                      }}
+                      aria-invalid={!!createErrors.name}
+                      className={createErrors.name ? 'is-invalid' : ''}
                       placeholder={t('Customer full name', 'Customer full name')}
                     />
                   </div>
-                  {createErrors.name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.name}</span>}
+                  <FieldError error={createErrors.name} />
                 </div>
 
                 {/* Mobile */}
@@ -281,12 +353,38 @@ export default function Customers() {
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiPhone size={13} /></div>
                     <input
+                      name="mobile"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={createForm.mobile}
-                      onChange={(e) => setCreateForm({ ...createForm, mobile: e.target.value })}
+                      onKeyDown={handleNumericKeyDown}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setCreateForm({ ...createForm, mobile: v });
+                        if (createErrors.mobile && !validatePhone(v, false, 'Mobile number')) {
+                          setCreateErrors((errs) => {
+                            const next = { ...errs };
+                            delete next.mobile;
+                            return next;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validatePhone(e.target.value, false, 'Mobile number');
+                        setCreateErrors((errs) => {
+                          const next = { ...errs };
+                          if (err) next.mobile = err;
+                          else delete next.mobile;
+                          return next;
+                        });
+                      }}
+                      aria-invalid={!!createErrors.mobile}
+                      className={createErrors.mobile ? 'is-invalid' : ''}
                       placeholder={t('10-digit mobile number', '10-digit mobile number')}
                     />
                   </div>
-                  {createErrors.mobile && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.mobile}</span>}
+                  <FieldError error={createErrors.mobile} />
                 </div>
 
                 {/* Aadhar Number */}
@@ -295,12 +393,38 @@ export default function Customers() {
                   <div className="input-with-icon">
                     <div className="input-icon-pill"><FiFileText size={13} /></div>
                     <input
+                      name="aadhar_number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={12}
                       value={createForm.aadhar_number}
-                      onChange={(e) => setCreateForm({ ...createForm, aadhar_number: e.target.value })}
+                      onKeyDown={handleNumericKeyDown}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 12);
+                        setCreateForm({ ...createForm, aadhar_number: v });
+                        if (createErrors.aadhar_number && !validateAadhaar(v, false)) {
+                          setCreateErrors((errs) => {
+                            const next = { ...errs };
+                            delete next.aadhar_number;
+                            return next;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validateAadhaar(e.target.value, false);
+                        setCreateErrors((errs) => {
+                          const next = { ...errs };
+                          if (err) next.aadhar_number = err;
+                          else delete next.aadhar_number;
+                          return next;
+                        });
+                      }}
+                      aria-invalid={!!createErrors.aadhar_number}
+                      className={createErrors.aadhar_number ? 'is-invalid' : ''}
                       placeholder={t('12-digit Aadhar number', '12-digit Aadhar number')}
                     />
                   </div>
-                  {createErrors.aadhar_number && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{createErrors.aadhar_number}</span>}
+                  <FieldError error={createErrors.aadhar_number} />
                 </div>
 
                 {/* Nominee Name */}
@@ -429,42 +553,186 @@ export default function Customers() {
               <label className="form-field-label">Full Name *</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiUser size={13} /></div>
-                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                <input
+                  name="name"
+                  value={editForm.name}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setEditForm({ ...editForm, name: v });
+                    if (editErrors.name && !validateText(v, { required: true, min: 2, max: 128, fieldLabel: 'Full name' })) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.name;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validateText(e.target.value, { required: true, min: 2, max: 128, fieldLabel: 'Full name' });
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.name = err;
+                      else delete next.name;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.name}
+                  className={editErrors.name ? 'is-invalid' : ''}
+                />
               </div>
-              {editErrors.name && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{editErrors.name}</span>}
+              <FieldError error={editErrors.name} />
             </div>
 
             <div className="form-field-group">
               <label className="form-field-label">Mobile Number</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiPhone size={13} /></div>
-                <input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
+                <input
+                  name="mobile"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={editForm.mobile || ''}
+                  onKeyDown={handleNumericKeyDown}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setEditForm({ ...editForm, mobile: v });
+                    if (editErrors.mobile && !validatePhone(v, false, 'Mobile number')) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.mobile;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validatePhone(e.target.value, false, 'Mobile number');
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.mobile = err;
+                      else delete next.mobile;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.mobile}
+                  className={editErrors.mobile ? 'is-invalid' : ''}
+                  placeholder="10-digit mobile number"
+                />
               </div>
-              {editErrors.mobile && <span className="err" style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2 }}>{editErrors.mobile}</span>}
+              <FieldError error={editErrors.mobile} />
             </div>
 
             <div className="form-field-group">
               <label className="form-field-label">Aadhar Number</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiFileText size={13} /></div>
-                <input value={editForm.aadhar_number || ''} onChange={(e) => setEditForm({ ...editForm, aadhar_number: e.target.value })} placeholder="12-digit Aadhar" />
+                <input
+                  name="aadhar_number"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={editForm.aadhar_number || ''}
+                  onKeyDown={handleNumericKeyDown}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 12);
+                    setEditForm({ ...editForm, aadhar_number: v });
+                    if (editErrors.aadhar_number && !validateAadhaar(v, false)) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.aadhar_number;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validateAadhaar(e.target.value, false);
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.aadhar_number = err;
+                      else delete next.aadhar_number;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.aadhar_number}
+                  className={editErrors.aadhar_number ? 'is-invalid' : ''}
+                  placeholder="12-digit Aadhar"
+                />
               </div>
+              <FieldError error={editErrors.aadhar_number} />
             </div>
 
             <div className="form-field-group">
               <label className="form-field-label">Alternate Mobile</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiPhone size={13} /></div>
-                <input value={editForm.alt_mobile} onChange={(e) => setEditForm({ ...editForm, alt_mobile: e.target.value })} />
+                <input
+                  name="alt_mobile"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={editForm.alt_mobile || ''}
+                  onKeyDown={handleNumericKeyDown}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setEditForm({ ...editForm, alt_mobile: v });
+                    if (editErrors.alt_mobile && !validatePhone(v, false, 'Alternate mobile')) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.alt_mobile;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validatePhone(e.target.value, false, 'Alternate mobile');
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.alt_mobile = err;
+                      else delete next.alt_mobile;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.alt_mobile}
+                  className={editErrors.alt_mobile ? 'is-invalid' : ''}
+                  placeholder="10-digit mobile number"
+                />
               </div>
+              <FieldError error={editErrors.alt_mobile} />
             </div>
 
             <div className="form-field-group">
               <label className="form-field-label">Email Address</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiMail size={13} /></div>
-                <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                <input
+                  name="email"
+                  type="email"
+                  value={editForm.email || ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setEditForm({ ...editForm, email: v });
+                    if (editErrors.email && !validateEmail(v, false)) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.email;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validateEmail(e.target.value, false);
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.email = err;
+                      else delete next.email;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.email}
+                  className={editErrors.email ? 'is-invalid' : ''}
+                />
               </div>
+              <FieldError error={editErrors.email} />
             </div>
 
             <div className="form-field-group">
@@ -482,8 +750,35 @@ export default function Customers() {
               <label className="form-field-label">Date of Birth</label>
               <div className="input-with-icon">
                 <div className="input-icon-pill"><FiCalendar size={13} /></div>
-                <input type="date" value={editForm.dob || ''} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} />
+                <input
+                  name="dob"
+                  type="date"
+                  value={editForm.dob || ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setEditForm({ ...editForm, dob: v });
+                    if (editErrors.dob && !validateDate(v, { required: false, notFuture: true, fieldLabel: 'Date of birth' })) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.dob;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validateDate(e.target.value, { required: false, notFuture: true, fieldLabel: 'Date of birth' });
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.dob = err;
+                      else delete next.dob;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.dob}
+                  className={editErrors.dob ? 'is-invalid' : ''}
+                />
               </div>
+              <FieldError error={editErrors.dob} />
             </div>
 
             <div className="form-field-group">
@@ -508,6 +803,45 @@ export default function Customers() {
                 <div className="input-icon-pill"><FiUsers size={13} /></div>
                 <input value={editForm.nominee_relation} onChange={(e) => setEditForm({ ...editForm, nominee_relation: e.target.value })} />
               </div>
+            </div>
+
+            <div className="form-field-group">
+              <label className="form-field-label">Nominee Mobile</label>
+              <div className="input-with-icon">
+                <div className="input-icon-pill"><FiPhone size={13} /></div>
+                <input
+                  name="nominee_mobile"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={editForm.nominee_mobile || ''}
+                  onKeyDown={handleNumericKeyDown}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setEditForm({ ...editForm, nominee_mobile: v });
+                    if (editErrors.nominee_mobile && !validateIndianMobile(v, false)) {
+                      setEditErrors((errs) => {
+                        const next = { ...errs };
+                        delete next.nominee_mobile;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validateIndianMobile(e.target.value, false);
+                    setEditErrors((errs) => {
+                      const next = { ...errs };
+                      if (err) next.nominee_mobile = err;
+                      else delete next.nominee_mobile;
+                      return next;
+                    });
+                  }}
+                  aria-invalid={!!editErrors.nominee_mobile}
+                  className={editErrors.nominee_mobile ? 'is-invalid' : ''}
+                  placeholder="10-digit mobile number"
+                />
+              </div>
+              {editErrors.nominee_mobile && <span className="field-error-msg err">{editErrors.nominee_mobile}</span>}
             </div>
 
             <div className="form-field-group">

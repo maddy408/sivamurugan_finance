@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import fs from 'fs';
 import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,6 +27,7 @@ function isPortOpen(port, host = '127.0.0.1') {
 }
 
 async function start() {
+  const isWin = process.platform === 'win32';
   const phpRunning = await isPortOpen(8000);
   let phpProc = null;
 
@@ -45,11 +47,27 @@ async function start() {
   }
 
   // Start Vite
-  const viteCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const viteArgs = ['vite', ...process.argv.slice(2)];
-  const viteProc = spawn(viteCmd, viteArgs, {
-    cwd: __dirname,
-    stdio: 'inherit',
+  const viteBin = path.resolve(__dirname, 'node_modules/vite/bin/vite.js');
+  let viteProc;
+  if (fs.existsSync(viteBin)) {
+    viteProc = spawn(process.execPath, [viteBin, ...process.argv.slice(2)], {
+      cwd: __dirname,
+      stdio: 'inherit',
+    });
+  } else {
+    viteProc = spawn(isWin ? 'npx.cmd' : 'npx', ['vite', ...process.argv.slice(2)], {
+      cwd: __dirname,
+      stdio: 'inherit',
+      shell: isWin,
+    });
+  }
+
+  viteProc.on('error', (err) => {
+    console.error('\x1b[31m[Vite Error]\x1b[0m Failed to start Vite:', err.message);
+  });
+
+  viteProc.on('exit', (code) => {
+    cleanup();
   });
 
   const cleanup = () => {

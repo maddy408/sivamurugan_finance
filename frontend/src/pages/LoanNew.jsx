@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, money, fmtDate } from '../api/client';
 import { Field, Modal } from '../components/ui';
+import { validateDate, validateAmount, validateInteger, focusFirstError } from '../utils/validation';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { FiArrowLeft, FiFileText, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
@@ -42,7 +43,16 @@ export default function LoanNew() {
     api.get('/api/loans/next-code').then((r) => setNextCode(r.data.next_code)).catch(() => { });
   }, []);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
 
   // Address/location is NOT chosen here — a chit inherits the customer's own address text.
   const selectedCustomer = customers.find((c) => String(c.id) === String(form.customer_id));
@@ -84,17 +94,35 @@ export default function LoanNew() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setErrors({});
+    const errs = {};
+    if (!form.customer_id) errs.customer_id = 'Please select a customer.';
+    const amtErr = validateAmount(form.principal_amount, { required: true, min: 1, fieldLabel: 'Chit amount' });
+    if (amtErr) errs.principal_amount = amtErr;
+    const instErr = validateAmount(form.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+    if (instErr) errs.installment_amount = instErr;
+    const tenureErr = validateInteger(form.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+    if (tenureErr) errs.tenure = tenureErr;
+    const dateErr = validateDate(form.start_date, { required: true, fieldLabel: 'Start date' });
+    if (dateErr) errs.start_date = dateErr;
+
     if (wantDist) {
+      if (!distAmt || distAmt <= 0) {
+        errs['distribution.amount'] = 'Enter an amount to distribute.';
+      }
       if (!dist.account_id) {
-        setErrors({ 'distribution.account_id': 'Choose the account the money comes from.' });
-        return;
+        errs['distribution.account_id'] = 'Choose the account the money comes from.';
       }
       if (dist.new_emi_amount !== '' && Number(dist.new_emi_amount) <= 0) {
-        setErrors({ 'distribution.new_emi_amount': 'New EMI must be greater than 0.' });
-        return;
+        errs['distribution.new_emi_amount'] = 'New EMI must be greater than 0.';
       }
     }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setErrors({});
     setBusy(true);
     try {
       const payload = {
@@ -134,8 +162,13 @@ export default function LoanNew() {
         nav(`/loans/${r.data.id}`);
       }
     } catch (e2) {
-      if (e2.errors) setErrors(Object.fromEntries(Object.entries(e2.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(e2.message);
+      if (e2.errors) {
+        const mapped = Object.fromEntries(Object.entries(e2.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e2.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -176,7 +209,10 @@ export default function LoanNew() {
         <div className="card-body" style={{ padding: '16px 20px' }}>
           <div className="form-grid">
             <Field label="Customer *" error={errors.customer_id}>
-              <input list="cust-options" placeholder="Search name, code or mobile…"
+              <input
+                name="customer_id"
+                list="cust-options"
+                placeholder="Search name, code or mobile…"
                 value={form._customerLabel ?? (selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : '')}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -185,6 +221,14 @@ export default function LoanNew() {
                     c.customer_code === v || c.mobile === v ||
                     c.name.toLowerCase() === v.toLowerCase());
                   setForm((f) => ({ ...f, _customerLabel: v, customer_id: m ? m.id : '' }));
+                  if (m?.id && errors.customer_id) {
+                    setErrors((prev) => { const n = { ...prev }; delete n.customer_id; return n; });
+                  }
+                }}
+                onBlur={() => {
+                  if (!form.customer_id) {
+                    setErrors((prev) => ({ ...prev, customer_id: 'Please select a customer.' }));
+                  }
                 }}
                 required />
               <datalist id="cust-options">
@@ -201,22 +245,54 @@ export default function LoanNew() {
               )}
             </Field>
             <Field label="Chit Code" error={errors.code}>
-              <input value={form.code} onChange={(e) => set('code', e.target.value)}
+              <input name="code" value={form.code} onChange={(e) => set('code', e.target.value)}
                 placeholder={nextCode ? `Leave blank to auto-generate (next: ${nextCode})` : 'Leave blank to auto-generate'} />
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
                 Empty → the server generates the next code. Typed → saved exactly as entered (must be unique).
               </p>
             </Field>
             <Field label="Chit / principal amount *" error={errors.principal_amount}>
-              <input type="number" min="1" step="0.01" value={form.principal_amount} onChange={(e) => set('principal_amount', e.target.value)} required />
+              <input
+                type="number"
+                name="principal_amount"
+                min="1"
+                step="0.01"
+                value={form.principal_amount}
+                onChange={(e) => set('principal_amount', e.target.value)}
+                onBlur={() => {
+                  const err = validateAmount(form.principal_amount, { required: true, min: 1, fieldLabel: 'Chit amount' });
+                  if (err) setErrors((prev) => ({ ...prev, principal_amount: err }));
+                }}
+                required />
             </Field>
             <Field label="Installment Amount *" error={errors.installment_amount}>
-              <input type="number" min="0.01" step="0.01" value={form.installment_amount}
-                onChange={(e) => set('installment_amount', e.target.value)} required
+              <input
+                type="number"
+                name="installment_amount"
+                min="0.01"
+                step="0.01"
+                value={form.installment_amount}
+                onChange={(e) => set('installment_amount', e.target.value)}
+                onBlur={() => {
+                  const err = validateAmount(form.installment_amount, { required: true, min: 0.01, fieldLabel: 'Installment amount' });
+                  if (err) setErrors((prev) => ({ ...prev, installment_amount: err }));
+                }}
+                required
                 placeholder="e.g. 2000 — used exactly as entered" />
             </Field>
             <Field label="Tenure (number of installments) *" error={errors.tenure}>
-              <input type="number" min="1" step="1" value={form.tenure} onChange={(e) => set('tenure', e.target.value)} required />
+              <input
+                type="number"
+                name="tenure"
+                min="1"
+                step="1"
+                value={form.tenure}
+                onChange={(e) => set('tenure', e.target.value)}
+                onBlur={() => {
+                  const err = validateInteger(form.tenure, { required: true, min: 1, fieldLabel: 'Tenure' });
+                  if (err) setErrors((prev) => ({ ...prev, tenure: err }));
+                }}
+                required />
             </Field>
             <Field label="Due Date Schedule" error={errors.due_date_mode}>
               <select value={form.due_date_mode} onChange={(e) => set('due_date_mode', e.target.value)}>
@@ -261,7 +337,16 @@ export default function LoanNew() {
               </>
             )}
             <Field label="Start date *" error={errors.start_date}>
-              <input type="date" value={form.start_date} onChange={(e) => set('start_date', e.target.value)} required />
+              <input
+                type="date"
+                name="start_date"
+                value={form.start_date}
+                onChange={(e) => set('start_date', e.target.value)}
+                onBlur={() => {
+                  const err = validateDate(form.start_date, { required: true, fieldLabel: 'Start date' });
+                  if (err) setErrors((prev) => ({ ...prev, start_date: err }));
+                }}
+                required />
             </Field>
             <Field label="Assign to employee (optional)">
               <select value={form.employee_id} onChange={(e) => set('employee_id', e.target.value)}>
@@ -303,8 +388,22 @@ export default function LoanNew() {
           <div className="card-body">
             <div className="form-grid">
               <Field label="Distributed Amount *" error={errors['distribution.amount']}>
-                <input type="number" min="0.01" step="0.01" value={dist.amount}
-                  onChange={(e) => setDist({ ...dist, amount: e.target.value })}
+                <input
+                  type="number"
+                  name="distribution.amount"
+                  min="0.01"
+                  step="0.01"
+                  value={dist.amount}
+                  onChange={(e) => {
+                    setDist({ ...dist, amount: e.target.value });
+                    if (errors['distribution.amount']) {
+                      setErrors((prev) => { const n = { ...prev }; delete n['distribution.amount']; return n; });
+                    }
+                  }}
+                  onBlur={() => {
+                    const err = validateAmount(dist.amount, { required: true, min: 0.01, fieldLabel: 'Distributed amount' });
+                    if (err) setErrors((prev) => ({ ...prev, 'distribution.amount': err }));
+                  }}
                   placeholder="amount handed to the customer" />
                 {principal > 0 && distAmt > 0 && (
                   <span className="muted" style={{ fontSize: 12 }}>
@@ -314,7 +413,20 @@ export default function LoanNew() {
                 )}
               </Field>
               <Field label="Distribution Account *" error={errors['distribution.account_id']}>
-                <select value={dist.account_id} onChange={(e) => setDist({ ...dist, account_id: e.target.value })}>
+                <select
+                  name="distribution.account_id"
+                  value={dist.account_id}
+                  onChange={(e) => {
+                    setDist({ ...dist, account_id: e.target.value });
+                    if (errors['distribution.account_id']) {
+                      setErrors((prev) => { const n = { ...prev }; delete n['distribution.account_id']; return n; });
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!dist.account_id) {
+                      setErrors((prev) => ({ ...prev, 'distribution.account_id': 'Choose the account the money comes from.' }));
+                    }
+                  }}>
                   <option value="">— select account —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
                 </select>

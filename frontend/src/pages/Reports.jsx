@@ -3,6 +3,7 @@ import { api, API_BASE, money, fmtDate } from '../api/client';
 import { Spinner, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import {
   FiBarChart2, FiFileText, FiCheckCircle, FiCreditCard, FiUsers, FiCalendar,
   FiUser, FiDollarSign, FiTrendingUp, FiClipboard, FiBookOpen, FiSearch, FiDownload, FiPrinter, FiSun,
@@ -136,6 +137,7 @@ const getQuickRangeDates = (type) => {
 export default function Reports() {
   const { meta, can } = useAuth();
   const toast = useToast();
+  const { t, lang } = useI18n();
 
   const [catalogue, setCatalogue] = useState([]);
   const [name, setName] = useState('daily-report');
@@ -455,10 +457,10 @@ export default function Reports() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>
-              Reports
+              {t('Reports', 'Reports')}
             </h1>
             <p style={{ margin: '3px 0 0 0', fontSize: 13.5, color: '#64748b', fontWeight: 500 }}>
-              Analyze and export your chit fund reports with custom date filters
+              {t('Analyze and export your chit fund reports with custom date filters', 'Analyze and export your chit fund reports with custom date filters')}
             </p>
           </div>
         </div>
@@ -471,7 +473,7 @@ export default function Reports() {
                 onClick={() => download('/api/reports/full-export', exportParams)}
               >
                 <FiDownload size={14} style={{ color: '#0d2856' }} />
-                <span>Export Full Workbook</span>
+                <span>{t('Export Full Workbook', 'Export Full Workbook')}</span>
               </button>
 
               <div style={{ position: 'relative' }}>
@@ -487,7 +489,7 @@ export default function Reports() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <FiFilter size={16} style={{ color: '#0d2856' }} />
           <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a', letterSpacing: '0.2px' }}>
-            Select Report Type ({reportList.length})
+            {t('Select Report Type', 'Select Report Type')} ({reportList.length})
           </span>
         </div>
 
@@ -501,7 +503,7 @@ export default function Reports() {
                 onClick={() => { setName(c.name); setData(null); }}
               >
                 <span style={{ fontSize: 14 }}>{REPORT_ICONS[c.name] || <FiFileText />}</span>
-                <span>{c.label}</span>
+                <span>{t(c.label, c.label)}</span>
               </button>
             );
           })}
@@ -521,7 +523,7 @@ export default function Reports() {
               <FiCalendar size={17} />
             </div>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
-              Date / Range Filter
+              {t('Date / Range Filter', 'Date / Range Filter')}
             </h2>
           </div>
 
@@ -537,7 +539,7 @@ export default function Reports() {
 
         {/* Quick Select Pill Buttons Row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginRight: 4 }}>Quick Select:</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginRight: 4 }}>{t('Quick Select:', 'Quick Select:')}</span>
           {[
             ['today', 'Today'],
             ['yesterday', 'Yesterday'],
@@ -553,7 +555,7 @@ export default function Reports() {
                 className={`rpt-pill-btn ${isSelected ? 'active' : ''}`}
                 style={{ padding: '6px 18px', fontSize: 13 }}
               >
-                {label}
+                {t(label, label)}
               </button>
             );
           })}
@@ -563,7 +565,7 @@ export default function Reports() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>From Date</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{t('From Date', 'From Date')}</label>
               <input
                 type="date"
                 value={filters.date_from || ''}
@@ -576,7 +578,7 @@ export default function Reports() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>To Date</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{t('To Date', 'To Date')}</label>
               <input
                 type="date"
                 value={filters.date_to || ''}
@@ -591,7 +593,7 @@ export default function Reports() {
             {name !== 'daily-report' && (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Customer</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{t('Customer', 'Customer')}</label>
                   <select
                     value={filters.customer_id || ''}
                     onChange={(e) => setF('customer_id', e.target.value)}
@@ -600,13 +602,13 @@ export default function Reports() {
                       fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#ffffff', minWidth: 160
                     }}
                   >
-                    <option value="">All customers</option>
+                    <option value="">{t('All customers', 'All customers')}</option>
                     {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Chit Code</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{t('Chit Code', 'Chit Code')}</label>
                   <input
                     value={filters.chit_code || ''}
                     onChange={(e) => setF('chit_code', e.target.value)}
@@ -633,14 +635,14 @@ export default function Reports() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <FiRefreshCw size={14} /> Clear Filters
+              <FiRefreshCw size={14} /> {t('Clear Filters', 'Clear Filters')}
             </button>
 
             <button
               className="rpt-gradient-btn"
               onClick={() => apply()}
             >
-              <FiSearch size={15} /> Apply Filters
+              <FiSearch size={15} /> {t('Apply Filters', 'Apply Filters')}
             </button>
           </div>
         </div>
@@ -652,7 +654,7 @@ export default function Reports() {
           background: '#f0f7ff', border: '1.5px solid #7dd3fc', borderRadius: 10, padding: '8px 14px'
         }}>
           <FiInfo size={16} style={{ color: '#0d2856' }} />
-          <span><strong>Active filter:</strong> {activeFilterSummary}</span>
+          <span><strong>{t('Active filter:', 'Active filter:')}</strong> {activeFilterSummary}</span>
         </div>
       </div>
 
@@ -671,12 +673,12 @@ export default function Reports() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 20, color: '#0d2856' }}>{REPORT_ICONS[name] || <FiBarChart2 />}</span>
                   <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    {data.title || activeMeta?.label}
+                    {t(data.title || activeMeta?.label || '')}
                   </h2>
                 </div>
                 <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <FiCalendar size={13} />
-                  <span>{data.filters?.period || 'Selected Period'} • Generated on {new Date(data.generated_at).toLocaleString()}</span>
+                  <span>{data.filters?.period ? t(data.filters.period, data.filters.period) : t('Selected Period', 'Selected Period')} • {t('Generated on', 'Generated on')} {new Date(data.generated_at).toLocaleString()}</span>
                 </div>
               </div>
 
@@ -688,18 +690,18 @@ export default function Reports() {
                     border: '1px solid #bbf7d0'
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }}></span>
-                    {data.total !== undefined ? `${data.total} TOTAL RECORDS` : `${displayRows.length} TOTAL RECORDS`}
+                    {data.total !== undefined ? `${data.total} ${t('TOTAL RECORDS', 'TOTAL RECORDS')}` : `${displayRows.length} ${t('TOTAL RECORDS', 'TOTAL RECORDS')}`}
                   </span>
 
                   <button className="btn-print" onClick={() => window.print()} style={{ padding: '6px 16px', fontSize: 13 }}>
-                    <FiPrinter size={14} /> Print
+                    <FiPrinter size={14} /> {t('Print', 'Print')}
                   </button>
 
                   {can('reports.export') && (
                     <>
                       <button className="btn-pdf" disabled={pdfBusy} style={{ padding: '6px 16px', fontSize: 13 }}
                         onClick={() => downloadReportPdf(name, exportParams, toast, setPdfBusy)}>
-                        <FiDownload size={14} /> Download PDF
+                        <FiDownload size={14} /> {t('Download PDF', 'Download PDF')}
                       </button>
 
                       <button className="btn-excel" style={{ padding: '6px 16px', fontSize: 13 }}
@@ -707,7 +709,7 @@ export default function Reports() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
                         </svg>
-                        <span>Export Excel ▾</span>
+                        <span>{t('Export Excel', 'Export Excel')} ▾</span>
                       </button>
                     </>
                   )}
@@ -720,7 +722,7 @@ export default function Reports() {
                   padding: '5px 14px', fontSize: 12, color: '#ffffff', fontWeight: 700,
                   boxShadow: '0 2px 8px rgba(13, 40, 86, 0.3)'
                 }}>
-                  Applied Filters: {activeFilterSummary}
+                  {t('Applied Filters:', 'Applied Filters:')} {activeFilterSummary}
                 </div>
               </div>
             </div>
@@ -832,7 +834,7 @@ export default function Reports() {
                           <th key={h} title={h} style={{
                             textAlign: rightAlign(data.col_types?.[h]) ? 'right' : 'left',
                             background: runningCols.has(h) ? '#eff6ff' : undefined,
-                          }}>{h}</th>
+                          }}>{t(h, h)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -855,7 +857,7 @@ export default function Reports() {
                                     border: '1px solid #bbf7d0'
                                   }}>
                                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }}></span>
-                                    {val}
+                                    {t(val, val)}
                                   </span>
                                 ) : (
                                   fmtCell(data.col_types?.[h], val)
@@ -875,7 +877,7 @@ export default function Reports() {
                               fontSize: 12, fontWeight: 900, color: '#0f172a', padding: '12px 16px'
                             }}>
                               {h in computedTotals
-                                ? (typeof computedTotals[h] === 'number' ? fmtCell(data.col_types?.[h], computedTotals[h]) : computedTotals[h])
+                                ? (typeof computedTotals[h] === 'number' ? fmtCell(data.col_types?.[h], computedTotals[h]) : t(computedTotals[h], computedTotals[h]))
                                 : ''}
                             </td>
                           ))}
@@ -895,14 +897,14 @@ export default function Reports() {
                 fontSize: 13, flexWrap: 'wrap', gap: 10
               }}>
                 <div style={{ color: '#64748b', fontWeight: 600 }}>
-                  Showing <strong style={{ color: '#0f172a' }}>{data.total === 0 ? 0 : (data.page - 1) * data.per_page + 1}</strong> to{' '}
-                  <strong style={{ color: '#0f172a' }}>{Math.min(data.page * data.per_page, data.total)}</strong> of{' '}
-                  <strong style={{ color: '#0f172a' }}>{data.total}</strong> records {hasFilters ? '(filtered)' : ''}
+                  {t('Showing', 'Showing')} <strong style={{ color: '#0f172a' }}>{data.total === 0 ? 0 : (data.page - 1) * data.per_page + 1}</strong> {t('to', 'to')}{' '}
+                  <strong style={{ color: '#0f172a' }}>{Math.min(data.page * data.per_page, data.total)}</strong> {t('of', 'of')}{' '}
+                  <strong style={{ color: '#0f172a' }}>{data.total}</strong> {t('records', 'records')} {hasFilters ? `(${t('filtered', 'filtered')})` : ''}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Per Page:</span>
+                    <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>{t('Per Page:', 'Per Page:')}</span>
                     <select
                       value={perPage}
                       onChange={(e) => handlePerPageChange(Number(e.target.value))}
@@ -922,11 +924,11 @@ export default function Reports() {
                       onClick={() => handlePageChange(page - 1)}
                       style={{ padding: '5px 12px' }}
                     >
-                      <FiChevronLeft size={14} /> Prev
+                      <FiChevronLeft size={14} /> {t('Prev', 'Prev')}
                     </button>
 
                     <span style={{ padding: '0 8px', fontWeight: 700, color: '#1e293b', fontSize: 13 }}>
-                      {data.page} of {data.total_pages || 1}
+                      {data.page} {t('of', 'of')} {data.total_pages || 1}
                     </span>
 
                     <button
@@ -935,7 +937,7 @@ export default function Reports() {
                       onClick={() => handlePageChange(page + 1)}
                       style={{ padding: '5px 12px' }}
                     >
-                      Next <FiChevronRight size={14} />
+                      {t('Next', 'Next')} <FiChevronRight size={14} />
                     </button>
                   </div>
                 </div>
@@ -1038,6 +1040,7 @@ function getKpiCardStyle(index, label) {
 
 function TemplatesMenu({ onPick }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   return (
     <>
       <button
@@ -1045,7 +1048,7 @@ function TemplatesMenu({ onPick }) {
         onClick={() => setOpen((o) => !o)}
       >
         <FiFileText size={14} style={{ color: '#0d2856' }} />
-        <span>Templates ▾</span>
+        <span>{t('Templates ▾', 'Templates ▾')}</span>
       </button>
       {open && (
         <div style={{
@@ -1058,9 +1061,9 @@ function TemplatesMenu({ onPick }) {
             ['chit', 'Chit import template'],
             ['collection', 'Collection import template'],
             ['expense', 'Expense import template']
-          ].map(([t, lbl]) => (
+          ].map(([tKey, lbl]) => (
             <button
-              key={t}
+              key={tKey}
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
                 background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
@@ -1068,9 +1071,9 @@ function TemplatesMenu({ onPick }) {
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-              onClick={() => { onPick(t); setOpen(false); }}
+              onClick={() => { onPick(tKey); setOpen(false); }}
             >
-              {lbl}
+              {t(lbl, lbl)}
             </button>
           ))}
         </div>

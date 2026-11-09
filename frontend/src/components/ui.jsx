@@ -1,13 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
+import { useI18n } from '../state/I18nContext';
 import {
   FiEye, FiEdit2, FiTrash2, FiX, FiCheckCircle, FiXCircle, FiPrinter, FiClock,
   FiLock, FiEyeOff, FiLogOut, FiPlusCircle, FiSearch, FiRefreshCw, FiList,
   FiFileText, FiDollarSign, FiCreditCard, FiUsers, FiUser, FiCalendar,
   FiBarChart2, FiSettings, FiHome, FiDownload, FiUpload, FiAlertTriangle,
   FiInfo, FiChevronLeft, FiChevronRight, FiChevronDown, FiFilter, FiShield,
-  FiMapPin, FiPhone, FiMail
+  FiMapPin, FiPhone, FiMail, FiAlertCircle
 } from 'react-icons/fi';
+
+export function FieldError({ error }) {
+  const { t } = useI18n();
+  if (!error) return null;
+  return (
+    <span className="field-error-msg err" role="alert">
+      <FiAlertCircle size={12} style={{ flexShrink: 0, marginTop: 1, color: '#ef4444' }} />
+      <span>{t(error, error)}</span>
+    </span>
+  );
+}
 
 // One place that maps the app's icon vocabulary to react-icons/fi — every
 // screen imports icons from here (or from this module's re-exports) instead
@@ -92,6 +104,7 @@ export function Spinner({ label = 'Loading…' }) {
 }
 
 export function EmptyState({ title = 'Nothing here yet', hint }) {
+  const { t } = useI18n();
   return (
     <div className="center-state" style={{ padding: '36px 20px', textAlign: 'center' }}>
       <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 14px' }}>
@@ -107,33 +120,37 @@ export function EmptyState({ title = 'Nothing here yet', hint }) {
           <circle cx="34" cy="37" r="0.9" fill="#FFFFFF" />
         </svg>
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{title}</div>
-      {hint && <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>{hint}</div>}
+      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t(title, title)}</div>
+      {hint && <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>{t(hint, hint)}</div>}
     </div>
   );
 }
 
 export function ErrorState({ error, onRetry }) {
+  const { t } = useI18n();
   return (
     <div className="center-state">
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#f43f5e' }}>Something went wrong</div>
-      <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>{error?.message || 'Unknown error'}</div>
-      {onRetry && <button className="btn secondary" style={{ marginTop: 16 }} onClick={onRetry}>Retry</button>}
+      <div style={{ fontSize: 16, fontWeight: 700, color: '#f43f5e' }}>{t('Something went wrong', 'Something went wrong')}</div>
+      <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>{error?.message ? t(error.message, error.message) : t('Unknown error', 'Unknown error')}</div>
+      {onRetry && <button className="btn secondary" style={{ marginTop: 16 }} onClick={onRetry}>{t('Retry', 'Retry')}</button>}
     </div>
   );
 }
 
 export function Badge({ value }) {
+  const { t } = useI18n();
   const valStr = String(value || '');
   // Display-only: the raw collection/receipt status stored and matched on
   // everywhere else in the app is still 'posted' - only the label shown to
   // the user reads "COMPLETED" (className keeps the raw value so the
   // existing .badge.posted colour rule still applies unchanged).
-  const label = valStr.toLowerCase() === 'posted' ? 'COMPLETED' : valStr.replace(/_/g, ' ');
+  const rawLabel = valStr.toLowerCase() === 'posted' ? 'COMPLETED' : valStr.replace(/_/g, ' ');
+  const label = t(rawLabel, rawLabel);
   return <span className={`badge ${valStr}`}>{label}</span>;
 }
 
 export function Modal({ title, onClose, children, footer, size }) {
+  const { t } = useI18n();
   useEffect(() => {
     const h = (e) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', h);
@@ -142,19 +159,12 @@ export function Modal({ title, onClose, children, footer, size }) {
 
   // Portaled to a flat child of <body> (not rendered inline wherever the
   // modal happens to be used) — this is what makes print work correctly.
-  // A modal rendered deep inside the page tree still has every ancestor's
-  // layout HEIGHT counted during print even when hidden with visibility, so
-  // print content buried 2-3 screens deep would render several blank pages
-  // before the real content. As a flat body child there's nothing above it
-  // in the print flow, so it starts cleanly on page 1 — see @media print in
-  // index.css, which hides the rest of the app (#root) whenever a modal is
-  // open rather than trying to escape via position:absolute.
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className={`modal ${size || ''}`} role="dialog" aria-modal="true">
         <div className="modal-head">
-          <h3>{title}</h3>
-          <button className="btn ghost" onClick={onClose} aria-label="Close" style={{ padding: '4px 8px', display: 'flex' }}><FiX size={16} /></button>
+          <h3>{typeof title === 'string' ? t(title, title) : title}</h3>
+          <button className="btn ghost" onClick={onClose} aria-label={t('Close', 'Close')} style={{ padding: '4px 8px', display: 'flex' }}><FiX size={16} /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -165,6 +175,7 @@ export function Modal({ title, onClose, children, footer, size }) {
 }
 
 export function Field({ label, error, icon: PropIcon, children, className }) {
+  const { t } = useI18n();
   let Icon = PropIcon;
   if (!Icon && label) {
     const lbl = String(label).toLowerCase();
@@ -191,12 +202,14 @@ export function Field({ label, error, icon: PropIcon, children, className }) {
     )
   );
 
+  const displayLabel = typeof label === 'string' ? t(label, label) : label;
+
   if (isAlreadyWrapped || !Icon) {
     return (
       <div className={`form-field-group ${className || ''}`}>
-        {label && <label className="form-field-label">{label}</label>}
+        {label && <label className="form-field-label">{displayLabel}</label>}
         {children}
-        {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
+        {error && <FieldError error={error} />}
       </div>
     );
   }
@@ -209,44 +222,51 @@ export function Field({ label, error, icon: PropIcon, children, className }) {
   if (inputIdx === -1) {
     return (
       <div className={`form-field-group ${className || ''}`}>
-        {label && <label className="form-field-label">{label}</label>}
+        {label && <label className="form-field-label">{displayLabel}</label>}
         {children}
-        {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
+        {error && <FieldError error={error} />}
       </div>
     );
   }
 
-  const primaryInput = childArray[inputIdx];
+  let primaryInput = childArray[inputIdx];
+  if (error && primaryInput) {
+    primaryInput = cloneElement(primaryInput, {
+      className: `${primaryInput.props.className || ''} is-invalid`.trim(),
+      'aria-invalid': true,
+    });
+  }
   const otherChildren = childArray.filter((_, idx) => idx !== inputIdx);
 
   return (
     <div className={`form-field-group ${className || ''}`}>
-      {label && <label className="form-field-label">{label}</label>}
+      {label && <label className="form-field-label">{displayLabel}</label>}
       <div className="input-with-icon">
         <div className="input-icon-pill"><Icon size={13} /></div>
         {primaryInput}
       </div>
       {otherChildren}
-      {error && <span className="err" style={{ fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{error}</span>}
+      {error && <FieldError error={error} />}
     </div>
   );
 }
 
 export function Confirm({ title, message, confirmLabel = 'Confirm', danger, onConfirm, onClose, busy }) {
+  const { t } = useI18n();
   return (
     <Modal
-      title={title}
+      title={typeof title === 'string' ? t(title, title) : title}
       onClose={onClose}
       footer={
         <>
-          <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn secondary" onClick={onClose} disabled={busy}>{t('Cancel', 'Cancel')}</button>
           <button className={`btn ${danger ? 'danger' : ''}`} onClick={onConfirm} disabled={busy}>
-            {busy ? 'Working…' : confirmLabel}
+            {busy ? t('Working…', 'Working…') : t(confirmLabel, confirmLabel)}
           </button>
         </>
       }
     >
-      <p style={{ margin: 0, color: '#334155', lineHeight: 1.6 }}>{message}</p>
+      <p style={{ margin: 0, color: '#334155', lineHeight: 1.6 }}>{typeof message === 'string' ? t(message, message) : message}</p>
     </Modal>
   );
 }

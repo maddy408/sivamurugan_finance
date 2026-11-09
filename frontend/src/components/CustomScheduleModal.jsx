@@ -1,7 +1,9 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { api, money } from '../api/client';
 import { Field, Modal, Badge } from './ui';
+import { validateDate, validateAmount, validateInteger, focusFirstError } from '../utils/validation';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiPlusCircle, FiSave } from 'react-icons/fi';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -37,6 +39,7 @@ const previewStatus = (payable, paid, dueDate) => {
  */
 export default function CustomScheduleModal({ loan, onClose, onDone, localOnly = false, nextInstallmentNo, defaultAmount, editInstallment }) {
   const toast = useToast();
+  const { t, lang } = useI18n();
   const isEdit = !!editInstallment;
   const hasPayment = isEdit && Number(editInstallment.paid_amount) > 0;
   const nextNo = isEdit
@@ -63,6 +66,13 @@ export default function CustomScheduleModal({ loan, onClose, onDone, localOnly =
       setSelectedStatus(previewStatus(updated.payable_amount, updated.paid_amount, updated.due_date));
       return updated;
     });
+    if (errors[k]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
   };
 
   const handleStatusChange = (newStatus) => {
@@ -100,13 +110,26 @@ export default function CustomScheduleModal({ loan, onClose, onDone, localOnly =
   };
 
   const submit = async () => {
-    setErrors({});
-    if (!form.due_date) { setErrors({ due_date: 'Required' }); return; }
-    if (!form.payable_amount) { setErrors({ payable_amount: 'Required' }); return; }
-    if (Number(form.paid_amount) > Number(form.payable_amount)) {
-      setErrors({ paid_amount: 'Amount paid cannot exceed the amount due' });
+    const errs = {};
+    const noErr = validateInteger(form.installment_no, { required: true, min: 1, fieldLabel: 'Installment number' });
+    if (noErr) errs.installment_no = noErr;
+    const dateErr = validateDate(form.due_date, { required: true, fieldLabel: 'Due date' });
+    if (dateErr) errs.due_date = dateErr;
+    const amtErr = validateAmount(form.payable_amount, { required: true, min: 0.01, fieldLabel: 'Amount due' });
+    if (amtErr) errs.payable_amount = amtErr;
+    if (form.paid_amount !== '' && Number(form.paid_amount) < 0) {
+      errs.paid_amount = 'Amount paid cannot be negative.';
+    } else if (Number(form.paid_amount) > Number(form.payable_amount)) {
+      errs.paid_amount = 'Amount paid cannot exceed the amount due.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      focusFirstError(errs);
       return;
     }
+
+    setErrors({});
     const payload = {
       installment_no: Number(form.installment_no),
       due_date: form.due_date,
@@ -130,39 +153,94 @@ export default function CustomScheduleModal({ loan, onClose, onDone, localOnly =
       }
       onDone?.();
     } catch (e) {
-      if (e.errors) setErrors(Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      else toast.error(e.message);
+      if (e.errors) {
+        const mapped = Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+        setErrors(mapped);
+        focusFirstError(mapped);
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal title={isEdit ? `Edit Custom Schedule — #${editInstallment.installment_no}` : 'Add Custom Schedule'} onClose={onClose}
+    <Modal title={isEdit ? t(`Edit Custom Schedule — #${editInstallment.installment_no}`, `Edit Custom Schedule — #${editInstallment.installment_no}`) : t('Add Custom Schedule', 'Add Custom Schedule')} onClose={onClose}
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn secondary" onClick={onClose} disabled={busy}>{t('Cancel', 'Cancel')}</button>
         <button className="btn" onClick={submit} disabled={busy || !form.due_date || !form.payable_amount}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {isEdit ? <FiSave size={14} /> : <FiPlusCircle size={14} />} {busy ? 'Saving…' : (isEdit ? 'Save Schedule' : 'Add Installment')}
+          {isEdit ? <FiSave size={14} /> : <FiPlusCircle size={14} />} {busy ? t('Saving…', 'Saving…') : (isEdit ? t('Save Schedule', 'Save Schedule') : t('Add Installment', 'Add Installment'))}
         </button>
       </>}>
       <div className="form-grid" style={{ rowGap: 16 }}>
-        <Field label="Installment No *" error={errors.installment_no}>
-          <input type="number" min="1" step="1" value={form.installment_no} onChange={(e) => set('installment_no', e.target.value)} />
+        <Field label={t('Installment No *', 'Installment No *')} error={errors.installment_no}>
+          <input
+            name="installment_no"
+            type="number"
+            min="1"
+            step="1"
+            value={form.installment_no}
+            onChange={(e) => set('installment_no', e.target.value)}
+            onBlur={() => {
+              const err = validateInteger(form.installment_no, { required: true, min: 1, fieldLabel: 'Installment number' });
+              if (err) setErrors((prev) => ({ ...prev, installment_no: err }));
+            }}
+          />
         </Field>
-        <Field label="Due Date *" error={errors.due_date}>
-          <input type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
+        <Field label={t('Due Date *', 'Due Date *')} error={errors.due_date}>
+          <input
+            name="due_date"
+            type="date"
+            value={form.due_date}
+            onChange={(e) => set('due_date', e.target.value)}
+            onBlur={() => {
+              const err = validateDate(form.due_date, { required: true, fieldLabel: 'Due date' });
+              if (err) setErrors((prev) => ({ ...prev, due_date: err }));
+            }}
+          />
         </Field>
-        <Field label="Amount Due *" error={errors.payable_amount}>
-          <input type="number" min="0.01" step="0.01" value={form.payable_amount} onChange={(e) => set('payable_amount', e.target.value)} />
+        <Field label={t('Amount Due *', 'Amount Due *')} error={errors.payable_amount}>
+          <input
+            name="payable_amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.payable_amount}
+            onChange={(e) => set('payable_amount', e.target.value)}
+            onBlur={() => {
+              const err = validateAmount(form.payable_amount, { required: true, min: 0.01, fieldLabel: 'Amount due' });
+              if (err) setErrors((prev) => ({ ...prev, payable_amount: err }));
+            }}
+          />
         </Field>
-        <Field label="Amount Paid *" error={errors.paid_amount}>
-          <input type="number" min="0" step="0.01" value={form.paid_amount} disabled={hasPayment}
-            onChange={(e) => set('paid_amount', e.target.value)} />
+        <Field label={t('Amount Paid *', 'Amount Paid *')} error={errors.paid_amount}>
+          <input
+            name="paid_amount"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.paid_amount}
+            disabled={hasPayment}
+            onChange={(e) => set('paid_amount', e.target.value)}
+            onBlur={() => {
+              if (form.paid_amount !== '' && Number(form.paid_amount) < 0) {
+                setErrors((prev) => ({ ...prev, paid_amount: 'Amount paid cannot be negative.' }));
+              } else if (Number(form.paid_amount) > Number(form.payable_amount)) {
+                setErrors((prev) => ({ ...prev, paid_amount: 'Amount paid cannot exceed the amount due.' }));
+              }
+            }}
+          />
         </Field>
-        <Field label="Paid Date *" error={errors.paid_date}>
-          <input type="date" value={form.paid_date} disabled={hasPayment || Number(form.paid_amount) <= 0}
-            onChange={(e) => set('paid_date', e.target.value)} />
+        <Field label="Paid Date" error={errors.paid_date}>
+          <input
+            name="paid_date"
+            type="date"
+            value={form.paid_date}
+            disabled={hasPayment || Number(form.paid_amount) <= 0}
+            onChange={(e) => set('paid_date', e.target.value)}
+          />
         </Field>
         <Field label="Status">
           <select value={selectedStatus} onChange={(e) => handleStatusChange(e.target.value)} disabled={hasPayment}>

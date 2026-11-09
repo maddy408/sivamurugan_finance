@@ -3,6 +3,7 @@ import { api, API_BASE, fmtDate, money } from '../api/client';
 import { Modal } from './ui';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
+import { useI18n } from '../state/I18nContext';
 import { FiPrinter, FiDownload } from 'react-icons/fi';
 
 /**
@@ -13,6 +14,7 @@ import { FiPrinter, FiDownload } from 'react-icons/fi';
  */
 export default function ReceiptModal({ collection, loan, customer, onClose }) {
   const { meta } = useAuth();
+  const { t, lang } = useI18n();
   const toast = useToast();
   const org = meta?.organization || {};
   const [busy, setBusy] = useState(false);
@@ -28,13 +30,13 @@ export default function ReceiptModal({ collection, loan, customer, onClose }) {
   };
 
   return (
-    <Modal title="Collection Receipt" onClose={onClose} size="lg"
+    <Modal title={t("Collection Receipt", "Collection Receipt")} onClose={onClose} size="lg"
       footer={<>
-        <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
+        <button className="btn secondary" onClick={onClose} disabled={busy}>{t("Close", "Close")}</button>
         <button className="btn btn-pdf" onClick={downloadPdf} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FiDownload size={13} /> Download PDF
+          <FiDownload size={13} /> {t("Download PDF", "Download PDF")}
         </button>
-        <button className="btn btn-print" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiPrinter size={13} /> Print</button>
+        <button className="btn btn-print" onClick={() => window.print()} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FiPrinter size={13} /> {t("Print", "Print")}</button>
       </>}>
       <div className="print-receipt">
         <div className="receipt-header">
