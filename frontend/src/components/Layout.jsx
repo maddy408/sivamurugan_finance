@@ -67,7 +67,7 @@ export default function Layout() {
             </div>
             <div className="brand-text-wrap">
               <span className="brand-title">{t('app.title', 'Siva Murugan Chit Fund')}</span>
-              <span className="brand-subtitle">Chit Fund Management</span>
+              <span className="brand-subtitle">{t('app.subtitle', 'Chit Fund Management')}</span>
             </div>
           </Link>
 
@@ -234,26 +234,12 @@ function LangSwitcher({ lang, setLang }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         type="button"
-        style={{
-          background: 'linear-gradient(135deg, #0d2856 0%, #1d4ed8 100%)',
-          color: '#ffffff',
-          border: 'none',
-          borderRadius: 20,
-          padding: '5px 14px',
-          fontWeight: 700,
-          fontSize: 12.5,
-          boxShadow: '0 2px 8px rgba(13, 40, 86, 0.3)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }}
       >
-        <FiGlobe size={14} style={{ color: '#ffffff' }} />
-        <span className="lang-switcher-label" style={{ color: '#ffffff', fontWeight: 700, display: 'inline', fontSize: 12.5 }}>
+        <FiGlobe size={13} />
+        <span className="lang-switcher-label">
           {current.label}
         </span>
-        <FiChevronDown size={13} style={{ color: '#ffffff' }} />
+        <FiChevronDown size={12} />
       </button>
       {open && (
         <div className="lang-switcher-menu" role="listbox">

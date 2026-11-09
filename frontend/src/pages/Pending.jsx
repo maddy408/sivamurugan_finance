@@ -90,7 +90,7 @@ export default function Pending({ hideTitle = false }) {
       )}
 
       {/* Single-Row Sub Navbar matching Settings Tab Pills */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <div className="pending-subnav-bar" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('all')}
           style={{

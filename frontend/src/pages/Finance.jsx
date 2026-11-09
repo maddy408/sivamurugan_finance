@@ -43,7 +43,7 @@ export default function Finance() {
         </div>
       </div>
 
-      <div className="sub-tab-bar" style={{ display: 'inline-flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 24, marginBottom: 16 }}>
+      <div className="sub-tab-bar" style={{ display: 'inline-flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 24, marginBottom: 16, maxWidth: '100%', flexWrap: 'wrap' }}>
         {canExpenses && (
           <button
             className={`sub-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}

@@ -16,6 +16,7 @@ import {
 export default function Settings() {
   const toast = useToast();
   const { user, can, isAdmin, refreshMeta } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState('Organization');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -53,27 +54,27 @@ export default function Settings() {
       {/* Settings Top Text Header (No Box Card, Comfortable & Clear) */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FiSettings size={20} style={{ color: '#1d4ed8' }} /> Settings
+          <FiSettings size={20} style={{ color: '#1d4ed8' }} /> {t('Settings', 'Settings')}
         </h1>
         <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-          Manage your application settings and organization details
+          {t('Manage your application settings and organization details', 'Manage your application settings and organization details')}
         </span>
       </div>
 
       {/* Settings Tab Navigation Pills (Single Row, Well-Spaced & Clear) */}
       <div className="settings-tab-bar" style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 12, scrollbarWidth: 'none' }}>
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
+        {tabs.map((tabItem) => {
+          const Icon = tabItem.icon;
+          const isActive = tab === tabItem.id;
           return (
             <button
-              key={t.id}
+              key={tabItem.id}
               className={`settings-tab-btn ${isActive ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tabItem.id)}
               style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
             >
               <Icon size={13} />
-              <span>{t.label}</span>
+              <span>{t(tabItem.label, tabItem.label)}</span>
             </button>
           );
         })}
