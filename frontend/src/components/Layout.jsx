@@ -147,7 +147,7 @@ export default function Layout() {
                 {t('app.title', 'Siva Murugan Chit Fund')}
               </span>
               <span style={{ fontSize: 11, color: '#64748b' }}>
-                {user?.name} · {t(user?.role_name || user?.role || '')}
+                {t(user?.name, user?.name)} · {t(user?.role_name || user?.role || '')}
               </span>
             </div>
           </div>

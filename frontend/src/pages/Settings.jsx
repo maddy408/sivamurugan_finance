@@ -378,6 +378,7 @@ function OrgTab({ data, busy, save, fileRef, toast, reload, refreshMeta }) {
 }
 
 function ProfileTab({ user }) {
+  const { t } = useI18n();
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 14 }}>
@@ -393,24 +394,24 @@ function ProfileTab({ user }) {
           <FiUser size={16} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>User Profile Settings</h2>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>View account details and assigned permissions</p>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#ffffff' }}>{t('User Profile Settings', 'User Profile Settings')}</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255, 255, 255, 0.85)' }}>{t('View account details and assigned permissions', 'View account details and assigned permissions')}</p>
         </div>
       </div>
       <div style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
           <div className="customer-avatar-box" style={{ width: 44, height: 44, fontSize: 18, borderRadius: 12 }}>{initial}</div>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>{user?.name}</h3>
-            <span className="badge PENDING" style={{ marginTop: 2, fontSize: 11 }}>{user?.role_name || user?.role}</span>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>{t(user?.name, user?.name)}</h3>
+            <span className="badge PENDING" style={{ marginTop: 2, fontSize: 11 }}>{t(user?.role_name || user?.role || '')}</span>
           </div>
         </div>
         <dl className="kv" style={{ gridTemplateColumns: '140px 1fr', rowGap: 8 }}>
-          <dt>Full Name</dt><dd>{user?.name}</dd>
-          <dt>Username</dt><dd><code>{user?.username}</code></dd>
-          <dt>Email Address</dt><dd>{user?.email || '—'}</dd>
-          <dt>System Role</dt><dd style={{ textTransform: 'capitalize', fontWeight: 700 }}>{user?.role_name || user?.role}</dd>
-          <dt>Active Permissions</dt><dd><span className="badge COMPLETED">{(user?.permissions || []).length} permissions active</span></dd>
+          <dt>{t('Full Name', 'Full Name')}</dt><dd>{t(user?.name, user?.name)}</dd>
+          <dt>{t('Username', 'Username')}</dt><dd><code>{user?.username}</code></dd>
+          <dt>{t('Email Address', 'Email Address')}</dt><dd>{user?.email || '—'}</dd>
+          <dt>{t('System Role', 'System Role')}</dt><dd style={{ textTransform: 'capitalize', fontWeight: 700 }}>{t(user?.role_name || user?.role || '')}</dd>
+          <dt>{t('Active Permissions', 'Active Permissions')}</dt><dd><span className="badge COMPLETED">{(user?.permissions || []).length} {t('permissions active', 'permissions active')}</span></dd>
         </dl>
       </div>
     </div>

@@ -752,7 +752,7 @@ export default function Reports() {
                           <div>{style.icon}</div>
                           <div style={{ position: 'relative', zIndex: 2 }}>
                             <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-                              {m.label === 'Total Collection Amount' ? 'TOTAL COLLECTION' : m.label}
+                              {t(m.label === 'Total Collection Amount' ? 'TOTAL COLLECTION' : m.label)}
                             </div>
                             <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginTop: 2, letterSpacing: '-0.3px' }}>
                               {money(m.value)}
@@ -761,7 +761,7 @@ export default function Reports() {
                               fontSize: 12, marginTop: 2, fontWeight: 600,
                               color: m.tone === 'good' ? '#16a34a' : m.tone === 'bad' ? '#dc2626' : '#64748b'
                             }}>
-                              {m.hint || '—'}
+                              {m.hint ? t(m.hint) : '—'}
                             </div>
                           </div>
                         </div>
@@ -782,7 +782,7 @@ export default function Reports() {
                             <div>{style.icon}</div>
                             <div style={{ position: 'relative', zIndex: 2 }}>
                               <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-                                {m.label}
+                                {t(m.label)}
                               </div>
                               <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 2, letterSpacing: '-0.3px' }}>
                                 {money(m.value)}
@@ -791,7 +791,7 @@ export default function Reports() {
                                 fontSize: 12, marginTop: 2, fontWeight: 600,
                                 color: m.tone === 'good' ? '#16a34a' : m.tone === 'bad' ? '#dc2626' : '#64748b'
                               }}>
-                                {m.hint || '—'}
+                                {m.hint ? t(m.hint) : '—'}
                               </div>
                             </div>
                           </div>
@@ -808,7 +808,7 @@ export default function Reports() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                     {displayRows.map((r) => (
                       <div key={r.Metric} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 18px' }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{r.Metric}</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>{t(r.Metric, r.Metric)}</div>
                         <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginTop: 4 }}>
                           {/^(Chits|Active)/.test(r.Metric) ? new Intl.NumberFormat('en-IN').format(r.Value) : money(r.Value)}
                         </div>
@@ -1051,7 +1051,7 @@ function TemplatesMenu({ onPick }) {
         onClick={() => setOpen((o) => !o)}
       >
         <FiFileText size={14} style={{ color: '#0d2856' }} />
-        <span>{t('Templates ▾', 'Templates ▾')}</span>
+        <span>{t('Templates', 'Templates')} ▾</span>
       </button>
       {open && (
         <div style={{

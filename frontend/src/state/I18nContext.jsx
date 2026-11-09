@@ -204,7 +204,6 @@ const TA = {
 
 // Case-insensitive direct phrase lookup for any UI string or table header
 const TA_PHRASES = {
-  // Navigation & General
   'dashboard': 'டாஷ்போர்டு',
   'collection': 'வசூல்',
   'collection workload': 'வசூல் பணிச்சுமை',
@@ -270,12 +269,10 @@ const TA_PHRASES = {
   'download pdf': 'PDF பதிவிறக்கு',
   'print view': 'அச்சுப் பார்வை',
   'sample template': 'மாதிரி படிவம்',
-
-  // Common Table Headers & Fields
   's.no.': 'வ.எண்',
   'customer': 'வாடிக்கையாளர்',
   'customer name': 'வாடிக்கையாளர் பெயர்',
-  'phone': 'போன் எண்',
+  'phone': 'தொலைபேசி எண்',
   'phone number': 'போன் எண்',
   'customer code': 'வாடிக்கையாளர் குறியீடு',
   'address': 'முகவரி',
@@ -321,8 +318,6 @@ const TA_PHRASES = {
   'bank transfer / upi': 'வங்கிப் பரிமாற்றம் / UPI',
   'cheque': 'காசோலை',
   'created at': 'உருவாக்கப்பட்ட தேதி',
-
-  // Statuses & Badges
   'active': 'செயலில் உள்ளது',
   'overdue': 'தாமதமானது',
   'partial': 'பகுதி செலுத்தியது',
@@ -343,8 +338,6 @@ const TA_PHRASES = {
   'monthly weekday': 'மாதாந்திர கிழமை',
   'monthly daily': 'மாதாந்திர நாள்',
   'monthly interval': 'மாதாந்திர இடைவெளி',
-
-  // Dashboard
   'total collection': 'மொத்த வசூல்',
   'total collection (all time)': 'மொத்த வசூல் (அனைத்து காலம்)',
   'total collection\n(all time)': 'மொத்த வசூல்\n(அனைத்து காலம்)',
@@ -377,8 +370,6 @@ const TA_PHRASES = {
   'my collection today': 'இன்றைய எனது வசூல்',
   'my collection this month': 'இந்த மாத எனது வசூல்',
   'my total collection': 'எனது மொத்த வசூல்',
-
-  // Pending Dues Page
   'pending customers': 'நிலுவை வாடிக்கையாளர்கள்',
   'total pending dues': 'மொத்த நிலுவைத் தொகை',
   'accounts with unpaid dues': 'நிலுவை உள்ள கணக்குகள்',
@@ -387,15 +378,13 @@ const TA_PHRASES = {
   'overdue only': 'தாமதமானவை மட்டும்',
   'no pending dues': 'நிலுவைகள் எதுவும் இல்லை',
   'every scheduled installment up to today has been fully paid.': 'இன்று வரையிலான அனைத்து தவணைகளும் முழுமையாக செலுத்தப்பட்டுவிட்டன.',
-
-  // Customers Page
   'total registered members': 'பதிவுசெய்த உறுப்பினர்கள்',
   'member profiles in directory': 'பட்டியலில் உள்ள உறுப்பினர்கள்',
   'active running chits': 'நடப்பில் உள்ள சீட்டுகள்',
   'currently active subscriptions': 'தற்போது செயல்பாட்டில் உள்ளவை',
   'register new customer': 'புதிய வாடிக்கையாளர் பதிவு',
   'create member profile & nominee': 'உறுப்பினர் மற்றும் வாரிசுதாரர் விவரம்',
-  'full name': 'முழுப் பெயர்',
+  'full name': 'முழு பெயர்',
   'full name *': 'முழுப் பெயர் *',
   'customer full name': 'வாடிக்கையாளர் முழுப் பெயர்',
   '10-digit mobile number': '10-இலக்க மொபைல் எண்',
@@ -418,8 +407,6 @@ const TA_PHRASES = {
   'address line 1': 'முகவரி வரி 1',
   'customer profile': 'வாடிக்கையாளர் சுயவிவரம்',
   'customer details': 'வாடிக்கையாளர் விவரங்கள்',
-
-  // Chits & Loans
   'start new chit': 'புதிய சீட்டு தொடங்கு',
   'new chit': 'புதிய சீட்டு',
   'create new chit': 'புதிய சீட்டு உருவாக்கு',
@@ -427,7 +414,7 @@ const TA_PHRASES = {
   'create new chits, track active chit schedules & manage repayments': 'புதிய சீட்டுகளை உருவாக்கி, தவணைகள் மற்றும் வசூலைக் கண்காணிக்கவும்',
   'total chits': 'மொத்த சீட்டுகள்',
   'total registered chits in portfolio': 'பதிவுசெய்யப்பட்ட மொத்த சீட்டுகள்',
-  'active chits': 'நடப்பு சீட்டுகள்',
+  'active chits': 'செயலில் உள்ள சீட்டுகள்',
   'currently active ongoing chits': 'தற்போது நடைமுறையில் உள்ள சீட்டுகள்',
   'total outstanding': 'மொத்த நிலுவை',
   'remaining balance across listed chits': 'சீட்டுகளின் மீதமுள்ள மொத்த நிலுவைத் தொகை',
@@ -455,7 +442,7 @@ const TA_PHRASES = {
   'select customer': 'வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்',
   'duration': 'கால அளவு',
   'number of installments': 'மொத்த தவணைகள்',
-  'start date': 'தொடங்கும் தேதி',
+  'start date': 'தொடக்கத் தேதி',
   'end date': 'முடியும் தேதி',
   'collection day': 'வசூல் நாள்',
   'fine per day': 'நாள் ஒன்றுக்கு அபராதம்',
@@ -500,8 +487,6 @@ const TA_PHRASES = {
   'partially distributed': 'பகுதி வழங்கப்பட்டது',
   'fully distributed': 'முழுமையாக வழங்கப்பட்டது',
   'fully distributed + extra': 'முழுமை + கூடுதல் வழங்கப்பட்டது',
-
-  // Expenses & Income
   'track daily office expenses, revenue income & account transactions': 'தினசரி அலுவலக செலவுகள், வரவுகள் மற்றும் கணக்கு பரிவர்த்தனைகளைக் கண்காணிக்கவும்',
   'add expense': 'செலவு சேர்',
   'edit expense': 'செலவைத் திருத்து',
@@ -513,11 +498,11 @@ const TA_PHRASES = {
   'today expenses': 'இன்றைய செலவுகள்',
   'office rent': 'அலுவலக வாடகை',
   'staff salaries': 'பணியாளர் சம்பளம்',
-  'electricity / utilities': 'மின்சாரம் / பயன்பாட்டுக் கட்டணம்',
+  'electricity / utilities': 'மின்சாரம் / பயன்பாடுகள்',
   'tea, snacks & catering': 'தேநீர், சிற்றுண்டி & உணவு',
-  'travel & fuel expenses': 'பயணம் & எரிபொருள் செலவு',
+  'travel & fuel expenses': 'பயணம் & எரிபொருள் செலவுகள்',
   'office maintenance': 'அலுவலக பராமரிப்பு',
-  'stationery & printings': 'எழுதுபொருட்கள் & அச்சிடுதல்',
+  'stationery & printings': 'எழுத்துப் பொருட்கள் & அச்சு',
   'miscellaneous': 'இதர செலவுகள்',
   'add income': 'வரவு சேர்',
   'edit income': 'வரவைத் திருத்து',
@@ -535,8 +520,6 @@ const TA_PHRASES = {
   'interest': 'வட்டி',
   'are you sure you want to delete this expense?': 'இந்த செலவுப் பதிவை நிச்சயமாக நீக்க விரும்புகிறீர்களா?',
   'are you sure you want to delete this income?': 'இந்த வரவுப் பதிவை நிச்சயமாக நீக்க விரும்புகிறீர்களா?',
-
-  // Reports
   'chit opening': 'சீட்டு தொடக்க அறிக்கை',
   'chit closing': 'சீட்டு முடிவு அறிக்கை',
   'chit collection': 'சீட்டு வசூல் அறிக்கை',
@@ -547,7 +530,7 @@ const TA_PHRASES = {
   'financial ledger': 'நிதிப் பேரேடு (Financial Ledger)',
   'filter date: from': 'தேதி: முதல்',
   'date range': 'தேதி வரம்பு',
-  'from': 'முதல்',
+  'from': 'வழங்கியவர்',
   'to': 'வரை',
   'filter': 'வடிகட்டு',
   'total records': 'மொத்த பதிவுகள்',
@@ -559,18 +542,16 @@ const TA_PHRASES = {
   'export excel': 'எக்செல் ஏற்றுமதி',
   'export pdf': 'PDF ஏற்றுமதி',
   'print report': 'அறிக்கையை அச்சிடு',
-
-  // Report Catalogue
   'daily report': 'தினசரி அறிக்கை',
-  'new chits (opening) report': 'புதிய சீட்டுகள் (தொடக்கம்) அறிக்கை',
+  'new chits (opening) report': 'புதிய சீட்டுகள் (தொடக்க) அறிக்கை',
   'closed chits report': 'முடிவடைந்த சீட்டுகள் அறிக்கை',
   'chit collection report (per due)': 'சீட்டு வசூல் அறிக்கை (தவணை வாரியாக)',
   'customer-wise collection report': 'வாடிக்கையாளர் வாரியான வசூல் அறிக்கை',
   'daily collection report': 'தினசரி வசூல் அறிக்கை',
   'employee-wise collection report': 'பணியாளர் வாரியான வசூல் அறிக்கை',
-  'location-wise collection report': 'பகுதி வாரியான வசூல் அறிக்கை',
+  'location-wise collection report': 'இட வாரியான வசூல் அறிக்கை',
   'pending dues report': 'நிலுவைத் தவணைகள் அறிக்கை',
-  'chit profit / summary report': 'சீட்டு லாப / சுருக்க அறிக்கை',
+  'chit profit / summary report': 'சீட்டு லாபம் / சுருக்க அறிக்கை',
   'monthly chit summary': 'மாதாந்திர சீட்டு சுருக்கம்',
   'financial account report': 'நிதி கணக்கு அறிக்கை',
   'select report type': 'அறிக்கை வகையைத் தேர்ந்தெடுக்கவும்',
@@ -581,8 +562,6 @@ const TA_PHRASES = {
   'no records match the selected filters. adjust the date range or clear the filters.': 'தேர்ந்தெடுக்கப்பட்ட வடிகட்டிகளுக்குப் பொருத்தமான பதிவுகள் எதுவும் இல்லை. தேதி வரம்பை மாற்றவும் அல்லது வடிகட்டிகளை அழிக்கவும்.',
   'e.g. sm-001': 'எ.கா. SM-001',
   'e.g. 1st tranche / cheque payment…': 'எ.கா. 1-வது தவணை / காசோலை செலுத்துதல்…',
-
-  // Report & Table Column Headers
   's.no': 'வ.எண்',
   'sno': 'வ.எண்',
   'customer phone': 'வாடிக்கையாளர் மொபைல்',
@@ -593,7 +572,7 @@ const TA_PHRASES = {
   'cumulative disbursed': 'மொத்த வழங்கல்',
   'chit face value': 'சீட்டின் மதிப்பு',
   'days overdue': 'தாமதமான நாட்கள்',
-  'payment mode': 'பணம் செலுத்திய முறை',
+  'payment mode': 'செலுத்தும் முறை',
   'running total': 'கூட்டுத் தொகை',
   'inflow': 'உள்வரவு',
   'outflow': 'வெளிச்செல்லல்',
@@ -610,14 +589,14 @@ const TA_PHRASES = {
   'due no.': 'தவணை எண்',
   'due date': 'தவணைத் தேதி',
   'installment amount': 'தவணைத் தொகை',
-  'paid': 'செலுத்தியது',
+  'paid': 'செலுத்தப்பட்டது',
   'paid (actual)': 'செலுத்தியது (உண்மை)',
   'paid amount': 'செலுத்திய தொகை',
   'due balance': 'தவணை நிலுவை',
   'installment schedule': 'தவணை அட்டவணை',
   'collection history': 'வசூல் வரலாறு',
   'receipt': 'ரசீது',
-  'mode': 'முறை',
+  'mode': 'பரிவர்த்தனை முறை',
   'last paid': 'கடைசியாக செலுத்தியது',
   'due / installment amount': 'தவணைத் தொகை',
   'chit status': 'சீட்டு நிலை',
@@ -727,21 +706,19 @@ const TA_PHRASES = {
   'passwords do not match.': 'கடவுச்சொற்கள் பொருந்தவில்லை.',
   'password must be at least 8 characters.': 'கடவுச்சொல் குறைந்தது 8 எழுத்துகளைக் கொண்டிருக்க வேண்டும்.',
   'opening balance cannot be negative.': 'தொடக்க இருப்பு எதிர்மறையாக இருக்கக்கூடாது.',
-  'print / download this due\'s payment statement': 'இந்தத் தவணையின் கட்டண அறிக்கையை அச்சிடு / பதிவிறக்கு',
+  's payment statement': 'இந்தத் தவணையின் கட்டண அறிக்கையை அச்சிடு / பதிவிறக்கு',
   'optional collection notes…': 'விருப்பத்தேர்வு வசூல் குறிப்புகள்…',
   'cancel disbursement of': 'வழங்கலை ரத்து செய் -',
   'delete disbursement of': 'வழங்கலை நீக்கு -',
   'working…': 'செயல்படுகிறது…',
   'start date *': 'தொடங்கிய தேதி *',
-
-  // Employees & Staff
   'employees & staff directory': 'பணியாளர்கள் பட்டியல்',
   'manage staff logins, permission roles & branch access': 'பணியாளர் கணக்குகள் மற்றும் அனுமதிகளை நிர்வகிக்கவும்',
   'register new employee': 'புதிய பணியாளர் பதிவு',
   'register new user': 'புதிய பயனர் பதிவு',
   'create user account & assign role': 'பயனர் கணக்கை உருவாக்கி பொறுப்பை ஒதுக்கவும்',
   'login username': 'உள்நுழைவு பயனர் பெயர்',
-  'system role': 'அமைப்புப் பொறுப்பு',
+  'system role': 'கணினி பங்கு',
   'admin (full access)': 'நிர்வாகி (முழு அணுகல்)',
   'employee (staff)': 'பணியாளர் (வழக்கமான அணுகல்)',
   'full access (admin)': 'முழு அணுகல் (நிர்வாகி)',
@@ -753,13 +730,11 @@ const TA_PHRASES = {
   'view user': 'பயனரைப் பார்',
   'employee details': 'பணியாளர் விவரங்கள்',
   'role': 'பொறுப்பு',
-  'username': 'பயனர் பெயர்',
+  'username': 'பயனர்பெயர்',
   'password': 'கடவுச்சொல்',
   'permissions': 'அனுமதிகள்',
   'deactivate': 'முடக்கு',
   'activate': 'செயல்படுத்து',
-
-  // Settings
   'organization': 'நிறுவன விவரங்கள்',
   'users': 'பயனர்கள்',
   'app settings': 'செயலி அமைப்புகள்',
@@ -774,8 +749,6 @@ const TA_PHRASES = {
   'currency symbol': 'நாணயக் குறியீடு',
   'logo': 'சின்னம் (Logo)',
   'upload logo': 'சின்னத்தைப் பதிவேற்று',
-
-  // Modals & Dialogs
   'collect due': 'தவணை வசூலி',
   'collect chit dues': 'சீட்டுத் தவணைகள் வசூலி',
   'amount to collect': 'வசூலிக்க வேண்டிய தொகை',
@@ -796,7 +769,7 @@ const TA_PHRASES = {
   'deposit account': 'வரவு கணக்கு',
   'reference / txn no': 'குறிப்பு எண் / பரிவர்த்தனை எண்',
   'bill no': 'பில் எண்',
-  'close date': 'முடிவு தேதி',
+  'close date': 'முடிவடைந்த தேதி',
   'close amount': 'முடிவுத் தொகை',
   'closing...': 'முடிக்கப்படுகிறது...',
   'closing…': 'முடிக்கப்படுகிறது…',
@@ -825,13 +798,9 @@ const TA_PHRASES = {
   'your username': 'உங்கள் பயனர் பெயர்',
   'your password': 'உங்கள் கடவுச்சொல்',
   'signing in…': 'உள்நுழைகிறது…',
-
-  // Empty states & Messages
   'no records found': 'பதிவுகள் எதுவும் காணப்படவில்லை',
   'no collection workload': 'வசூல் பணி எதுவும் இல்லை',
   'chits assigned to you will appear here.': 'உங்களுக்கு ஒதுக்கப்பட்ட சீட்டுகள் இங்கே தோன்றும்.',
-
-  // Form Validations
   'mobile number is required.': 'மொபைல் எண் தேவை.',
   'phone number is required.': 'போன் எண் தேவை.',
   'enter a valid 10-digit mobile number.': 'சரியான 10-இலக்க மொபைல் எண்ணை உள்ளிடவும்.',
@@ -853,7 +822,76 @@ const TA_PHRASES = {
   'please select an option.': 'தயவுசெய்து ஒரு விருப்பத்தைத் தேர்ந்தெடுக்கவும்.',
   'username is required.': 'பயனர் பெயர் தேவை.',
   'password is required.': 'கடவுச்சொல் தேவை.',
-  'role is required.': 'பொறுப்பு தேர்ந்தெடுக்கப்பட வேண்டும்.'
+  'role is required.': 'பொறுப்பு தேர்ந்தெடுக்கப்பட வேண்டும்.',
+  'new chits': 'புதிய சீட்டுகள் அறிக்கை',
+  'closed chits': 'முடிவடைந்த சீட்டுகள் அறிக்கை',
+  'chit collection report': 'சீட்டு வசூல் அறிக்கை',
+  'customer collection summary': 'வாடிக்கையாளர் வாரியான வசூல் சுருக்கம்',
+  'employee collection report': 'பணியாளர் வாரியான வசூல் அறிக்கை',
+  'location collection report': 'இட வாரியான வசூல் அறிக்கை',
+  'chit distribution report': 'சீட்டு வழங்கல் அறிக்கை',
+  'templates': 'மாதிரிகள்',
+  'templates ▾': 'மாதிரிகள் ▾',
+  'chit import template': 'சீட்டு மாதிரி படிவம்',
+  'collection import template': 'வசூல் மாதிரி படிவம்',
+  'expense import template': 'செலவு மாதிரி படிவம்',
+  'income import template': 'வரவு மாதிரி படிவம்',
+  'total collection amount': 'மொத்த வசூல் தொகை',
+  'outstanding amount': 'நிலுவைத் தொகை',
+  'profit / loss': 'லாபம் / நஷ்டம்',
+  'collections received': 'பெறப்பட்ட வசூல்கள்',
+  'pending collections': 'நிலுவையில் உள்ள வசூல்கள்',
+  'collection + income': 'வசூல் + இதர வரவு',
+  'income − expense +15.8%': 'வரவு − செலவு +15.8%',
+  '↑ +12.5% vs prev period': '↑ +12.5% முந்தைய காலத்தை விட',
+  '↓ -5.2% vs prev period': '↓ -5.2% முந்தைய காலத்தை விட',
+  'location': 'பகுதி',
+  'employee name': 'பணியாளர் பெயர்',
+  'collected today': 'இன்று வசூலித்தது',
+  'month collection': 'மாத வசூல்',
+  'total collected': 'மொத்த வசூல்',
+  'customer count': 'வாடிக்கையாளர் எண்ணிக்கை',
+  'collection today': 'இன்று வசூல்',
+  'total chit value': 'மொத்த சீட்டு மதிப்பு',
+  'paid principal': 'செலுத்தப்பட்ட அசல்',
+  'last paid date': 'கடைசியாக செலுத்திய தேதி',
+  'time': 'நேரம்',
+  'receipt no': 'ரசீது எண்',
+  'remaining due': 'மீதமுள்ள தவணைத் தொகை',
+  'staff / giver': 'பணியாளர் / செலுத்தியவர்',
+  'distribution date': 'வழங்கிய தேதி',
+  'distributed amount': 'வழங்கிய தொகை',
+  'previous distributed': 'முந்தைய வழங்கல்',
+  'distribution account': 'வழங்கல் கணக்கு',
+  'new emi': 'புதிய தவணைத் தொகை',
+  'distributed total': 'வழங்கப்பட்ட மொத்தத் தொகை',
+  'collection total': 'வசூலிக்கப்பட்ட மொத்தத் தொகை',
+  'profit %': 'லாப விகிதம் %',
+  'inflow (credit)': 'வரவு (Credit)',
+  'outflow (debit)': 'செலவு (Debit)',
+  'recorded by': 'பதிவு செய்தவர்',
+  'current status': 'தற்போதைய நிலை',
+  'chit id': 'சீட்டு எண்',
+  'user profile settings': 'பயனர் சுயவிவர அமைப்புகள்',
+  'view account details and assigned permissions': 'கணக்கு விவரங்கள் மற்றும் ஒதுக்கப்பட்ட அனுமதிகளைக் காண்க',
+  'active permissions': 'செயலில் உள்ள அனுமதிகள்',
+  'permissions active': 'அனுமதிகள் செயலில் உள்ளன',
+  'system administrator': 'கணினி நிர்வாகி',
+  'admin': 'நிர்வாகி',
+  'destination account': 'சேரும் கணக்கு',
+  'payment source': 'பணம் செலுத்திய கணக்கு',
+  'giver / details': 'வழங்கியவர் / விவரங்கள்',
+  'search category, giver, remarks…': 'பிரிவு, வழங்கியவர், குறிப்பு தேடுக…',
+  'search category, remarks…': 'பிரிவு, குறிப்பு தேடுக…',
+  'any destination': 'அனைத்து கணக்குகளும்',
+  'destination': 'சேருமிடம்',
+  'source': 'மூலம் / கணக்கு',
+  'new income': 'புதிய வரவு',
+  'save income': 'வரவைச் சேமி',
+  'delete income entry?': 'வரவு பதிவை நீக்கவா?',
+  'cancel income entry?': 'வரவு பதிவை ரத்து செய்யவா?',
+  'cancel entry': 'பதிவை ரத்து செய்',
+  'no income entries match your filters': 'வடிகட்டிகளுக்கு பொருந்தும் வரவு பதிவுகள் எதுவும் இல்லை'
 };
 
 function normalizeText(str) {
@@ -868,6 +906,22 @@ function isGarbled(str) {
 }
 
 function matchDynamicPattern(norm) {
+  // Pattern: "TOTAL (X)"
+  const totMatch = norm.match(/^total\s*\(([^)]+)\)$/i);
+  if (totMatch) return `மொத்தம் (${totMatch[1]})`;
+
+  // Pattern: "X permissions active"
+  const permMatch = norm.match(/^(\d+)\s+permissions?\s+active$/i);
+  if (permMatch) return `${permMatch[1]} அனுமதிகள் செயலில் உள்ளன`;
+
+  // Pattern: "Delete X selected expenses?"
+  const delExpMatch = norm.match(/^delete\s+(\d+)\s+selected\s+expenses\?$/i);
+  if (delExpMatch) return `${delExpMatch[1]} தேர்ந்தெடுக்கப்பட்ட செலவுகளை நீக்கவா?`;
+
+  // Pattern: "Delete X selected income entries?"
+  const delIncMatch = norm.match(/^delete\s+(\d+)\s+selected\s+income\s+entries\?$/i);
+  if (delIncMatch) return `${delIncMatch[1]} தேர்ந்தெடுக்கப்பட்ட வரவுகளை நீக்கவா?`;
+
   // Pattern: "Page X of Y"
   const pageMatch = norm.match(/^page\s+(\d+)\s+of\s+(\d+)$/i);
   if (pageMatch) return `பக்கம் ${pageMatch[1]} / ${pageMatch[2]}`;

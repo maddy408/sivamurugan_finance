@@ -367,7 +367,7 @@ export default function Dashboard() {
               </svg>
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
-              {user?.name ? user.name : 'Ask Gemini'}
+              {t(user?.name, user?.name || 'System Administrator')}
             </span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />

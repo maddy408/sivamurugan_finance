@@ -336,7 +336,7 @@ export default function Income({ embedded }) {
               cursor: 'pointer'
             }}
           >
-            <FiPlusCircle size={16} /> New Income
+            <FiPlusCircle size={16} /> {t('Add Income', 'New Income')}
           </button>
         )}
       </div>
@@ -365,7 +365,7 @@ export default function Income({ embedded }) {
             <button className="btn-save-glow" onClick={save} disabled={busy}>{busy ? t('Saving…', 'Saving…') : t('Save Income', 'Save Income')}</button>
           </>}>
           <div className="form-grid">
-            <Field label="Amount *" error={errors.amount}>
+            <Field label={`${t('Amount', 'Amount')} *`} error={errors.amount}>
               <input
                 name="amount"
                 type="number"
@@ -382,7 +382,7 @@ export default function Income({ embedded }) {
                 }}
               />
             </Field>
-            <Field label="Received date *" error={errors.received_date}>
+            <Field label={`${t('Received date', 'Received date')} *`} error={errors.received_date}>
               <input
                 name="received_date"
                 type="date"
@@ -397,7 +397,7 @@ export default function Income({ embedded }) {
                 }}
               />
             </Field>
-            <Field label="Category *" error={errors.category}>
+            <Field label={`${t('Category', 'Category')} *`} error={errors.category}>
               <select
                 name="category"
                 value={form.category}
@@ -414,15 +414,15 @@ export default function Income({ embedded }) {
                 {categoryOptions.map((c) => <option key={c} value={c}>{t(c, c)}</option>)}
               </select>
             </Field>
-            <Field label="Destination account" error={errors.account_id}>
+            <Field label={t('Destination account', 'Destination account')} error={errors.account_id}>
               <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>
                 <option value="">—</option>
                 {(meta?.accounts || []).map((a) => <option key={a.id} value={a.id}>{a.name} ({t(a.type, a.type)})</option>)}
               </select>
             </Field>
-            <Field label="Giver / details" error={errors.giver_details}><input value={form.giver_details} onChange={(e) => setForm({ ...form, giver_details: e.target.value })} /></Field>
+            <Field label={t('Giver / details', 'Giver / details')} error={errors.giver_details}><input value={form.giver_details} onChange={(e) => setForm({ ...form, giver_details: e.target.value })} /></Field>
           </div>
-          <Field label="Remarks" error={errors.remarks}><textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} /></Field>
+          <Field label={t('Remarks', 'Remarks')} error={errors.remarks}><textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} /></Field>
         </Modal>
       )}
       {confirm && (

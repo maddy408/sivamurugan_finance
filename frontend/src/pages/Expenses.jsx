@@ -385,7 +385,7 @@ export default function Expenses({ embedded }) {
             <button className="btn-save-glow" onClick={save} disabled={busy}>{busy ? t('Saving…', 'Saving…') : t('Save Expense', 'Save Expense')}</button>
           </>}>
           <div className="form-grid">
-            <Field label="Amount *" error={errors.amount}>
+            <Field label={`${t('Amount', 'Amount')} *`} error={errors.amount}>
               <input
                 name="amount"
                 type="number"
@@ -402,7 +402,7 @@ export default function Expenses({ embedded }) {
                 }}
               />
             </Field>
-            <Field label="Date *" error={errors.expense_date}>
+            <Field label={`${t('Date', 'Date')} *`} error={errors.expense_date}>
               <input
                 name="expense_date"
                 type="date"
@@ -417,7 +417,7 @@ export default function Expenses({ embedded }) {
                 }}
               />
             </Field>
-            <Field label="Category *" error={errors.category}>
+            <Field label={`${t('Category', 'Category')} *`} error={errors.category}>
               <select
                 name="category"
                 value={form.category}
@@ -434,14 +434,14 @@ export default function Expenses({ embedded }) {
                 {categoryOptions.map((c) => <option key={c} value={c}>{t(c, c)}</option>)}
               </select>
             </Field>
-            <Field label="Payment source" error={errors.account_id}>
+            <Field label={t('Payment source', 'Payment source')} error={errors.account_id}>
               <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>
                 <option value="">—</option>
-                {(meta?.accounts || []).map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+                {(meta?.accounts || []).map((a) => <option key={a.id} value={a.id}>{a.name} ({t(a.type, a.type)})</option>)}
               </select>
             </Field>
           </div>
-          <Field label="Remarks" error={errors.remarks}><textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} /></Field>
+          <Field label={t('Remarks', 'Remarks')} error={errors.remarks}><textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} /></Field>
         </Modal>
       )}
       {confirm && (
