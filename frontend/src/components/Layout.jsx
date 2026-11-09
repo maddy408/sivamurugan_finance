@@ -63,7 +63,7 @@ export default function Layout() {
         <div className="top-navbar-container">
           {/* Brand Container with Capsule Pill Border */}
           <Link to="/" className="brand-container" onClick={closeDrawer}>
-            <div className="brand-logo-pill" style={{ width: 28, height: 28, minWidth: 28, minHeight: 28, flexShrink: 0, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+            <div className="brand-logo-pill" style={{ width: 32, height: 32, minWidth: 32, minHeight: 32, flexShrink: 0, borderRadius: 6, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', border: '1px solid #e2e8f0' }}>
               <img
                 src={logoSrc}
                 alt="logo"
@@ -134,7 +134,7 @@ export default function Layout() {
       >
         <div className="drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-            <div className="brand-logo-pill" style={{ width: 34, height: 34, minWidth: 34, minHeight: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffffff', border: '1.5px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="brand-logo-pill" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, borderRadius: 8, overflow: 'hidden', background: '#ffffff', border: '1.5px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <img
                 src={logoSrc}
                 alt="logo"
